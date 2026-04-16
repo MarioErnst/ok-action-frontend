@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PhonationDisplay, useVoiceMonitor } from '../index';
-import { colors } from '../theme';
 import type { PhonationFrame } from '../types';
 
 export default function PhonationTestPage() {
@@ -31,31 +30,15 @@ export default function PhonationTestPage() {
 
   const stopSynthetic = async () => {
     if (oscillatorRef.current) {
-      try {
-        oscillatorRef.current.stop();
-      } catch {
-        // Ignorar si el oscilador ya fue detenido.
-      }
-
-      try {
-        oscillatorRef.current.disconnect();
-      } catch {
-        // Ignorar para mantener el cleanup idempotente.
-      }
+      try { oscillatorRef.current.stop(); } catch { /* already stopped */ }
+      try { oscillatorRef.current.disconnect(); } catch { /* idempotent */ }
     }
-
     if (oscillatorWorkletRef.current) {
-      try {
-        oscillatorWorkletRef.current.disconnect();
-      } catch {
-        // Ignorar para mantener el cleanup idempotente.
-      }
+      try { oscillatorWorkletRef.current.disconnect(); } catch { /* idempotent */ }
     }
-
     if (oscillatorCtxRef.current && oscillatorCtxRef.current.state !== 'closed') {
       await oscillatorCtxRef.current.close();
     }
-
     oscillatorCtxRef.current = null;
     oscillatorRef.current = null;
     oscillatorWorkletRef.current = null;
@@ -65,26 +48,17 @@ export default function PhonationTestPage() {
 
   const startSynthetic = async () => {
     if (isSyntheticRunning) return;
-
     try {
       const ctx = new AudioContext();
       oscillatorCtxRef.current = ctx;
-
       await ctx.audioWorklet.addModule('/worklets/phonation.worklet.js');
-
       const workletNode = new AudioWorkletNode(ctx, 'phonation-processor');
       oscillatorWorkletRef.current = workletNode;
-
       workletNode.port.onmessage = (event: MessageEvent<{ hz: number | null }>) => {
         setSyntheticHz(event.data?.hz ?? null);
       };
-
-      const oscillator = new OscillatorNode(ctx, {
-        type: 'sine',
-        frequency: syntheticFreq,
-      });
+      const oscillator = new OscillatorNode(ctx, { type: 'sine', frequency: syntheticFreq });
       oscillatorRef.current = oscillator;
-
       oscillator.connect(workletNode);
       oscillator.start();
       setIsSyntheticRunning(true);
@@ -95,49 +69,26 @@ export default function PhonationTestPage() {
   };
 
   useEffect(() => {
-    return () => {
-      void stopSynthetic();
-    };
+    return () => { void stopSynthetic(); };
   }, []);
 
   if (import.meta.env.PROD) {
-    return <p style={{ color: colors.textMuted }}>Pagina no disponible en produccion</p>;
+    return <p className="text-text-muted">Pagina no disponible en produccion</p>;
   }
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: colors.bg,
-        color: colors.text,
-        padding: 16,
-        fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif',
-      }}
-    >
-      <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gap: 16 }}>
-        <header
-          style={{
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <h1 style={{ margin: 0, color: colors.accent }}>OK Action - Prueba de Fonacion</h1>
-          <p style={{ margin: '8px 0 0 0', color: colors.textMuted }}>
+    <main className="min-h-screen bg-bg p-4 font-sans text-text">
+      <div className="mx-auto grid max-w-[900px] gap-4">
+
+        <header className="rounded-xl border border-border bg-surface p-4">
+          <h1 className="m-0 text-accent">OK Action - Prueba de Fonacion</h1>
+          <p className="mt-2 text-text-muted">
             Visualiza tono e intensidad en tiempo real usando el microfono del dispositivo.
           </p>
         </header>
 
-        <section
-          style={{
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <h2 style={{ marginTop: 0, color: colors.accent }}>Microfono real</h2>
+        <section className="rounded-xl border border-border bg-surface p-4">
+          <h2 className="mt-0 text-accent">Microfono real</h2>
           <PhonationDisplay
             hz={hz}
             db={db}
@@ -147,23 +98,16 @@ export default function PhonationTestPage() {
             onStart={start}
             onStop={stop}
           />
-          <p style={{ marginTop: 12, color: colors.textMuted, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          <p className="mt-3 font-mono text-sm text-text-muted">
             hz: {hz == null ? 'null' : hz.toFixed(2)} | db: {db.toFixed(2)} | frames: {frames.length} |
             calibrando: {String(isCalibrating)}
           </p>
         </section>
 
-        <section
-          style={{
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <h2 style={{ marginTop: 0, color: colors.accent }}>Oscilador sintetico</h2>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <label style={{ color: colors.textMuted }} htmlFor="synthetic-frequency-input">
+        <section className="rounded-xl border border-border bg-surface p-4">
+          <h2 className="mt-0 text-accent">Oscilador sintetico</h2>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <label className="text-text-muted" htmlFor="synthetic-frequency-input">
               Frecuencia objetivo (Hz)
             </label>
             <input
@@ -172,29 +116,15 @@ export default function PhonationTestPage() {
               min={75}
               max={400}
               value={syntheticFreq}
-              onChange={(event) => setSyntheticFreq(Number(event.target.value))}
+              onChange={(e) => setSyntheticFreq(Number(e.target.value))}
               disabled={isSyntheticRunning}
-              style={{
-                width: 120,
-                background: colors.surfaceAlt,
-                border: `1px solid ${colors.border}`,
-                color: colors.text,
-                borderRadius: 8,
-                padding: '8px 10px',
-              }}
+              className="w-[120px] rounded-lg border border-border bg-surface-alt px-2.5 py-2 text-text"
             />
             {!isSyntheticRunning && (
               <button
                 type="button"
                 onClick={startSynthetic}
-                style={{
-                  background: colors.accent,
-                  border: `1px solid ${colors.accent}`,
-                  color: colors.bg,
-                  borderRadius: 8,
-                  padding: '8px 12px',
-                  fontWeight: 700,
-                }}
+                className="rounded-lg border border-accent bg-accent px-3 py-2 font-bold text-bg"
               >
                 Ingresar
               </button>
@@ -203,82 +133,67 @@ export default function PhonationTestPage() {
               <button
                 type="button"
                 onClick={() => void stopSynthetic()}
-                style={{
-                  background: colors.surface,
-                  border: `1px solid ${colors.border}`,
-                  color: colors.textMuted,
-                  borderRadius: 8,
-                  padding: '8px 12px',
-                  fontWeight: 700,
-                }}
+                className="rounded-lg border border-border bg-surface px-3 py-2 font-bold text-text-muted"
               >
                 Detener
               </button>
             )}
           </div>
-          <p style={{ color: colors.textMuted, marginBottom: 0 }}>
+          <p className="mb-0 text-text-muted">
             Esperado: {syntheticFreq} Hz - Detectado: {syntheticHz == null ? '—' : syntheticHz.toFixed(2)} Hz
           </p>
-          <p style={{ color: isSyntheticAccurate ? colors.success : colors.accent, marginTop: 8, fontWeight: 700 }}>
-            {syntheticHz == null ? 'Esperando medicion...' : isSyntheticAccurate ? '✓ dentro de tolerancia' : '✗ fuera de tolerancia'}
+          <p className={`mt-2 font-bold ${isSyntheticAccurate ? 'text-success' : 'text-accent'}`}>
+            {syntheticHz == null
+              ? 'Esperando medicion...'
+              : isSyntheticAccurate
+                ? '✓ dentro de tolerancia'
+                : '✗ fuera de tolerancia'}
           </p>
         </section>
 
-        <section
-          style={{
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 12,
-            padding: 16,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ margin: 0, color: colors.accent }}>Log de frames</h2>
+        <section className="rounded-xl border border-border bg-surface p-4">
+          <div className="flex items-center justify-between gap-2.5">
+            <h2 className="m-0 text-accent">Log de frames</h2>
             <button
               type="button"
               onClick={() => setLogCutoffTimestamp(Date.now())}
-              style={{
-                background: colors.surface,
-                border: `1px solid ${colors.border}`,
-                color: colors.textMuted,
-                borderRadius: 8,
-                padding: '8px 12px',
-                fontWeight: 700,
-              }}
+              className="rounded-lg border border-border bg-surface px-3 py-2 font-bold text-text-muted"
             >
               Limpiar log
             </button>
           </div>
 
-          <div style={{ overflowX: 'auto', marginTop: 12 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[680px] border-collapse">
               <thead>
                 <tr>
-                  <th style={tableHeadCellStyle}>#</th>
-                  <th style={tableHeadCellStyle}>Timestamp</th>
-                  <th style={tableHeadCellStyle}>Hz</th>
-                  <th style={tableHeadCellStyle}>dB</th>
-                  <th style={tableHeadCellStyle}>Alerta</th>
+                  {['#', 'Timestamp', 'Hz', 'dB', 'Alerta'].map((h) => (
+                    <th
+                      key={h}
+                      className="border-b border-border px-1.5 py-2 text-left text-xs uppercase tracking-wide text-text-muted"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {visibleFrames.map((frame, index) => {
                   const time = new Date(frame.timestamp);
-                  const timestamp = `${time.toLocaleTimeString()}.${String(time.getMilliseconds()).padStart(3, '0')}`;
-
+                  const ts = `${time.toLocaleTimeString()}.${String(time.getMilliseconds()).padStart(3, '0')}`;
                   return (
                     <tr key={`${frame.timestamp}-${index}`}>
-                      <td style={tableBodyCellStyle}>{index + 1}</td>
-                      <td style={tableBodyCellStyle}>{timestamp}</td>
-                      <td style={tableBodyCellStyle}>{frame.hz == null ? '—' : frame.hz.toFixed(1)}</td>
-                      <td style={tableBodyCellStyle}>{frame.db.toFixed(1)}</td>
-                      <td style={tableBodyCellStyle}>{frame.hz == null ? 'si' : 'no'}</td>
+                      <td className="border-b border-surface-alt px-1.5 py-2 text-[13px] text-text">{index + 1}</td>
+                      <td className="border-b border-surface-alt px-1.5 py-2 text-[13px] text-text">{ts}</td>
+                      <td className="border-b border-surface-alt px-1.5 py-2 text-[13px] text-text">{frame.hz == null ? '—' : frame.hz.toFixed(1)}</td>
+                      <td className="border-b border-surface-alt px-1.5 py-2 text-[13px] text-text">{frame.db.toFixed(1)}</td>
+                      <td className="border-b border-surface-alt px-1.5 py-2 text-[13px] text-text">{frame.hz == null ? 'si' : 'no'}</td>
                     </tr>
                   );
                 })}
                 {visibleFrames.length === 0 && (
                   <tr>
-                    <td style={tableBodyCellStyle} colSpan={5}>
+                    <td className="border-b border-surface-alt px-1.5 py-2 text-[13px] text-text" colSpan={5}>
                       Sin datos para mostrar.
                     </td>
                   </tr>
@@ -287,24 +202,8 @@ export default function PhonationTestPage() {
             </table>
           </div>
         </section>
+
       </div>
     </main>
   );
 }
-
-const tableHeadCellStyle: React.CSSProperties = {
-  borderBottom: `1px solid ${colors.border}`,
-  color: colors.textMuted,
-  fontSize: 12,
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  textAlign: 'left',
-  padding: '8px 6px',
-};
-
-const tableBodyCellStyle: React.CSSProperties = {
-  borderBottom: `1px solid ${colors.surfaceAlt}`,
-  color: colors.text,
-  fontSize: 13,
-  padding: '8px 6px',
-};
