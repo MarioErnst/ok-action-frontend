@@ -10,6 +10,23 @@ Todo el código comentado.
 
 
 class PhonationProcessor extends AudioWorkletProcessor {
+		/**
+		 * Calcula la función de diferencia acumulada normalizada YIN d'(τ).
+		 * d'(0) = 1
+		 * d'(τ) = d(τ) / [(1/τ) * Σ d(j)]  para j = 1..τ
+		 * @param {Float32Array} d
+		 * @returns {Float32Array} dPrime
+		 */
+		_cumulativeMeanNormalizedDifference(d) {
+			const dPrime = new Float32Array(d.length);
+			dPrime[0] = 1;
+			let cumulativeSum = 0;
+			for (let tau = 1; tau < d.length; tau++) {
+				cumulativeSum += d[tau];
+				dPrime[tau] = d[tau] / (cumulativeSum / tau);
+			}
+			return dPrime;
+		}
 	constructor() {
 		super();
 		this.port.onmessage = (event) => {
