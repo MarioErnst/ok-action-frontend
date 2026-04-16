@@ -25,7 +25,6 @@ export default function PhonationDisplay({
   onStop = () => {},
 }) {
   const canvasRef = useRef(null);
-  const rafIdRef = useRef(null);
 
   const isAlert = useMemo(() => {
     if (!isListening || isCalibrating || frames.length < ALERT_FRAME_WINDOW) return false;
@@ -78,13 +77,8 @@ export default function PhonationDisplay({
       ctx.stroke();
     };
 
-    rafIdRef.current = requestAnimationFrame(draw);
-    return () => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-    };
+    draw();
+    return undefined;
   }, [frames]);
 
   return (
