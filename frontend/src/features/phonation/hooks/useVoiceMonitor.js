@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 const DEFAULT_DB = -100;
 const MAX_FRAMES = 100;
 const CALIBRATION_DURATION_MS = 3000;
+const UI_UPDATE_INTERVAL_MS = 67; // ~15 fps
 
 export default function useVoiceMonitor() {
   const [hz, setHz] = useState(null);
@@ -21,6 +22,11 @@ export default function useVoiceMonitor() {
   const calibrationSamplesRef = useRef([]);
   const calibrationTimeoutRef = useRef(null);
   const isCalibratingRef = useRef(false);
+  const isListeningRef = useRef(false);
+  const pendingHzRef = useRef(null);
+  const pendingDbRef = useRef(DEFAULT_DB);
+  const pendingFramesRef = useRef([]);
+  const uiTimerRef = useRef(null);
 
   const stop = useCallback(async () => {
     if (calibrationTimeoutRef.current) {
@@ -29,6 +35,14 @@ export default function useVoiceMonitor() {
     }
     calibrationSamplesRef.current = [];
     isCalibratingRef.current = false;
+
+    if (uiTimerRef.current) {
+      clearInterval(uiTimerRef.current);
+      uiTimerRef.current = null;
+    }
+    pendingHzRef.current = null;
+    pendingDbRef.current = DEFAULT_DB;
+    pendingFramesRef.current = [];
 
     if (workletNodeRef.current?.port) {
       workletNodeRef.current.port.onmessage = null;
@@ -90,13 +104,28 @@ export default function useVoiceMonitor() {
           return;
         }
 
-        setHz(nextHz);
-        setDb(nextDb);
-        setFrames((prev) => {
-          const next = [...prev, { hz: nextHz, db: nextDb, timestamp: Date.now() }];
-          return next.length > MAX_FRAMES ? next.slice(-MAX_FRAMES) : next;
-        });
+        // Acumular en refs en vez de disparar setState por cada mensaje
+        pendingHzRef.current = nextHz;
+        pendingDbRef.current = nextDb;
+        pendingFramesRef.current.push({ hz: nextHz, db: nextDb, timestamp: Date.now() });
       };
+
+      // Flush de refs a state a ~15 fps
+      uiTimerRef.current = setInterval(() => {
+        if (isCalibratingRef.current) return;
+
+        setHz(pendingHzRef.current);
+        setDb(pendingDbRef.current);
+
+        if (pendingFramesRef.current.length > 0) {
+          const batch = pendingFramesRef.current;
+          pendingFramesRef.current = [];
+          setFrames((prev) => {
+            const next = prev.concat(batch);
+            return next.length > MAX_FRAMES ? next.slice(-MAX_FRAMES) : next;
+          });
+        }
+      }, UI_UPDATE_INTERVAL_MS);
 
       source.connect(workletNode);
       setIsCalibrating(true);
