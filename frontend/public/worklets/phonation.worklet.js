@@ -6,6 +6,10 @@ const MIN_DB = -100;
 const YIN_THRESHOLD = 0.10;
 const MIN_HZ = 75;
 const MAX_HZ = 400;
+// Buffer mínimo para YIN: 2 * (sampleRate / MIN_HZ).
+// Con sampleRate = 48000 y MIN_HZ = 75 → 1280 muestras.
+// Usamos 2048 para margen y potencia de 2.
+const YIN_BUFFER_SIZE = 2048;
 // public/worklets/phonation.worklet.js
 
 /*
@@ -80,6 +84,9 @@ class PhonationProcessor extends AudioWorkletProcessor {
 			}
 		};
 		this._dbHistory = [];
+		this._ringBuffer = new Float32Array(YIN_BUFFER_SIZE);
+		this._ringBufferWriteIndex = 0;
+		this._ringBufferSamples = 0;
 	}
 
 	/**
@@ -137,24 +144,35 @@ class PhonationProcessor extends AudioWorkletProcessor {
 	}
 
 	process(inputs, outputs, parameters) {
-		// 1. Buffer = inputs[0][0]; si está vacío o undefined, devolver true
 		const input = inputs[0] && inputs[0][0];
 		if (!input) return true;
 
-		// 2. hz = this._detectPitch(buffer, this.context.sampleRate)
-		// Nota: AudioWorkletProcessor no tiene this.context, sampleRate es global
-		const hz = this._detectPitch(input, sampleRate);
+		// Acumular muestras en el ring buffer
+		for (let i = 0; i < input.length; i++) {
+			this._ringBuffer[this._ringBufferWriteIndex] = input[i];
+			this._ringBufferWriteIndex = (this._ringBufferWriteIndex + 1) % YIN_BUFFER_SIZE;
+		}
+		this._ringBufferSamples += input.length;
 
-		// 3. rawDb = this._calculateDb(buffer)
-		const rawDb = this._calculateDb(input);
+		// Esperar hasta tener suficientes muestras para YIN
+		if (this._ringBufferSamples < YIN_BUFFER_SIZE) return true;
 
-		// 4. db = this._smoothedDb(rawDb)
+		// Construir buffer lineal desde el ring buffer
+		const buffer = new Float32Array(YIN_BUFFER_SIZE);
+		let readIndex = this._ringBufferWriteIndex;
+		for (let i = 0; i < YIN_BUFFER_SIZE; i++) {
+			buffer[i] = this._ringBuffer[readIndex];
+			readIndex = (readIndex + 1) % YIN_BUFFER_SIZE;
+		}
+
+		// Reiniciar contador para emitir a ~23 fps (2048 muestras / 48kHz)
+		this._ringBufferSamples = 0;
+
+		const hz = this._detectPitch(buffer, sampleRate);
+		const rawDb = this._calculateDb(buffer);
 		const db = this._smoothedDb(rawDb);
-
-		// 5. this.port.postMessage({ hz, db })
 		this.port.postMessage({ hz, db });
 
-		// 6. return true
 		return true;
 	}
 }
