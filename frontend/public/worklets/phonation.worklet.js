@@ -1,8 +1,74 @@
 // public/worklets/phonation.worklet.js
 
-// Importar funciones puras YIN
-importScripts('./yin.js');
-const { detectPitch, calculateDb } = globalThis.yinFunctions;
+// --- Funciones puras YIN (duplicadas de yin.js para AudioWorkletGlobalScope) ---
+
+const YIN_THRESHOLD = 0.10;
+const MIN_HZ = 75;
+const MAX_HZ = 400;
+
+function difference(buffer) {
+  const W = Math.floor(buffer.length / 2);
+  const d = new Float32Array(W + 1);
+  d[0] = 0;
+  for (let tau = 1; tau <= W; tau++) {
+    let sum = 0;
+    for (let j = 0; j < W; j++) {
+      const diff = buffer[j] - buffer[j + tau];
+      sum += diff * diff;
+    }
+    d[tau] = sum;
+  }
+  return d;
+}
+
+function cumulativeMeanNormalizedDifference(d) {
+  const dPrime = new Float32Array(d.length);
+  dPrime[0] = 1;
+  let cumulativeSum = 0;
+  for (let tau = 1; tau < d.length; tau++) {
+    cumulativeSum += d[tau];
+    dPrime[tau] = d[tau] / (cumulativeSum / tau);
+  }
+  return dPrime;
+}
+
+function detectPitch(buffer, sr) {
+  const d = difference(buffer);
+  const dPrime = cumulativeMeanNormalizedDifference(d);
+
+  let tau = 1;
+  while (tau < dPrime.length) {
+    if (dPrime[tau] < YIN_THRESHOLD) break;
+    tau++;
+  }
+  if (tau === dPrime.length || tau === 1) return null;
+
+  if (tau + 1 < dPrime.length && tau - 1 > 0) {
+    const prev = dPrime[tau - 1];
+    const next = dPrime[tau + 1];
+    const center = dPrime[tau];
+    const denominator = 2 * (prev - 2 * center + next);
+    if (denominator !== 0) {
+      tau = tau + (prev - next) / denominator;
+    }
+  }
+
+  const hz = sr / tau;
+  if (hz < MIN_HZ || hz > MAX_HZ) return null;
+  return hz;
+}
+
+function calculateDb(buffer, minDb) {
+  let sum = 0;
+  for (let i = 0; i < buffer.length; i++) {
+    sum += buffer[i] * buffer[i];
+  }
+  const rms = Math.sqrt(sum / buffer.length);
+  if (rms === 0) return minDb;
+  return 20 * Math.log10(rms);
+}
+
+// --- Processor ---
 
 const SMOOTHING_WINDOW = 7;
 const MIN_DB = -100;
@@ -29,17 +95,14 @@ class PhonationProcessor extends AudioWorkletProcessor {
     const input = inputs[0] && inputs[0][0];
     if (!input) return true;
 
-    // Acumular muestras en el ring buffer
     for (let i = 0; i < input.length; i++) {
       this._ringBuffer[this._ringBufferWriteIndex] = input[i];
       this._ringBufferWriteIndex = (this._ringBufferWriteIndex + 1) % YIN_BUFFER_SIZE;
     }
     this._ringBufferSamples += input.length;
 
-    // Esperar hasta tener suficientes muestras para YIN
     if (this._ringBufferSamples < YIN_BUFFER_SIZE) return true;
 
-    // Construir buffer lineal desde el ring buffer
     const buffer = new Float32Array(YIN_BUFFER_SIZE);
     let readIndex = this._ringBufferWriteIndex;
     for (let i = 0; i < YIN_BUFFER_SIZE; i++) {
@@ -47,13 +110,11 @@ class PhonationProcessor extends AudioWorkletProcessor {
       readIndex = (readIndex + 1) % YIN_BUFFER_SIZE;
     }
 
-    // Reiniciar contador para emitir a ~23 fps (2048 muestras / 48kHz)
     this._ringBufferSamples = 0;
 
     const rawDb = calculateDb(buffer, MIN_DB);
     const db = this._smoothedDb(rawDb);
 
-    // Gatear detección de pitch: si dB está por debajo del noise floor + margen, no hay voz
     const hz = db > this._noiseFloor + NOISE_MARGIN
       ? detectPitch(buffer, sampleRate)
       : null;
@@ -64,11 +125,9 @@ class PhonationProcessor extends AudioWorkletProcessor {
   }
 
   /**
-   * Suaviza el valor de dB usando una ventana deslizante.
-   * El Hz no se suaviza — decisión de diseño: el pitch debe reflejar el valor
-   * instantáneo para detectar quiebres de voz.
-   * @param {number} rawDb
-   * @returns {number}
+   * Suaviza dB con ventana deslizante.
+   * Hz no se suaviza — el pitch debe reflejar el valor instantáneo
+   * para detectar quiebres de voz.
    */
   _smoothedDb(rawDb) {
     this._dbHistory.push(rawDb);
