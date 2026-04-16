@@ -80,21 +80,21 @@ class PhonationProcessor extends AudioWorkletProcessor {
 			}
 		};
 		this._dbHistory = [];
+	}
 
-		/**
-		 * Suaviza el valor de dB usando una ventana deslizante de 7 frames.
-		 * El Hz no se suaviza (decisión explícita).
-		 * @param {number} rawDb
-		 * @returns {number} dB suavizado
-		 */
-		_smoothedDb(rawDb) {
-			this._dbHistory.push(rawDb);
-			if (this._dbHistory.length > SMOOTHING_WINDOW) {
-				this._dbHistory.shift();
-			}
-			const sum = this._dbHistory.reduce((a, b) => a + b, 0);
-			return sum / this._dbHistory.length;
+	/**
+	 * Suaviza el valor de dB usando una ventana deslizante de 7 frames.
+	 * El Hz no se suaviza (decisión explícita).
+	 * @param {number} rawDb
+	 * @returns {number} dB suavizado
+	 */
+	_smoothedDb(rawDb) {
+		this._dbHistory.push(rawDb);
+		if (this._dbHistory.length > SMOOTHING_WINDOW) {
+			this._dbHistory.shift();
 		}
+		const sum = this._dbHistory.reduce((a, b) => a + b, 0);
+		return sum / this._dbHistory.length;
 	}
 
 	/**
@@ -137,7 +137,24 @@ class PhonationProcessor extends AudioWorkletProcessor {
 	}
 
 	process(inputs, outputs, parameters) {
-		// Procesamiento de audio (a implementar)
+		// 1. Buffer = inputs[0][0]; si está vacío o undefined, devolver true
+		const input = inputs[0] && inputs[0][0];
+		if (!input) return true;
+
+		// 2. hz = this._detectPitch(buffer, this.context.sampleRate)
+		// Nota: AudioWorkletProcessor no tiene this.context, sampleRate es global
+		const hz = this._detectPitch(input, sampleRate);
+
+		// 3. rawDb = this._calculateDb(buffer)
+		const rawDb = this._calculateDb(input);
+
+		// 4. db = this._smoothedDb(rawDb)
+		const db = this._smoothedDb(rawDb);
+
+		// 5. this.port.postMessage({ hz, db })
+		this.port.postMessage({ hz, db });
+
+		// 6. return true
 		return true;
 	}
 }
