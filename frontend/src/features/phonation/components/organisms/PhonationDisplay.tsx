@@ -10,7 +10,8 @@ const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 120;
 const HZ_MIN = 75;
 const HZ_MAX = 400;
-const ALERT_FRAME_WINDOW = 7;
+// ~30 frames a 15 fps ≈ 2 segundos sin voz antes de alertar
+const ALERT_FRAME_WINDOW = 30;
 
 interface PhonationDisplayProps {
   hz?: number | null;
