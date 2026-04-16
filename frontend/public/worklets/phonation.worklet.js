@@ -1,3 +1,5 @@
+// Constante para ventana de suavizado de dB
+const SMOOTHING_WINDOW = 7;
 // Constante para dB mínimo
 const MIN_DB = -100;
 // Constantes YIN para la detección de pitch
@@ -77,6 +79,22 @@ class PhonationProcessor extends AudioWorkletProcessor {
 				this._noiseFloor = event.data.noiseFloor;
 			}
 		};
+		this._dbHistory = [];
+
+		/**
+		 * Suaviza el valor de dB usando una ventana deslizante de 7 frames.
+		 * El Hz no se suaviza (decisión explícita).
+		 * @param {number} rawDb
+		 * @returns {number} dB suavizado
+		 */
+		_smoothedDb(rawDb) {
+			this._dbHistory.push(rawDb);
+			if (this._dbHistory.length > SMOOTHING_WINDOW) {
+				this._dbHistory.shift();
+			}
+			const sum = this._dbHistory.reduce((a, b) => a + b, 0);
+			return sum / this._dbHistory.length;
+		}
 	}
 
 	/**
