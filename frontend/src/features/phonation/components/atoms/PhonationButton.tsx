@@ -1,14 +1,16 @@
-// src/features/phonation/components/atoms/PhonationButton.jsx
+interface PhonationButtonProps {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary';
+}
 
-/**
- * Atom: boton base para acciones de monitoreo de voz.
- */
 export default function PhonationButton({
   label,
   onClick,
   disabled = false,
   variant = 'primary',
-}) {
+}: PhonationButtonProps) {
   const isPrimary = variant === 'primary';
 
   return (

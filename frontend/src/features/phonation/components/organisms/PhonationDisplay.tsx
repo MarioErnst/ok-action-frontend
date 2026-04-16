@@ -1,6 +1,5 @@
-// src/features/phonation/components/organisms/PhonationDisplay.jsx
-
 import { useEffect, useMemo, useRef } from 'react';
+import type { PhonationFrame } from '../../types';
 import PhonationButton from '../atoms/PhonationButton';
 import SmallText from '../atoms/SmallText';
 import DbMeter from '../molecules/DbMeter';
@@ -12,9 +11,16 @@ const HZ_MIN = 75;
 const HZ_MAX = 400;
 const ALERT_FRAME_WINDOW = 7;
 
-/**
- * Organism: panel visual completo para prueba de fonacion en tiempo real.
- */
+interface PhonationDisplayProps {
+  hz?: number | null;
+  db?: number;
+  isListening?: boolean;
+  isCalibrating?: boolean;
+  frames?: PhonationFrame[];
+  onStart?: () => void;
+  onStop?: () => void;
+}
+
 export default function PhonationDisplay({
   hz = null,
   db = -100,
@@ -23,8 +29,8 @@ export default function PhonationDisplay({
   frames = [],
   onStart = () => {},
   onStop = () => {},
-}) {
-  const canvasRef = useRef(null);
+}: PhonationDisplayProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const isAlert = useMemo(() => {
     if (!isListening || isCalibrating || frames.length < ALERT_FRAME_WINDOW) return false;

@@ -1,26 +1,22 @@
-// src/features/phonation/test/PhonationTestPage.jsx
-
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PhonationDisplay, useVoiceMonitor } from '../index';
+import type { PhonationFrame } from '../types';
 
-/**
- * Pantalla de prueba manual para validar fonacion en tiempo real.
- */
 export default function PhonationTestPage() {
   const { hz, db, isListening, isCalibrating, frames, start, stop } = useVoiceMonitor();
 
-  const oscillatorCtxRef = useRef(null);
-  const oscillatorRef = useRef(null);
-  const oscillatorWorkletRef = useRef(null);
+  const oscillatorCtxRef = useRef<AudioContext | null>(null);
+  const oscillatorRef = useRef<OscillatorNode | null>(null);
+  const oscillatorWorkletRef = useRef<AudioWorkletNode | null>(null);
 
   const [syntheticFreq, setSyntheticFreq] = useState(220);
-  const [syntheticHz, setSyntheticHz] = useState(null);
+  const [syntheticHz, setSyntheticHz] = useState<number | null>(null);
   const [isSyntheticRunning, setIsSyntheticRunning] = useState(false);
   const [logCutoffTimestamp, setLogCutoffTimestamp] = useState(0);
 
   const visibleFrames = useMemo(() => {
     return [...frames]
-      .filter((frame) => frame.timestamp >= logCutoffTimestamp)
+      .filter((frame: PhonationFrame) => frame.timestamp >= logCutoffTimestamp)
       .reverse()
       .slice(0, 20);
   }, [frames, logCutoffTimestamp]);
@@ -36,13 +32,13 @@ export default function PhonationTestPage() {
     if (oscillatorRef.current) {
       try {
         oscillatorRef.current.stop();
-      } catch (error) {
+      } catch {
         // Ignorar si el oscilador ya fue detenido.
       }
 
       try {
         oscillatorRef.current.disconnect();
-      } catch (error) {
+      } catch {
         // Ignorar para mantener el cleanup idempotente.
       }
     }
@@ -50,7 +46,7 @@ export default function PhonationTestPage() {
     if (oscillatorWorkletRef.current) {
       try {
         oscillatorWorkletRef.current.disconnect();
-      } catch (error) {
+      } catch {
         // Ignorar para mantener el cleanup idempotente.
       }
     }
@@ -78,7 +74,7 @@ export default function PhonationTestPage() {
       const workletNode = new AudioWorkletNode(ctx, 'phonation-processor');
       oscillatorWorkletRef.current = workletNode;
 
-      workletNode.port.onmessage = (event) => {
+      workletNode.port.onmessage = (event: MessageEvent<{ hz: number | null }>) => {
         setSyntheticHz(event.data?.hz ?? null);
       };
 
@@ -295,7 +291,7 @@ export default function PhonationTestPage() {
   );
 }
 
-const tableHeadCellStyle = {
+const tableHeadCellStyle: React.CSSProperties = {
   borderBottom: '1px solid #334155',
   color: '#9CA3AF',
   fontSize: 12,
@@ -305,7 +301,7 @@ const tableHeadCellStyle = {
   padding: '8px 6px',
 };
 
-const tableBodyCellStyle = {
+const tableBodyCellStyle: React.CSSProperties = {
   borderBottom: '1px solid #232B38',
   color: '#F8FAFC',
   fontSize: 13,

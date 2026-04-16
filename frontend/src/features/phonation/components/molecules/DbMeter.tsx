@@ -1,14 +1,13 @@
-// src/features/phonation/components/molecules/DbMeter.jsx
-
 import SmallText from '../atoms/SmallText';
 
 const DB_MIN = -80;
 const DB_MAX = 0;
 
-/**
- * Molecule: medidor visual de intensidad en dB.
- */
-export default function DbMeter({ db }) {
+interface DbMeterProps {
+  db: number;
+}
+
+export default function DbMeter({ db }: DbMeterProps) {
   const normalized = ((db - DB_MIN) / (DB_MAX - DB_MIN)) * 100;
   const width = Math.min(100, Math.max(0, normalized));
 
