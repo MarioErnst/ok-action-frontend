@@ -1,3 +1,5 @@
+import { colors } from '../../theme';
+
 interface PhonationButtonProps {
   label: string;
   onClick: () => void;
@@ -21,9 +23,9 @@ export default function PhonationButton({
       style={{
         padding: '10px 14px',
         borderRadius: 10,
-        border: `1px solid ${isPrimary ? '#F59E0B' : '#334155'}`,
-        background: isPrimary ? '#F59E0B' : '#1C1C1E',
-        color: isPrimary ? '#0A0A0A' : '#9CA3AF',
+        border: `1px solid ${isPrimary ? colors.accent : colors.border}`,
+        background: isPrimary ? colors.accent : colors.surface,
+        color: isPrimary ? colors.bg : colors.textMuted,
         fontWeight: 700,
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.6 : 1,

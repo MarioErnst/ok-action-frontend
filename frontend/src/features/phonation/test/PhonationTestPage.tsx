@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PhonationDisplay, useVoiceMonitor } from '../index';
+import { colors } from '../theme';
 import type { PhonationFrame } from '../types';
 
 export default function PhonationTestPage() {
@@ -100,15 +101,15 @@ export default function PhonationTestPage() {
   }, []);
 
   if (import.meta.env.PROD) {
-    return <p style={{ color: '#9CA3AF' }}>Pagina no disponible en produccion</p>;
+    return <p style={{ color: colors.textMuted }}>Pagina no disponible en produccion</p>;
   }
 
   return (
     <main
       style={{
         minHeight: '100vh',
-        background: '#0A0A0A',
-        color: '#F8FAFC',
+        background: colors.bg,
+        color: colors.text,
         padding: 16,
         fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif',
       }}
@@ -116,27 +117,27 @@ export default function PhonationTestPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gap: 16 }}>
         <header
           style={{
-            background: '#1C1C1E',
-            border: '1px solid #334155',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
             borderRadius: 12,
             padding: 16,
           }}
         >
-          <h1 style={{ margin: 0, color: '#F59E0B' }}>OK Action - Prueba de Fonacion</h1>
-          <p style={{ margin: '8px 0 0 0', color: '#9CA3AF' }}>
+          <h1 style={{ margin: 0, color: colors.accent }}>OK Action - Prueba de Fonacion</h1>
+          <p style={{ margin: '8px 0 0 0', color: colors.textMuted }}>
             Visualiza tono e intensidad en tiempo real usando el microfono del dispositivo.
           </p>
         </header>
 
         <section
           style={{
-            background: '#1C1C1E',
-            border: '1px solid #334155',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
             borderRadius: 12,
             padding: 16,
           }}
         >
-          <h2 style={{ marginTop: 0, color: '#F59E0B' }}>Microfono real</h2>
+          <h2 style={{ marginTop: 0, color: colors.accent }}>Microfono real</h2>
           <PhonationDisplay
             hz={hz}
             db={db}
@@ -146,7 +147,7 @@ export default function PhonationTestPage() {
             onStart={start}
             onStop={stop}
           />
-          <p style={{ marginTop: 12, color: '#9CA3AF', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          <p style={{ marginTop: 12, color: colors.textMuted, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
             hz: {hz == null ? 'null' : hz.toFixed(2)} | db: {db.toFixed(2)} | frames: {frames.length} |
             calibrando: {String(isCalibrating)}
           </p>
@@ -154,15 +155,15 @@ export default function PhonationTestPage() {
 
         <section
           style={{
-            background: '#1C1C1E',
-            border: '1px solid #334155',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
             borderRadius: 12,
             padding: 16,
           }}
         >
-          <h2 style={{ marginTop: 0, color: '#F59E0B' }}>Oscilador sintetico</h2>
+          <h2 style={{ marginTop: 0, color: colors.accent }}>Oscilador sintetico</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <label style={{ color: '#9CA3AF' }} htmlFor="synthetic-frequency-input">
+            <label style={{ color: colors.textMuted }} htmlFor="synthetic-frequency-input">
               Frecuencia objetivo (Hz)
             </label>
             <input
@@ -175,9 +176,9 @@ export default function PhonationTestPage() {
               disabled={isSyntheticRunning}
               style={{
                 width: 120,
-                background: '#232B38',
-                border: '1px solid #334155',
-                color: '#F8FAFC',
+                background: colors.surfaceAlt,
+                border: `1px solid ${colors.border}`,
+                color: colors.text,
                 borderRadius: 8,
                 padding: '8px 10px',
               }}
@@ -187,9 +188,9 @@ export default function PhonationTestPage() {
                 type="button"
                 onClick={startSynthetic}
                 style={{
-                  background: '#F59E0B',
-                  border: '1px solid #F59E0B',
-                  color: '#0A0A0A',
+                  background: colors.accent,
+                  border: `1px solid ${colors.accent}`,
+                  color: colors.bg,
                   borderRadius: 8,
                   padding: '8px 12px',
                   fontWeight: 700,
@@ -203,9 +204,9 @@ export default function PhonationTestPage() {
                 type="button"
                 onClick={() => void stopSynthetic()}
                 style={{
-                  background: '#1C1C1E',
-                  border: '1px solid #334155',
-                  color: '#9CA3AF',
+                  background: colors.surface,
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textMuted,
                   borderRadius: 8,
                   padding: '8px 12px',
                   fontWeight: 700,
@@ -215,31 +216,31 @@ export default function PhonationTestPage() {
               </button>
             )}
           </div>
-          <p style={{ color: '#9CA3AF', marginBottom: 0 }}>
+          <p style={{ color: colors.textMuted, marginBottom: 0 }}>
             Esperado: {syntheticFreq} Hz - Detectado: {syntheticHz == null ? '—' : syntheticHz.toFixed(2)} Hz
           </p>
-          <p style={{ color: isSyntheticAccurate ? '#22c55e' : '#F59E0B', marginTop: 8, fontWeight: 700 }}>
+          <p style={{ color: isSyntheticAccurate ? colors.success : colors.accent, marginTop: 8, fontWeight: 700 }}>
             {syntheticHz == null ? 'Esperando medicion...' : isSyntheticAccurate ? '✓ dentro de tolerancia' : '✗ fuera de tolerancia'}
           </p>
         </section>
 
         <section
           style={{
-            background: '#1C1C1E',
-            border: '1px solid #334155',
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
             borderRadius: 12,
             padding: 16,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ margin: 0, color: '#F59E0B' }}>Log de frames</h2>
+            <h2 style={{ margin: 0, color: colors.accent }}>Log de frames</h2>
             <button
               type="button"
               onClick={() => setLogCutoffTimestamp(Date.now())}
               style={{
-                background: '#1C1C1E',
-                border: '1px solid #334155',
-                color: '#9CA3AF',
+                background: colors.surface,
+                border: `1px solid ${colors.border}`,
+                color: colors.textMuted,
                 borderRadius: 8,
                 padding: '8px 12px',
                 fontWeight: 700,
@@ -292,8 +293,8 @@ export default function PhonationTestPage() {
 }
 
 const tableHeadCellStyle: React.CSSProperties = {
-  borderBottom: '1px solid #334155',
-  color: '#9CA3AF',
+  borderBottom: `1px solid ${colors.border}`,
+  color: colors.textMuted,
   fontSize: 12,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
@@ -302,8 +303,8 @@ const tableHeadCellStyle: React.CSSProperties = {
 };
 
 const tableBodyCellStyle: React.CSSProperties = {
-  borderBottom: '1px solid #232B38',
-  color: '#F8FAFC',
+  borderBottom: `1px solid ${colors.surfaceAlt}`,
+  color: colors.text,
   fontSize: 13,
   padding: '8px 6px',
 };
