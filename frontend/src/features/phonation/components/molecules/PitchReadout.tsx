@@ -1,14 +1,14 @@
-// src/features/phonation/components/molecules/PitchReadout.jsx
-
 import SmallText from '../atoms/SmallText';
 
 const HZ_MIN = 75;
 const HZ_MAX = 400;
 
-/**
- * Molecule: bloque de lectura de pitch con rango esperado.
- */
-export default function PitchReadout({ hz, isCalibrating }) {
+interface PitchReadoutProps {
+  hz: number | null;
+  isCalibrating: boolean;
+}
+
+export default function PitchReadout({ hz, isCalibrating }: PitchReadoutProps) {
   const hasValue = typeof hz === 'number' && !isCalibrating;
   const display = hasValue ? `${hz.toFixed(1)} Hz` : '—';
   const isOutOfRange = hasValue && (hz < HZ_MIN || hz > HZ_MAX);

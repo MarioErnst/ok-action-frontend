@@ -1,32 +1,36 @@
-// src/features/phonation/hooks/useVoiceMonitor.js
-
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PhonationFrame } from '../types';
 
 const DEFAULT_DB = -100;
 const MAX_FRAMES = 100;
 const CALIBRATION_DURATION_MS = 3000;
 const UI_UPDATE_INTERVAL_MS = 67; // ~15 fps
 
+interface WorkletMessage {
+  hz: number | null;
+  db: number;
+}
+
 export default function useVoiceMonitor() {
-  const [hz, setHz] = useState(null);
+  const [hz, setHz] = useState<number | null>(null);
   const [db, setDb] = useState(DEFAULT_DB);
   const [isListening, setIsListening] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [noiseFloor, setNoiseFloor] = useState(DEFAULT_DB);
-  const [frames, setFrames] = useState([]);
+  const [frames, setFrames] = useState<PhonationFrame[]>([]);
 
-  const audioContextRef = useRef(null);
-  const streamRef = useRef(null);
-  const sourceRef = useRef(null);
-  const workletNodeRef = useRef(null);
-  const calibrationSamplesRef = useRef([]);
-  const calibrationTimeoutRef = useRef(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const calibrationSamplesRef = useRef<number[]>([]);
+  const calibrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCalibratingRef = useRef(false);
   const isListeningRef = useRef(false);
-  const pendingHzRef = useRef(null);
+  const pendingHzRef = useRef<number | null>(null);
   const pendingDbRef = useRef(DEFAULT_DB);
-  const pendingFramesRef = useRef([]);
-  const uiTimerRef = useRef(null);
+  const pendingFramesRef = useRef<PhonationFrame[]>([]);
+  const uiTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stop = useCallback(async () => {
     if (calibrationTimeoutRef.current) {
@@ -96,7 +100,7 @@ export default function useVoiceMonitor() {
       const workletNode = new AudioWorkletNode(audioContext, 'phonation-processor');
       workletNodeRef.current = workletNode;
 
-      workletNode.port.onmessage = (event) => {
+      workletNode.port.onmessage = (event: MessageEvent<WorkletMessage>) => {
         const nextHz = event.data?.hz ?? null;
         const nextDb = event.data?.db ?? DEFAULT_DB;
 
