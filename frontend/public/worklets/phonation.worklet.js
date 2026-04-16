@@ -1,3 +1,5 @@
+// Constante para dB mínimo
+const MIN_DB = -100;
 // Constantes YIN para la detección de pitch
 const YIN_THRESHOLD = 0.10;
 const MIN_HZ = 75;
@@ -68,9 +70,29 @@ class PhonationProcessor extends AudioWorkletProcessor {
 		}
 	constructor() {
 		super();
+		this._noiseFloor = MIN_DB;
 		this.port.onmessage = (event) => {
-			// Sin lógica por ahora
+			// Si el mensaje contiene { noiseFloor }, actualizar this._noiseFloor
+			if (event.data && typeof event.data.noiseFloor === 'number') {
+				this._noiseFloor = event.data.noiseFloor;
+			}
 		};
+	}
+
+	/**
+	 * Calcula el RMS y lo convierte a dBFS.
+	 * Si rms === 0, devuelve MIN_DB
+	 * @param {Float32Array} buffer
+	 * @returns {number} dB
+	 */
+	_calculateDb(buffer) {
+		let sum = 0;
+		for (let i = 0; i < buffer.length; i++) {
+			sum += buffer[i] * buffer[i];
+		}
+		const rms = Math.sqrt(sum / buffer.length);
+		if (rms === 0) return MIN_DB;
+		return 20 * Math.log10(rms);
 	}
 
 	/**
