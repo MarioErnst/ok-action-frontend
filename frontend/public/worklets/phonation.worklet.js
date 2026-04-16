@@ -1,3 +1,7 @@
+// Constantes YIN para la detección de pitch
+const YIN_THRESHOLD = 0.10;
+const MIN_HZ = 75;
+const MAX_HZ = 400;
 // public/worklets/phonation.worklet.js
 
 /*
@@ -10,6 +14,41 @@ Todo el código comentado.
 
 
 class PhonationProcessor extends AudioWorkletProcessor {
+
+			/**
+			 * Detecta el pitch fundamental usando el algoritmo YIN con interpolación parabólica.
+			 * @param {Float32Array} buffer
+			 * @param {number} sampleRate
+			 * @returns {number|null} hz
+			 */
+			_detectPitch(buffer, sampleRate) {
+				const d = this._difference(buffer);
+				const dPrime = this._cumulativeMeanNormalizedDifference(d);
+				// Buscar el primer tau donde d'(tau) < YIN_THRESHOLD
+				let tau = 1;
+				while (tau < dPrime.length) {
+					if (dPrime[tau] < YIN_THRESHOLD) break;
+					tau++;
+				}
+				if (tau === dPrime.length || tau === 1) {
+					return null;
+				}
+				// Interpolación parabólica para refinar tau
+				if (tau + 1 < dPrime.length && tau - 1 > 0) {
+					const prev = dPrime[tau - 1];
+					const next = dPrime[tau + 1];
+					const center = dPrime[tau];
+					const denominator = 2 * (prev - 2 * center + next);
+					if (denominator !== 0) {
+						tau = tau + (prev - next) / denominator;
+					}
+				}
+				const hz = sampleRate / tau;
+				if (hz < MIN_HZ || hz > MAX_HZ) {
+					return null;
+				}
+				return hz;
+			}
 		/**
 		 * Calcula la función de diferencia acumulada normalizada YIN d'(τ).
 		 * d'(0) = 1
