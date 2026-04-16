@@ -168,9 +168,15 @@ class PhonationProcessor extends AudioWorkletProcessor {
 		// Reiniciar contador para emitir a ~23 fps (2048 muestras / 48kHz)
 		this._ringBufferSamples = 0;
 
-		const hz = this._detectPitch(buffer, sampleRate);
 		const rawDb = this._calculateDb(buffer);
 		const db = this._smoothedDb(rawDb);
+
+		// Gatear detección de pitch: si dB está por debajo del noise floor + margen, no hay voz
+		const NOISE_MARGIN = 6;
+		const hz = db > this._noiseFloor + NOISE_MARGIN
+			? this._detectPitch(buffer, sampleRate)
+			: null;
+
 		this.port.postMessage({ hz, db });
 
 		return true;
