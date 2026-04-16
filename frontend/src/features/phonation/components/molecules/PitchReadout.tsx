@@ -1,7 +1,5 @@
+import { colors } from '../../theme';
 import SmallText from '../atoms/SmallText';
-
-const HZ_MIN = 75;
-const HZ_MAX = 400;
 
 interface PitchReadoutProps {
   hz: number | null;
@@ -11,19 +9,18 @@ interface PitchReadoutProps {
 export default function PitchReadout({ hz, isCalibrating }: PitchReadoutProps) {
   const hasValue = typeof hz === 'number' && !isCalibrating;
   const display = hasValue ? `${hz.toFixed(1)} Hz` : '—';
-  const isOutOfRange = hasValue && (hz < HZ_MIN || hz > HZ_MAX);
 
   return (
     <div
       style={{
-        background: '#232B38',
-        border: '1px solid #334155',
+        background: colors.surfaceAlt,
+        border: `1px solid ${colors.border}`,
         borderRadius: 10,
         padding: 12,
       }}
     >
       <SmallText margin="0 0 6px 0">Tono actual</SmallText>
-      <div style={{ color: isOutOfRange ? '#F59E0B' : '#FFFFFF', fontSize: 34, fontWeight: 800 }}>
+      <div style={{ color: '#FFFFFF', fontSize: 34, fontWeight: 800 }}>
         {display}
       </div>
     </div>

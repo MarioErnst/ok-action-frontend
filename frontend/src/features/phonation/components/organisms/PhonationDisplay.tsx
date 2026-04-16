@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { PhonationFrame } from '../../types';
+import { colors } from '../../theme';
 import PhonationButton from '../atoms/PhonationButton';
 import SmallText from '../atoms/SmallText';
 import DbMeter from '../molecules/DbMeter';
@@ -48,14 +49,14 @@ export default function PhonationDisplay({
     const draw = () => {
       ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      ctx.strokeStyle = '#334155';
+      ctx.strokeStyle = colors.border;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, CANVAS_HEIGHT / 2);
       ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2);
       ctx.stroke();
 
-      ctx.strokeStyle = '#F59E0B';
+      ctx.strokeStyle = colors.accent;
       ctx.lineWidth = 2;
       ctx.beginPath();
 
@@ -90,16 +91,16 @@ export default function PhonationDisplay({
   return (
     <section
       style={{
-        background: '#0A0A0A',
-        border: '1px solid #334155',
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
         borderRadius: 14,
         padding: 16,
       }}
     >
       <div
         style={{
-          background: '#1C1C1E',
-          border: '1px solid #334155',
+          background: colors.surface,
+          border: `1px solid ${colors.border}`,
           borderRadius: 12,
           padding: 14,
         }}
@@ -123,8 +124,8 @@ export default function PhonationDisplay({
 
         <div
           style={{
-            background: '#232B38',
-            border: '1px solid #334155',
+            background: colors.surfaceAlt,
+            border: `1px solid ${colors.border}`,
             borderRadius: 10,
             padding: 10,
             marginBottom: 10,
@@ -135,18 +136,18 @@ export default function PhonationDisplay({
             ref={canvasRef}
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
-            style={{ width: '100%', maxWidth: CANVAS_WIDTH, border: '1px solid #334155', borderRadius: 8 }}
+            style={{ width: '100%', maxWidth: CANVAS_WIDTH, border: `1px solid ${colors.border}`, borderRadius: 8 }}
           />
         </div>
 
         {isAlert && (
           <div
             style={{
-              border: '1px solid #F59E0B',
-              background: '#232B38',
+              border: `1px solid ${colors.accent}`,
+              background: colors.surfaceAlt,
               borderRadius: 10,
               padding: '10px 12px',
-              color: '#F59E0B',
+              color: colors.accent,
               fontWeight: 600,
             }}
           >
