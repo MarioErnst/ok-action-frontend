@@ -1,12 +1,10 @@
-import { AppProviders } from './app/providers/AppProviders';
-import { AppRouter } from './app/router/AppRouter';
+// src/App.tsx
 
-function App() {
-  return (
-    <AppProviders>
-      <AppRouter />
-    </AppProviders>
-  );
+import PhonationTestPage from './features/phonation/test/PhonationTestPage';
+
+/**
+ * Entrada temporal de la app para pruebas del modulo de fonacion.
+ */
+export default function App() {
+  return <PhonationTestPage />;
 }
-
-export default App;
