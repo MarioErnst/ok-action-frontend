@@ -1,16 +1,14 @@
 import type { ReactNode } from 'react';
-import { colors } from '../../theme';
 
 interface SmallTextProps {
   children: ReactNode;
-  color?: string;
-  margin?: string;
+  className?: string;
 }
 
-export default function SmallText({
-  children,
-  color = colors.textMuted,
-  margin = '0',
-}: SmallTextProps) {
-  return <p style={{ color, margin, fontSize: 13, lineHeight: 1.4 }}>{children}</p>;
+export default function SmallText({ children, className = '' }: SmallTextProps) {
+  return (
+    <p className={`text-[13px] leading-snug text-text-muted ${className}`}>
+      {children}
+    </p>
+  );
 }

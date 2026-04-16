@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { PhonationFrame } from '../../types';
-import { colors } from '../../theme';
 import PhonationButton from '../atoms/PhonationButton';
 import SmallText from '../atoms/SmallText';
 import DbMeter from '../molecules/DbMeter';
@@ -10,7 +9,6 @@ const CANVAS_WIDTH = 400;
 const CANVAS_HEIGHT = 120;
 const HZ_MIN = 75;
 const HZ_MAX = 400;
-// ~30 frames a 15 fps ≈ 2 segundos sin voz antes de alertar
 const ALERT_FRAME_WINDOW = 30;
 
 interface PhonationDisplayProps {
@@ -47,66 +45,48 @@ export default function PhonationDisplay({
     const ctx = canvas.getContext('2d');
     if (!ctx) return undefined;
 
-    const draw = () => {
-      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-      ctx.strokeStyle = colors.border;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(0, CANVAS_HEIGHT / 2);
-      ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2);
-      ctx.stroke();
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, CANVAS_HEIGHT / 2);
+    ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT / 2);
+    ctx.stroke();
 
-      ctx.strokeStyle = colors.accent;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
+    ctx.strokeStyle = '#F59E0B';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
 
-      let hasPath = false;
-      for (let i = 0; i < frames.length; i++) {
-        const frame = frames[i];
-        if (frame?.hz == null) {
-          hasPath = false;
-          continue;
-        }
-
-        const x = frames.length <= 1 ? 0 : (i / (frames.length - 1)) * CANVAS_WIDTH;
-        const clampedHz = Math.max(HZ_MIN, Math.min(HZ_MAX, frame.hz));
-        const ratio = (clampedHz - HZ_MIN) / (HZ_MAX - HZ_MIN);
-        const y = CANVAS_HEIGHT - ratio * CANVAS_HEIGHT;
-
-        if (!hasPath) {
-          ctx.moveTo(x, y);
-          hasPath = true;
-        } else {
-          ctx.lineTo(x, y);
-        }
+    let hasPath = false;
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i];
+      if (frame?.hz == null) {
+        hasPath = false;
+        continue;
       }
 
-      ctx.stroke();
-    };
+      const x = frames.length <= 1 ? 0 : (i / (frames.length - 1)) * CANVAS_WIDTH;
+      const clampedHz = Math.max(HZ_MIN, Math.min(HZ_MAX, frame.hz));
+      const ratio = (clampedHz - HZ_MIN) / (HZ_MAX - HZ_MIN);
+      const y = CANVAS_HEIGHT - ratio * CANVAS_HEIGHT;
 
-    draw();
+      if (!hasPath) {
+        ctx.moveTo(x, y);
+        hasPath = true;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+
+    ctx.stroke();
     return undefined;
   }, [frames]);
 
   return (
-    <section
-      style={{
-        background: colors.bg,
-        border: `1px solid ${colors.border}`,
-        borderRadius: 14,
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: colors.surface,
-          border: `1px solid ${colors.border}`,
-          borderRadius: 12,
-          padding: 14,
-        }}
-      >
-        <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+    <section className="rounded-[14px] border border-border bg-bg p-4">
+      <div className="rounded-xl border border-border bg-surface p-3.5">
+        <div className="mb-3 flex gap-2.5">
           {!isListening && <PhonationButton label="Ingresar" onClick={onStart} />}
           {isListening && !isCalibrating && (
             <PhonationButton label="Detener" onClick={onStop} variant="secondary" />
@@ -115,43 +95,27 @@ export default function PhonationDisplay({
         </div>
 
         {isCalibrating && (
-          <SmallText margin="0 0 12px 0">Calibrando ambiente, por favor manten silencio...</SmallText>
+          <SmallText className="mb-3">Calibrando ambiente, por favor manten silencio...</SmallText>
         )}
 
-        <div style={{ display: 'grid', gap: 10, marginBottom: 10 }}>
+        <div className="mb-2.5 grid gap-2.5">
           <PitchReadout hz={hz} isCalibrating={isCalibrating} />
           <DbMeter db={db} />
         </div>
 
-        <div
-          style={{
-            background: colors.surfaceAlt,
-            border: `1px solid ${colors.border}`,
-            borderRadius: 10,
-            padding: 10,
-            marginBottom: 10,
-          }}
-        >
-          <SmallText margin="0 0 8px 0">Estabilidad de tono (ultimo historial)</SmallText>
+        <div className="mb-2.5 rounded-[10px] border border-border bg-surface-alt p-2.5">
+          <SmallText className="mb-2">Estabilidad de tono (ultimo historial)</SmallText>
           <canvas
             ref={canvasRef}
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
-            style={{ width: '100%', maxWidth: CANVAS_WIDTH, border: `1px solid ${colors.border}`, borderRadius: 8 }}
+            className="w-full rounded-lg border border-border"
+            style={{ maxWidth: CANVAS_WIDTH }}
           />
         </div>
 
         {isAlert && (
-          <div
-            style={{
-              border: `1px solid ${colors.accent}`,
-              background: colors.surfaceAlt,
-              borderRadius: 10,
-              padding: '10px 12px',
-              color: colors.accent,
-              fontWeight: 600,
-            }}
-          >
+          <div className="rounded-[10px] border border-accent bg-surface-alt px-3 py-2.5 font-semibold text-accent">
             No se detecta voz. Verifica el microfono o habla mas fuerte.
           </div>
         )}
