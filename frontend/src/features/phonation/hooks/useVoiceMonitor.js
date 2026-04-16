@@ -73,12 +73,13 @@ export default function useVoiceMonitor() {
     sourceRef.current = null;
     workletNodeRef.current = null;
 
+    isListeningRef.current = false;
     setIsListening(false);
     setIsCalibrating(false);
   }, []);
 
   const start = useCallback(async () => {
-    if (isListening) return;
+    if (isListeningRef.current) return;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -147,12 +148,13 @@ export default function useVoiceMonitor() {
         calibrationTimeoutRef.current = null;
       }, CALIBRATION_DURATION_MS);
 
+      isListeningRef.current = true;
       setIsListening(true);
     } catch (error) {
       console.error('useVoiceMonitor.start failed:', error);
       await stop();
     }
-  }, [isListening, stop]);
+  }, [stop]);
 
   useEffect(() => {
     return () => {
