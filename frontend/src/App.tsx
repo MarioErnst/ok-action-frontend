@@ -1,10 +1,17 @@
 // src/App.tsx
 
-import PhonationTestPage from './features/phonation/test/PhonationTestPage';
+import { lazy, Suspense } from 'react';
 
-/**
- * Entrada temporal de la app para pruebas del modulo de fonacion.
- */
+const PhonationTestPage = lazy(() => import('./features/phonation/test/PhonationTestPage'));
+
 export default function App() {
-  return <PhonationTestPage />;
+  if (import.meta.env.DEV) {
+    return (
+      <Suspense fallback={null}>
+        <PhonationTestPage />
+      </Suspense>
+    );
+  }
+
+  return <main />;
 }
