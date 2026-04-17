@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { VOICE_EXERCISES } from '../services/exercises';
 import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../types';
 
 interface ExerciseAnalysis {
@@ -63,7 +64,7 @@ function analyzeExercise(exercise: VoiceExercise, frames: PhonationFrame[]): Exe
 
 export default function useDiagnosis(
   recordedResults: Map<string, PhonationFrame[]>,
-  exercises: VoiceExercise[],
+  exercises: VoiceExercise[] = VOICE_EXERCISES,
 ): { result: SessionResult | null } {
   const result = useMemo<SessionResult | null>(() => {
     if (recordedResults.size === 0) {
