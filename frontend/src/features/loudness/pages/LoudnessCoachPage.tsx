@@ -31,8 +31,8 @@ export default function LoudnessCoachPage() {
                 <p className="m-0 text-lg font-semibold text-text group-hover:text-accent">{preset.label}</p>
                 <p className="m-0 mt-2 text-sm leading-relaxed text-text-muted">{preset.description}</p>
                 <p className="m-0 mt-4 text-xs uppercase tracking-[0.18em] text-text-muted">
-                  Rango óptimo: {preset.tooLowOffsetDb > 0 ? '+' : ''}{preset.tooLowOffsetDb} / +
-                  {preset.optimalOffsetDb} dB desde tu voz
+                  Rango óptimo: {preset.tooLowOffsetDb > 0 ? '+' : ''}
+                  {preset.tooLowOffsetDb} / +{preset.optimalOffsetDb} dB desde tu voz
                 </p>
               </button>
             ))}
@@ -48,9 +48,9 @@ export default function LoudnessCoachPage() {
         band={coach.band}
         db={coach.db}
         noiseFloor={coach.noiseFloor}
-        config={selectedPreset}
-        isCalibrating={coach.isCalibrating}
-        isListening={coach.isListening}
+        preset={selectedPreset}
+        effectiveConfig={coach.effectiveConfig}
+        calibrationPhase={coach.calibrationPhase}
         metrics={coach.metrics}
         onStart={coach.start}
         onStop={coach.stop}

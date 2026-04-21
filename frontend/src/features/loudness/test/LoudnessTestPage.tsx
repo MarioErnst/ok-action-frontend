@@ -38,9 +38,9 @@ export default function LoudnessTestPage() {
             band={coach.band}
             db={coach.db}
             noiseFloor={coach.noiseFloor}
-            config={LOUDNESS_PRESETS[activePresetIndex]}
-            isCalibrating={coach.isCalibrating}
-            isListening={coach.isListening}
+            preset={LOUDNESS_PRESETS[activePresetIndex]}
+            effectiveConfig={coach.effectiveConfig}
+            calibrationPhase={coach.calibrationPhase}
             metrics={coach.metrics}
             onStart={coach.start}
             onStop={coach.stop}
@@ -54,7 +54,7 @@ export default function LoudnessTestPage() {
             <p className="m-0">Noise floor: {coach.noiseFloor.toFixed(2)}</p>
             <p className="m-0">Banda: {coach.band}</p>
             <p className="m-0">Escuchando: {String(coach.isListening)}</p>
-            <p className="m-0">Calibrando: {String(coach.isCalibrating)}</p>
+            <p className="m-0">Fase: {coach.calibrationPhase}</p>
           </div>
 
           <pre className="overflow-auto rounded-xl border border-border bg-bg p-3 text-xs text-text-muted">
