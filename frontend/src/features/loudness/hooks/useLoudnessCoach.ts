@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
+import { computeEffectiveConfig } from '../services/loudnessEffectiveConfig';
 import { classifyLoudness } from '../services/loudnessClassifier';
-import type { LoudnessBand, LoudnessConfig, LoudnessMetrics } from '../types';
+import type {
+  CalibrationPhase,
+  LoudnessBand,
+  LoudnessConfig,
+  LoudnessMetrics,
+  LoudnessPreset,
+} from '../types';
+import useVoiceBaseline from './useVoiceBaseline';
 
 const HYSTERESIS_MARGIN_DB = 2;
 const BAND_DEBOUNCE_MS = 400;
@@ -55,17 +63,45 @@ function updateOptimalPercent(metrics: LoudnessMetrics): void {
   metrics.optimalPercent = activeTimeMs > 0 ? (metrics.bandTimeMs.optimal / activeTimeMs) * 100 : 0;
 }
 
-export default function useLoudnessCoach(config: LoudnessConfig): {
+export default function useLoudnessCoach(preset: LoudnessPreset): {
   band: LoudnessBand;
   db: number;
   noiseFloor: number;
-  isCalibrating: boolean;
   isListening: boolean;
+  calibrationPhase: CalibrationPhase;
+  effectiveConfig: LoudnessConfig | null;
   metrics: LoudnessMetrics;
   start(): void;
   stop(): void;
 } {
-  const { db, noiseFloor, isCalibrating, isListening, frames, start: startVoiceMonitor, stop: stopVoiceMonitor } = useVoiceMonitor();
+  const {
+    db,
+    noiseFloor,
+    isCalibrating,
+    isListening,
+    frames,
+    start: startVoiceMonitor,
+    stop: stopVoiceMonitor,
+  } = useVoiceMonitor();
+
+  const { voiceBaseline, isBaselineCalibrating } = useVoiceBaseline(
+    noiseFloor,
+    isCalibrating,
+    isListening,
+    frames,
+  );
+
+  const effectiveConfig = useMemo<LoudnessConfig | null>(
+    () => (voiceBaseline !== null ? computeEffectiveConfig(preset, voiceBaseline) : null),
+    [preset, voiceBaseline],
+  );
+
+  const calibrationPhase = useMemo<CalibrationPhase>(() => {
+    if (!isListening && !isCalibrating && !isBaselineCalibrating) return 'idle';
+    if (isCalibrating) return 'noise';
+    if (isBaselineCalibrating) return 'voice';
+    return 'active';
+  }, [isBaselineCalibrating, isCalibrating, isListening]);
 
   const [band, setBand] = useState<LoudnessBand>('silence');
   const [metrics, setMetrics] = useState<LoudnessMetrics>(createEmptyMetrics);
@@ -75,6 +111,7 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
   const bandDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const metricsRef = useRef<LoudnessMetrics>(createEmptyMetrics());
   const lastFrameTimestampRef = useRef<number | null>(null);
+  const pendingActiveFrameTimestampRef = useRef<number | null>(null);
 
   const clearBandDebounce = useCallback(() => {
     if (bandDebounceTimeoutRef.current !== null) {
@@ -86,6 +123,7 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
   const resetMetrics = useCallback(() => {
     metricsRef.current = createEmptyMetrics();
     lastFrameTimestampRef.current = null;
+    pendingActiveFrameTimestampRef.current = null;
     setMetrics(cloneMetrics(metricsRef.current));
   }, []);
 
@@ -101,11 +139,28 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
   }, []);
 
   useEffect(() => {
-    const rawBand = classifyLoudness(db, noiseFloor, config);
+    if (effectiveConfig === null) {
+      pendingActiveFrameTimestampRef.current = null;
+      return;
+    }
+
+    if (pendingActiveFrameTimestampRef.current !== null) {
+      return;
+    }
+
+    const latestFrame = frames[frames.length - 1];
+    lastFrameTimestampRef.current = latestFrame ? latestFrame.timestamp : null;
+    pendingActiveFrameTimestampRef.current = latestFrame ? latestFrame.timestamp : Date.now();
+  }, [effectiveConfig, frames]);
+
+  useEffect(() => {
+    if (effectiveConfig === null) return;
+
+    const rawBand = classifyLoudness(db, noiseFloor, effectiveConfig);
     const acceptedBand = acceptedBandRef.current;
 
     const nextCandidateBand =
-      rawBand === acceptedBand || isDeepEnoughInBand(rawBand, db, noiseFloor, config)
+      rawBand === acceptedBand || isDeepEnoughInBand(rawBand, db, noiseFloor, effectiveConfig)
         ? rawBand
         : acceptedBand;
 
@@ -123,9 +178,11 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
       setBand(nextCandidateBand);
       bandDebounceTimeoutRef.current = null;
     }, BAND_DEBOUNCE_MS);
-  }, [clearBandDebounce, config, db, noiseFloor]);
+  }, [clearBandDebounce, db, effectiveConfig, noiseFloor]);
 
   useEffect(() => {
+    if (effectiveConfig === null) return;
+
     const newFrames = lastFrameTimestampRef.current === null
       ? frames
       : frames.filter((frame) => frame.timestamp > lastFrameTimestampRef.current!);
@@ -142,7 +199,7 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
       const deltaMs = Math.max(0, frame.timestamp - lastFrameTimestampRef.current);
       lastFrameTimestampRef.current = frame.timestamp;
 
-      const frameBand = classifyLoudness(frame.db, noiseFloor, config);
+      const frameBand = classifyLoudness(frame.db, noiseFloor, effectiveConfig);
       metricsRef.current.durationMs += deltaMs;
       metricsRef.current.bandTimeMs[frameBand] += deltaMs;
       metricsRef.current.peakDb = Math.max(metricsRef.current.peakDb, frame.db);
@@ -150,7 +207,7 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
     }
 
     syncMetricsState();
-  }, [frames, noiseFloor, config, syncMetricsState]);
+  }, [effectiveConfig, frames, noiseFloor, syncMetricsState]);
 
   const start = useCallback((): void => {
     resetMetrics();
@@ -182,8 +239,9 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
     band,
     db,
     noiseFloor,
-    isCalibrating,
     isListening,
+    calibrationPhase,
+    effectiveConfig,
     metrics,
     start,
     stop,
