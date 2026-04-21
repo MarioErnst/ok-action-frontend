@@ -2,13 +2,13 @@ import { useState } from 'react';
 import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
-import type { LoudnessConfig } from '../types';
+import type { LoudnessPreset } from '../types';
 
 export default function LoudnessCoachPage() {
-  const [selectedConfig, setSelectedConfig] = useState<LoudnessConfig | null>(null);
-  const coach = useLoudnessCoach(selectedConfig ?? LOUDNESS_PRESETS[0]);
+  const [selectedPreset, setSelectedPreset] = useState<LoudnessPreset | null>(null);
+  const coach = useLoudnessCoach(selectedPreset ?? LOUDNESS_PRESETS[0]);
 
-  if (!selectedConfig) {
+  if (!selectedPreset) {
     return (
       <main className="min-h-screen bg-bg p-4 text-text md:p-6">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
@@ -25,13 +25,14 @@ export default function LoudnessCoachPage() {
               <button
                 key={preset.presetId}
                 type="button"
-                onClick={() => setSelectedConfig(preset)}
+                onClick={() => setSelectedPreset(preset)}
                 className="group rounded-xl border border-border bg-surface p-4 text-left transition-colors hover:border-accent hover:bg-surface-alt"
               >
                 <p className="m-0 text-lg font-semibold text-text group-hover:text-accent">{preset.label}</p>
                 <p className="m-0 mt-2 text-sm leading-relaxed text-text-muted">{preset.description}</p>
                 <p className="m-0 mt-4 text-xs uppercase tracking-[0.18em] text-text-muted">
-                  Óptimo: {preset.tooLowCeilingDbfs} a {preset.optimalCeilingDbfs} dBFS
+                  Rango óptimo: {preset.tooLowOffsetDb > 0 ? '+' : ''}{preset.tooLowOffsetDb} / +
+                  {preset.optimalOffsetDb} dB desde tu voz
                 </p>
               </button>
             ))}
@@ -47,7 +48,7 @@ export default function LoudnessCoachPage() {
         band={coach.band}
         db={coach.db}
         noiseFloor={coach.noiseFloor}
-        config={selectedConfig}
+        config={selectedPreset}
         isCalibrating={coach.isCalibrating}
         isListening={coach.isListening}
         metrics={coach.metrics}
