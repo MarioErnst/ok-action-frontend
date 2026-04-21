@@ -1,3 +1,4 @@
+import BandLabel from '../atoms/BandLabel';
 import type { LoudnessBand } from '../../types';
 
 interface CoachMessageProps {
@@ -35,9 +36,12 @@ export default function CoachMessage({ band }: CoachMessageProps) {
         {BAND_ICON[band]}
       </span>
 
-      <p className="m-0 text-sm font-medium leading-snug md:text-base">
-        {BAND_MESSAGE[band]}
-      </p>
+      <div className="min-w-0 flex-1">
+        <BandLabel band={band} className="mb-1 block text-xs uppercase tracking-[0.16em]" />
+        <p className="m-0 text-sm font-medium leading-snug md:text-base">
+          {BAND_MESSAGE[band]}
+        </p>
+      </div>
     </div>
   );
 }
