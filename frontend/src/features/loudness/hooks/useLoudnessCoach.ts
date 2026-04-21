@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
-import { classifyLoudness, SILENCE_MARGIN_DB } from '../services/loudnessClassifier';
+import { classifyLoudness } from '../services/loudnessClassifier';
 import type { LoudnessBand, LoudnessConfig, LoudnessMetrics } from '../types';
 
 const HYSTERESIS_MARGIN_DB = 2;
@@ -38,13 +38,13 @@ function isDeepEnoughInBand(
 ): boolean {
   switch (band) {
     case 'silence':
-      return db < noiseFloor + SILENCE_MARGIN_DB - HYSTERESIS_MARGIN_DB;
+      return db < noiseFloor + config.silenceOffsetDb - HYSTERESIS_MARGIN_DB;
     case 'too-low':
-      return db >= noiseFloor + 6 + HYSTERESIS_MARGIN_DB && db < noiseFloor + config.minOffsetDb - HYSTERESIS_MARGIN_DB;
+      return db >= noiseFloor + config.silenceOffsetDb + HYSTERESIS_MARGIN_DB && db < config.tooLowCeilingDbfs - HYSTERESIS_MARGIN_DB;
     case 'optimal':
-      return db >= noiseFloor + config.minOffsetDb + HYSTERESIS_MARGIN_DB && db < noiseFloor + config.maxOffsetDb - HYSTERESIS_MARGIN_DB;
+      return db >= config.tooLowCeilingDbfs + HYSTERESIS_MARGIN_DB && db < config.optimalCeilingDbfs - HYSTERESIS_MARGIN_DB;
     case 'too-high':
-      return db >= noiseFloor + config.maxOffsetDb + HYSTERESIS_MARGIN_DB && db < config.clipThresholdDbfs - HYSTERESIS_MARGIN_DB;
+      return db >= config.optimalCeilingDbfs + HYSTERESIS_MARGIN_DB && db < config.clipThresholdDbfs - HYSTERESIS_MARGIN_DB;
     case 'clipping':
       return db >= config.clipThresholdDbfs + HYSTERESIS_MARGIN_DB;
   }

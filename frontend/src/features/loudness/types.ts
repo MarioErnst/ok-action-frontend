@@ -9,8 +9,11 @@ export interface LoudnessConfig {
   presetId: string;
   label: string;
   description: string;
-  minOffsetDb: number;
-  maxOffsetDb: number;
+  // Silence detection: relative to calibrated noise floor
+  silenceOffsetDb: number;
+  // Voice quality zones: absolute dBFS (independent of noise floor)
+  tooLowCeilingDbfs: number;
+  optimalCeilingDbfs: number;
   clipThresholdDbfs: number;
 }
 

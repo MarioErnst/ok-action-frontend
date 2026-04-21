@@ -31,7 +31,7 @@ export default function LoudnessCoachPage() {
                 <p className="m-0 text-lg font-semibold text-text group-hover:text-accent">{preset.label}</p>
                 <p className="m-0 mt-2 text-sm leading-relaxed text-text-muted">{preset.description}</p>
                 <p className="m-0 mt-4 text-xs uppercase tracking-[0.18em] text-text-muted">
-                  {preset.minOffsetDb} - {preset.maxOffsetDb} dB sobre ruido
+                  Óptimo: {preset.tooLowCeilingDbfs} a {preset.optimalCeilingDbfs} dBFS
                 </p>
               </button>
             ))}
