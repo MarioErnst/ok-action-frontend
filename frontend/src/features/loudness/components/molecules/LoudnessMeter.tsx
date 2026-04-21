@@ -8,62 +8,38 @@ interface LoudnessMeterProps {
   band: LoudnessBand;
 }
 
-const SILENCE_MARGIN_DB = 6;
-const METER_PADDING_DB = 10;
-
-interface MeterRange {
-  startDb: number;
-  silenceEndDb: number;
-  minOffsetDb: number;
-  maxOffsetDb: number;
-  endDb: number;
-}
-
-interface SegmentSpec {
-  startPct: number;
-  widthPct: number;
-}
+// Fixed display range: covers the full usable dBFS spectrum for voice
+const METER_MIN_DBFS = -65;
+const METER_MAX_DBFS = 0;
+const METER_RANGE = METER_MAX_DBFS - METER_MIN_DBFS;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getMeterRange(noiseFloor: number, config: LoudnessConfig): MeterRange {
-  return {
-    startDb: noiseFloor,
-    silenceEndDb: noiseFloor + SILENCE_MARGIN_DB,
-    minOffsetDb: noiseFloor + config.minOffsetDb,
-    maxOffsetDb: noiseFloor + config.maxOffsetDb,
-    endDb: noiseFloor + config.maxOffsetDb + METER_PADDING_DB,
-  };
+function toPercent(db: number): number {
+  return clamp(((db - METER_MIN_DBFS) / METER_RANGE) * 100, 0, 100);
 }
 
-function toPercent(valueDb: number, range: MeterRange): number {
-  const total = range.endDb - range.startDb;
-  if (total <= 0) return 0;
-  return ((valueDb - range.startDb) / total) * 100;
-}
-
-function toSegment(startDb: number, endDb: number, range: MeterRange): SegmentSpec {
-  const startPct = clamp(toPercent(startDb, range), 0, 100);
-  const endPct = clamp(toPercent(endDb, range), 0, 100);
-  return {
-    startPct,
-    widthPct: Math.max(0, endPct - startPct),
-  };
-}
-
-function getCursorPosition(db: number, range: MeterRange): number {
-  return clamp(toPercent(db, range), 0, 100);
+function toSegment(startDb: number, endDb: number): { startPct: number; widthPct: number } {
+  const startPct = toPercent(startDb);
+  const endPct = toPercent(endDb);
+  return { startPct, widthPct: Math.max(0, endPct - startPct) };
 }
 
 export default function LoudnessMeter({ db, noiseFloor, config, band }: LoudnessMeterProps) {
-  const range = getMeterRange(noiseFloor, config);
-  const silenceSegment = toSegment(range.startDb, range.silenceEndDb, range);
-  const lowSegment = toSegment(range.silenceEndDb, range.minOffsetDb, range);
-  const optimalSegment = toSegment(range.minOffsetDb, range.maxOffsetDb, range);
-  const highSegment = toSegment(range.maxOffsetDb, range.endDb, range);
-  const cursorPosition = getCursorPosition(db, range);
+  const silenceThresholdDb = noiseFloor + config.silenceOffsetDb;
+
+  // Silence zone: from meter start to the calibrated silence threshold (dynamic)
+  const silenceSegment = toSegment(METER_MIN_DBFS, silenceThresholdDb);
+  // Too-low zone: from silence threshold to tooLowCeiling (absolute)
+  const lowSegment = toSegment(silenceThresholdDb, config.tooLowCeilingDbfs);
+  // Optimal zone: from tooLowCeiling to optimalCeiling (absolute)
+  const optimalSegment = toSegment(config.tooLowCeilingDbfs, config.optimalCeilingDbfs);
+  // Too-high zone: from optimalCeiling to meter end (absolute)
+  const highSegment = toSegment(config.optimalCeilingDbfs, METER_MAX_DBFS);
+
+  const cursorPosition = toPercent(db);
 
   return (
     <div className="w-full rounded-[10px] border border-border bg-surface-alt p-3">
