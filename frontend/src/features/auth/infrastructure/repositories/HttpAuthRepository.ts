@@ -3,10 +3,11 @@ import { AuthError } from '../../domain/errors/AuthError';
 import type {
   AuthRepository,
   LoginCredentials,
+  RegisterUserData,
 } from '../../domain/repositories/AuthRepository';
 import type { User } from '../../domain/entities/User';
-import type { LoginResponseDto } from '../dto/AuthDtos';
-import { toLoginRequestDto, toUser } from '../mappers/authMapper';
+import type { LoginResponseDto, RegisterResponseDto } from '../dto/AuthDtos';
+import { toLoginRequestDto, toRegisterRequestDto, toUser } from '../mappers/authMapper';
 
 const mapApiErrorToAuthError = (error: ApiError): AuthError => {
   if (error.status === 401) {
@@ -42,6 +43,26 @@ export class HttpAuthRepository implements AuthRepository {
       }
 
       throw new AuthError('unknown_error', 'Error inesperado en autenticación', error);
+    }
+  }
+
+  async register(data: RegisterUserData): Promise<User> {
+    try {
+      const payload = await apiRequest<RegisterResponseDto, ReturnType<typeof toRegisterRequestDto>>(
+        '/auth/register',
+        {
+          method: 'POST',
+          body: toRegisterRequestDto(data),
+        },
+      );
+
+      return toUser(payload);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw mapApiErrorToAuthError(error);
+      }
+
+      throw new AuthError('unknown_error', 'Error inesperado en registro', error);
     }
   }
 }

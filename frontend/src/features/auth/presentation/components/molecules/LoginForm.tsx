@@ -4,7 +4,11 @@ import { Button } from '../../../../../shared/ui/atoms/Button';
 import { Input } from '../../../../../shared/ui/atoms/Input';
 import { useLoginMutation } from '../../hooks/useLoginMutation';
 
-export const LoginForm = () => {
+type LoginFormProps = {
+  onGoToRegister: () => void;
+};
+
+export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -135,6 +139,18 @@ export const LoginForm = () => {
           <p className="text-green-400 text-sm">¡Ingreso exitoso!</p>
         </div>
       )}
+      {/* --- REGISTRO --- */}
+      <p className="text-center text-gray-500 text-sm mt-2">
+        ¿No tienes cuenta?{' '}
+        <button
+          type="button"
+          onClick={onGoToRegister}
+          className="text-amber-500 hover:text-amber-400 font-medium transition-colors cursor-pointer"
+        >
+          Registrar usuario
+        </button>
+      </p>
     </form>
+    
   );
 };
