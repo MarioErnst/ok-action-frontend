@@ -1,12 +1,18 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactElement } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './features/auth';
 
 const AuthPage = lazy(() => import('./features/auth/presentation/pages/AuthPage').then(m => ({ default: m.AuthPage })));
 const PhonationTestPage = lazy(() => import('./features/phonation/test/PhonationTestPage'));
 const EvaluationPage = lazy(() => import('./features/phonation/pages/EvaluationPage'));
-const LoudnessCoachPage = lazy(() => import('./features/loudness/pages/LoudnessCoachPage'));
-const LoudnessTestPage = lazy(() => import('./features/loudness/test/LoudnessTestPage'));
+const LoudnessCoachPage = lazy(() =>
+  import('./features/loudness/index').then((m) => ({ default: m.LoudnessCoachPage })),
+);
+const LoudnessTestPage = lazy(() =>
+  import.meta.env.DEV
+    ? import('./features/loudness/test/LoudnessTestPage')
+    : Promise.resolve({ default: () => null as unknown as ReactElement }),
+);
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);

@@ -1,6 +1,6 @@
 import type { LoudnessBand, LoudnessConfig } from '../types';
 
-const SILENCE_MARGIN_DB = 6;
+export const SILENCE_MARGIN_DB = 6;
 
 export function classifyLoudness(
   db: number,
