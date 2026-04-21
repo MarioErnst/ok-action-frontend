@@ -33,7 +33,7 @@ export default function App() {
         <Route path="/evaluation" element={<PrivateRoute><EvaluationPage /></PrivateRoute>} />
         <Route path="/loudness" element={<PrivateRoute><LoudnessCoachPage /></PrivateRoute>} />
         {import.meta.env.DEV && (
-          <Route path="/loudness/test" element={<PrivateRoute><LoudnessTestPage /></PrivateRoute>} />
+          <Route path="/loudness/test" element={<LoudnessTestPage />} />
         )}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

@@ -142,14 +142,15 @@ export default function useLoudnessCoach(config: LoudnessConfig): {
       const deltaMs = Math.max(0, frame.timestamp - lastFrameTimestampRef.current);
       lastFrameTimestampRef.current = frame.timestamp;
 
+      const frameBand = classifyLoudness(frame.db, noiseFloor, config);
       metricsRef.current.durationMs += deltaMs;
-      metricsRef.current.bandTimeMs[acceptedBandRef.current] += deltaMs;
+      metricsRef.current.bandTimeMs[frameBand] += deltaMs;
       metricsRef.current.peakDb = Math.max(metricsRef.current.peakDb, frame.db);
       updateOptimalPercent(metricsRef.current);
     }
 
     syncMetricsState();
-  }, [frames, syncMetricsState]);
+  }, [frames, noiseFloor, config, syncMetricsState]);
 
   const start = useCallback((): void => {
     resetMetrics();
