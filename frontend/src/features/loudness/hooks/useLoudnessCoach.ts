@@ -139,21 +139,6 @@ export default function useLoudnessCoach(preset: LoudnessPreset): {
   }, []);
 
   useEffect(() => {
-    if (effectiveConfig === null) {
-      pendingActiveFrameTimestampRef.current = null;
-      return;
-    }
-
-    if (pendingActiveFrameTimestampRef.current !== null) {
-      return;
-    }
-
-    const latestFrame = frames[frames.length - 1];
-    lastFrameTimestampRef.current = latestFrame ? latestFrame.timestamp : null;
-    pendingActiveFrameTimestampRef.current = latestFrame ? latestFrame.timestamp : Date.now();
-  }, [effectiveConfig, frames]);
-
-  useEffect(() => {
     if (effectiveConfig === null) return;
 
     const rawBand = classifyLoudness(db, noiseFloor, effectiveConfig);
@@ -180,8 +165,22 @@ export default function useLoudnessCoach(preset: LoudnessPreset): {
     }, BAND_DEBOUNCE_MS);
   }, [clearBandDebounce, db, effectiveConfig, noiseFloor]);
 
+  // Anchor-setting and accumulation are in one effect to avoid a race condition:
+  // two effects sharing the same [effectiveConfig, frames] deps have no guaranteed order.
   useEffect(() => {
-    if (effectiveConfig === null) return;
+    if (effectiveConfig === null) {
+      pendingActiveFrameTimestampRef.current = null;
+      return;
+    }
+
+    // First render with valid effectiveConfig: anchor to current frame so calibration
+    // frames are never counted as session metrics.
+    if (pendingActiveFrameTimestampRef.current === null) {
+      const latestFrame = frames[frames.length - 1];
+      pendingActiveFrameTimestampRef.current = latestFrame ? latestFrame.timestamp : Date.now();
+      lastFrameTimestampRef.current = latestFrame ? latestFrame.timestamp : null;
+      return;
+    }
 
     const newFrames = lastFrameTimestampRef.current === null
       ? frames
@@ -233,6 +232,7 @@ export default function useLoudnessCoach(preset: LoudnessPreset): {
 
     acceptedBandRef.current = 'silence';
     pendingBandRef.current = 'silence';
+    setBand('silence');
   }, [isCalibrating, isListening]);
 
   return {
