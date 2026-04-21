@@ -1,4 +1,4 @@
-export type { LoudnessBand, LoudnessConfig, LoudnessMetrics } from './types';
+export type { LoudnessBand, LoudnessConfig, LoudnessMetrics, LoudnessPreset, CalibrationPhase } from './types';
 export { LOUDNESS_PRESETS, getPresetById } from './services/loudnessPresets';
 export { formatDuration, formatSeconds } from './services/loudnessFormatters';
 export { default as useLoudnessCoach } from './hooks/useLoudnessCoach';
