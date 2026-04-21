@@ -1,8 +1,5 @@
 export type { LoudnessBand, LoudnessConfig, LoudnessMetrics } from './types';
-export { classifyLoudness } from './services/loudnessClassifier';
 export { LOUDNESS_PRESETS, getPresetById } from './services/loudnessPresets';
 export { default as useLoudnessCoach } from './hooks/useLoudnessCoach';
-export { default as BandLabel } from './components/atoms/BandLabel';
-export { default as LoudnessMeter } from './components/molecules/LoudnessMeter';
-export { default as CoachMessage } from './components/molecules/CoachMessage';
-export { default as SessionMetrics } from './components/molecules/SessionMetrics';
+export { default as LoudnessCoachPanel } from './components/organisms/LoudnessCoachPanel';
+export { default as LoudnessCoachPage } from './pages/LoudnessCoachPage';

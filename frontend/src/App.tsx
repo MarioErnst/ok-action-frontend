@@ -5,6 +5,8 @@ import { useAuthStore } from './features/auth';
 const AuthPage = lazy(() => import('./features/auth/presentation/pages/AuthPage').then(m => ({ default: m.AuthPage })));
 const PhonationTestPage = lazy(() => import('./features/phonation/test/PhonationTestPage'));
 const EvaluationPage = lazy(() => import('./features/phonation/pages/EvaluationPage'));
+const LoudnessCoachPage = lazy(() => import('./features/loudness/pages/LoudnessCoachPage'));
+const LoudnessTestPage = lazy(() => import('./features/loudness/test/LoudnessTestPage'));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -23,6 +25,10 @@ export default function App() {
         <Route path="/login" element={<GuestRoute><AuthPage /></GuestRoute>} />
         <Route path="/phonation" element={<PrivateRoute><PhonationTestPage /></PrivateRoute>} />
         <Route path="/evaluation" element={<PrivateRoute><EvaluationPage /></PrivateRoute>} />
+        <Route path="/loudness" element={<PrivateRoute><LoudnessCoachPage /></PrivateRoute>} />
+        {import.meta.env.DEV && (
+          <Route path="/loudness/test" element={<PrivateRoute><LoudnessTestPage /></PrivateRoute>} />
+        )}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
