@@ -23,3 +23,15 @@ export interface LoudnessMetrics {
   optimalPercent: number;
   peakDb: number;
 }
+
+export interface LoudnessPreset {
+  presetId: string;
+  label: string;
+  description: string;
+  silenceOffsetDb: number;
+  tooLowOffsetDb: number;
+  optimalOffsetDb: number;
+  clipThresholdDbfs: number;
+}
+
+export type CalibrationPhase = 'idle' | 'noise' | 'voice' | 'active';

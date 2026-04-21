@@ -1,19 +1,13 @@
-import type { LoudnessConfig } from '../types';
+import type { LoudnessPreset } from '../types';
 
-// Reference levels for laptop microphone at ~30-50cm speaking distance:
-//   Whisper / too-low:  above -55 dBFS RMS
-//   Normal conversation: -45 to -20 dBFS RMS
-//   Projected voice:    -30 to -10 dBFS RMS
-//   Shouting:           above -15 dBFS RMS (peaks approach clipping)
-
-export const LOUDNESS_PRESETS: LoudnessConfig[] = [
+export const LOUDNESS_PRESETS: LoudnessPreset[] = [
   {
     presetId: 'conversation',
     label: 'Conversación 1:1',
     description: 'Llamadas, reuniones pequeñas',
     silenceOffsetDb: 6,
-    tooLowCeilingDbfs: -45,
-    optimalCeilingDbfs: -22,
+    tooLowOffsetDb: -8,
+    optimalOffsetDb: 10,
     clipThresholdDbfs: -3,
   },
   {
@@ -21,8 +15,8 @@ export const LOUDNESS_PRESETS: LoudnessConfig[] = [
     label: 'Presentación grupal',
     description: 'Salas de reuniones, grupos medianos',
     silenceOffsetDb: 6,
-    tooLowCeilingDbfs: -40,
-    optimalCeilingDbfs: -15,
+    tooLowOffsetDb: -5,
+    optimalOffsetDb: 15,
     clipThresholdDbfs: -3,
   },
   {
@@ -30,12 +24,12 @@ export const LOUDNESS_PRESETS: LoudnessConfig[] = [
     label: 'Sala grande',
     description: 'Auditorio, clases presenciales',
     silenceOffsetDb: 6,
-    tooLowCeilingDbfs: -35,
-    optimalCeilingDbfs: -10,
+    tooLowOffsetDb: 0,
+    optimalOffsetDb: 22,
     clipThresholdDbfs: -3,
   },
 ];
 
-export function getPresetById(id: string): LoudnessConfig | undefined {
+export function getPresetById(id: string): LoudnessPreset | undefined {
   return LOUDNESS_PRESETS.find((preset) => preset.presetId === id);
 }
