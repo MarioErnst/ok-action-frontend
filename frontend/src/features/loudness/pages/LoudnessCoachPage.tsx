@@ -1,12 +1,28 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
+import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
+import { toLoudnessPreset } from '../infrastructure/mappers/loudnessMapper';
 import type { LoudnessPreset } from '../types';
 
 export default function LoudnessCoachPage() {
   const [selectedPreset, setSelectedPreset] = useState<LoudnessPreset | null>(null);
-  const coach = useLoudnessCoach(selectedPreset ?? LOUDNESS_PRESETS[0]);
+  const [presets, setPresets] = useState<LoudnessPreset[]>(LOUDNESS_PRESETS);
+  const coach = useLoudnessCoach(selectedPreset ?? presets[0]);
+
+  useEffect(() => {
+    HttpLoudnessRepository.listPresets()
+      .then((dtos) => {
+        const mapped = dtos.map(toLoudnessPreset);
+        if (mapped.length > 0) {
+          setPresets(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error('Error loading presets, using defaults:', err);
+      });
+  }, []);
 
   if (!selectedPreset) {
     return (
@@ -21,7 +37,7 @@ export default function LoudnessCoachPage() {
           </header>
 
           <div className="grid gap-3 md:grid-cols-3">
-            {LOUDNESS_PRESETS.map((preset) => (
+            {presets.map((preset) => (
               <button
                 key={preset.presetId}
                 type="button"
