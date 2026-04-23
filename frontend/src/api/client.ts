@@ -42,10 +42,16 @@ export const apiRequest = async <TResponse, TBody = unknown>(
 ): Promise<TResponse> => {
   const { method = 'GET', body, headers, signal } = options;
 
+  const token = localStorage.getItem('auth_token');
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       ...defaultHeaders,
+      ...authHeaders,
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
