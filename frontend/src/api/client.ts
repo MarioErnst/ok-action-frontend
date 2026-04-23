@@ -60,6 +60,12 @@ export const apiRequest = async <TResponse, TBody = unknown>(
 
   const payload = await safeJson(response);
 
+  if (response.status === 401 && !path.includes('/auth/login')) {
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
+    window.location.href = '/login';
+  }
+
   if (!response.ok) {
     const errorPayload = (payload ?? {}) as Record<string, unknown>;
     throw new ApiError(
