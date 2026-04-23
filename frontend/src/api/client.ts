@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ?? '/api';
+const API_BASE_URL = (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ?? import.meta.env.VITE_API_URL ?? '/api';
 
 const defaultHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
