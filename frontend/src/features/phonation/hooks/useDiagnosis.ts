@@ -3,14 +3,13 @@ import { VOICE_EXERCISES } from '../services/exercises';
 import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../types';
 
 // --- Umbrales basados en literatura científica ---
-// Baken & Orlikoff (2000), Teixeira et al. (2013), Praat defaults
-const F0_SD_NORMAL_MAX = 3; // Hz — SD normal en vocal sostenida
-const F0_SD_PATHOLOGICAL = 5; // Hz — sobre esto es patológico
-const BREAK_MIN_DURATION_FRAMES = 3; // frames consecutivos sin voz para contar como quiebre real (~200ms a 15fps)
-const GLISSANDO_SMOOTHNESS_GOOD = 90; // umbral de suavidad para glissando
+const F0_SD_NORMAL_MAX = 5;
+const F0_SD_PATHOLOGICAL = 15;
+const BREAK_MIN_DURATION_FRAMES = 3;
+const GLISSANDO_SMOOTHNESS_GOOD = 90;
 
 function hasHz(frame: PhonationFrame): frame is PhonationFrame & { hz: number } {
-  return frame.hz !== null;
+  return frame.hz !== null && frame.hz > 0;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -29,44 +28,32 @@ function calculateStandardDeviation(values: number[]): number {
   return Math.sqrt(variance);
 }
 
-/**
- * Estabilidad para vocales sostenidas.
- * Basado en F0 SD: normal < 3 Hz, patológico > 5 Hz.
- * Mapea linealmente: 0 Hz SD → 100%, 5+ Hz SD → 0%.
- */
 function sustainedStability(hzValues: number[]): number {
   if (hzValues.length === 0) return 0;
-  const sd = calculateStandardDeviation(hzValues);
+  
+  // Limpiar outliers que disparan la desviación estándar (errores de YIN típicos como octavación)
+  const mean = calculateAverage(hzValues);
+  const cleanValues = hzValues.filter(hz => Math.abs(hz - mean) < mean * 0.3); // Excluir variaciones > 30% de la media
+  
+  if (cleanValues.length < 2) return 0;
+  
+  const sd = calculateStandardDeviation(cleanValues);
   return clamp(100 - (sd / F0_SD_PATHOLOGICAL) * 100, 0, 100);
 }
 
-/**
- * Estabilidad para lectura de frase.
- * Usa el coeficiente de variación (CV) en semitonos para normalizar
- * entre hablantes. Ignora pausas entre palabras — solo analiza
- * los segmentos donde hay voz.
- */
 function phraseStability(hzValues: number[]): number {
   if (hzValues.length < 2) return 0;
-  // Convertir Hz a semitonos (referencia 1 Hz) para normalizar
   const semitones = hzValues.map((hz) => 12 * Math.log2(hz));
   const sd = calculateStandardDeviation(semitones);
-  // SD normal en habla conectada: 2-4 semitonos. Más de 6 es excesivo.
   return clamp(100 - ((sd - 2) / 4) * 50, 0, 100);
 }
 
-/**
- * Suavidad de glissando.
- * Ajusta una regresión lineal en semitonos y mide el RMSE de los residuos.
- * Un glissando suave tiene residuos pequeños.
- */
 function glissandoSmoothness(hzValues: number[]): number {
   if (hzValues.length < 2) return 0;
 
   const semitones = hzValues.map((hz) => 12 * Math.log2(hz));
   const n = semitones.length;
 
-  // Regresión lineal: y = mx + b
   const xMean = (n - 1) / 2;
   const yMean = calculateAverage(semitones);
 
@@ -80,7 +67,6 @@ function glissandoSmoothness(hzValues: number[]): number {
   const slope = denominator === 0 ? 0 : numerator / denominator;
   const intercept = yMean - slope * xMean;
 
-  // RMSE de residuos
   let sumSquaredResiduals = 0;
   for (let i = 0; i < n; i++) {
     const predicted = slope * i + intercept;
@@ -88,20 +74,12 @@ function glissandoSmoothness(hzValues: number[]): number {
   }
   const rmse = Math.sqrt(sumSquaredResiduals / n);
 
-  // RMSE < 0.5 semitonos = muy suave (100%), > 3 semitonos = irregular (0%)
   return clamp(100 - (rmse / 3) * 100, 0, 100);
 }
 
-/**
- * Cuenta quiebres vocales reales — solo interrupciones involuntarias.
- * Un quiebre requiere al menos BREAK_MIN_DURATION_FRAMES frames sin voz
- * consecutivos DENTRO de un segmento de fonación (no al inicio ni final).
- */
 function countRealBreaks(frames: PhonationFrame[], exerciseType: VoiceExercise['type']): number {
-  // En lectura de frase, las pausas entre palabras son normales — no contar breaks
   if (exerciseType === 'phrase') return 0;
 
-  // Recortar silencio al inicio y final (onset/offset)
   let firstVoiced = -1;
   let lastVoiced = -1;
   for (let i = 0; i < frames.length; i++) {
@@ -131,7 +109,8 @@ function countRealBreaks(frames: PhonationFrame[], exerciseType: VoiceExercise['
 }
 
 function analyzeExercise(exercise: VoiceExercise, frames: PhonationFrame[]): ExerciseResult {
-  const voicedHzValues = frames.filter(hasHz).map((f) => f.hz);
+  // Aseguramos de filtrar no solo null, sino que hz > 0
+  const voicedHzValues = frames.filter(f => f.hz !== null && f.hz > 0).map((f) => f.hz!);
   const avgHz = calculateAverage(voicedHzValues);
 
   let stability: number;
@@ -167,32 +146,64 @@ export default function useDiagnosis(
   const result = useMemo<SessionResult | null>(() => {
     if (recordedResults.size === 0) return null;
 
-    const exerciseResults = exercises.map((exercise) => {
-      const frames = recordedResults.get(exercise.id) ?? [];
+    // Solo ejercicios con datos reales
+    const activeExercises = exercises.filter((e) => {
+      const frames = recordedResults.get(e.id);
+      return frames && frames.length > 0;
+    });
+    
+    if (activeExercises.length === 0) return null;
+
+    const exerciseResults = activeExercises.map((exercise) => {
+      const frames = recordedResults.get(exercise.id)!;
       return analyzeExercise(exercise, frames);
     });
 
-    // Score ponderado: vocales sostenidas pesan más (son la medida más fiable clínicamente)
-    const sustained = exerciseResults.filter((_, i) => exercises[i].type === 'sustained');
-    const phrases = exerciseResults.filter((_, i) => exercises[i].type === 'phrase');
-    const glissandos = exerciseResults.filter((_, i) => exercises[i].type === 'glissando');
+    // Filtrar por exerciseId en lugar de índice
+    const sustained = exerciseResults.filter((r) => {
+      const ex = activeExercises.find(e => e.id === r.exerciseId);
+      return ex?.type === 'sustained';
+    });
+    
+    const phrases = exerciseResults.filter((r) => {
+      const ex = activeExercises.find(e => e.id === r.exerciseId);
+      return ex?.type === 'phrase';
+    });
+    
+    const glissandos = exerciseResults.filter((r) => {
+      const ex = activeExercises.find(e => e.id === r.exerciseId);
+      return ex?.type === 'glissando';
+    });
 
-    const sustainedAvg = calculateAverage(sustained.map((r) => r.stability));
-    const phraseAvg = calculateAverage(phrases.map((r) => r.stability));
-    const glissandoAvg = calculateAverage(glissandos.map((r) => r.stability));
+    const sustainedAvg = sustained.length > 0 ? calculateAverage(sustained.map((r) => r.stability)) : 0;
+    const phraseAvg = phrases.length > 0 ? calculateAverage(phrases.map((r) => r.stability)) : 0;
+    const glissandoAvg = glissandos.length > 0 ? calculateAverage(glissandos.map((r) => r.stability)) : 0;
 
-    // Ponderación: 50% sostenidas, 30% frase, 20% glissando
-    const weightedScore =
-      sustainedAvg * 0.5 +
-      phraseAvg * 0.3 +
-      glissandoAvg * 0.2;
+    let totalWeight = 0;
+    let weightedSum = 0;
 
-    // Penalizar solo breaks reales en sostenidas (los únicos clínicamente relevantes)
+    if (sustained.length > 0) {
+      weightedSum += sustainedAvg * 0.5;
+      totalWeight += 0.5;
+    }
+    if (phrases.length > 0) {
+      weightedSum += phraseAvg * 0.3;
+      totalWeight += 0.3;
+    }
+    if (glissandos.length > 0) {
+      weightedSum += glissandoAvg * 0.2;
+      totalWeight += 0.2;
+    }
+
+    const weightedScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+
     const sustainedBreaks = sustained.reduce((acc, r) => acc + r.breaks, 0);
     const overallScore = clamp(weightedScore - sustainedBreaks * 5, 0, 100);
 
     const exercisesWithVoice = exerciseResults.filter((r) => r.avgHz > 0);
-    const avgHz = calculateAverage(exercisesWithVoice.map((r) => r.avgHz));
+    const avgHz = exercisesWithVoice.length > 0 
+      ? calculateAverage(exercisesWithVoice.map((r) => r.avgHz)) 
+      : 0;
 
     const observations: string[] = [];
 
@@ -206,31 +217,35 @@ export default function useDiagnosis(
       observations.push('Se recomienda consultar a un especialista');
     }
 
-    if (sustainedBreaks > 0) {
-      observations.push(
-        sustainedBreaks === 1
-          ? 'Se detectó 1 quiebre vocal en fonación sostenida'
-          : `Se detectaron ${sustainedBreaks} quiebres vocales en fonación sostenida`,
-      );
-    } else {
-      observations.push('No se detectaron quiebres vocales');
+    if (sustained.length > 0) {
+      if (sustainedBreaks > 0) {
+        observations.push(
+          sustainedBreaks === 1
+            ? 'Se detectó 1 quiebre vocal en fonación sostenida'
+            : `Se detectaron ${sustainedBreaks} quiebres vocales en fonación sostenida`,
+        );
+      } else {
+        observations.push('No se detectaron quiebres vocales');
+      }
+
+      if (sustainedAvg >= 85) {
+        observations.push('Buena estabilidad en vocales sostenidas');
+      } else if (sustainedAvg < 50) {
+        observations.push('Inestabilidad significativa en vocales sostenidas');
+      }
     }
 
-    if (sustainedAvg >= 85) {
-      observations.push('Buena estabilidad en vocales sostenidas');
-    } else if (sustainedAvg < 50) {
-      observations.push('Inestabilidad significativa en vocales sostenidas');
-    }
-
-    if (glissandoAvg >= GLISSANDO_SMOOTHNESS_GOOD) {
-      observations.push('Transiciones de tono suaves en glissando');
-    } else if (glissandoAvg < 50) {
-      observations.push('Irregularidades en las transiciones de tono');
+    if (glissandos.length > 0) {
+      if (glissandoAvg >= GLISSANDO_SMOOTHNESS_GOOD) {
+        observations.push('Transiciones de tono suaves en glissando');
+      } else if (glissandoAvg < 50) {
+        observations.push('Irregularidades en las transiciones de tono');
+      }
     }
 
     for (const exerciseResult of exerciseResults) {
-      const exercise = exercises.find((e) => e.id === exerciseResult.exerciseId);
-      if (exercise && !exerciseResult.inRange && exercise.type === 'sustained') {
+      const exercise = activeExercises.find((e) => e.id === exerciseResult.exerciseId);
+      if (exercise && exerciseResult.avgHz > 0 && !exerciseResult.inRange && exercise.type === 'sustained') {
         observations.push(`Frecuencia fuera del rango esperado en: ${exercise.instruction}`);
       }
     }
