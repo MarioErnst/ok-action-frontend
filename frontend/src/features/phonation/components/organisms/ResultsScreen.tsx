@@ -5,8 +5,11 @@ import { useEffect, useRef } from 'react';
 import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpPhonationRepository';
 import { toSavePhonationSessionDto } from '../../infrastructure/mappers/phonationMapper';
 
+import type { VoiceExercise } from '../../types';
+
 interface ResultsScreenProps {
   recordedResults: Map<string, PhonationFrame[]>;
+  exercises: VoiceExercise[];
   onReset: () => void;
 }
 
@@ -27,8 +30,8 @@ function truncateInstruction(instruction: string, maxLength: number): string {
   return `${instruction.slice(0, maxLength - 3)}...`;
 }
 
-export const ResultsScreen = ({ recordedResults, onReset }: ResultsScreenProps) => {
-  const { result } = useDiagnosis(recordedResults);
+export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsScreenProps) => {
+  const { result } = useDiagnosis(recordedResults, exercises);
 
   const savedRef = useRef(false);
 
