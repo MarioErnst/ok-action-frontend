@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ?? '/api';
+const API_BASE_URL = (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ?? import.meta.env.VITE_API_URL ?? '/api';
 
 const defaultHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -42,10 +42,16 @@ export const apiRequest = async <TResponse, TBody = unknown>(
 ): Promise<TResponse> => {
   const { method = 'GET', body, headers, signal } = options;
 
+  const token = localStorage.getItem('auth_token');
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       ...defaultHeaders,
+      ...authHeaders,
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -53,6 +59,12 @@ export const apiRequest = async <TResponse, TBody = unknown>(
   });
 
   const payload = await safeJson(response);
+
+  if (response.status === 401 && !path.includes('/auth/login')) {
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
+    window.location.href = '/login';
+  }
 
   if (!response.ok) {
     const errorPayload = (payload ?? {}) as Record<string, unknown>;

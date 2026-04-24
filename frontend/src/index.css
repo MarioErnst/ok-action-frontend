@@ -1,13 +1,25 @@
 @import "tailwindcss";
 
 @theme {
+  /* Fondos */
   --color-bg: #0A0A0A;
   --color-surface: #1C1C1E;
   --color-surface-alt: #232B38;
+  --color-input: #1F2937;
+
+  /* Bordes */
   --color-border: #334155;
+
+  /* Acento (ámbar) */
   --color-accent: #F59E0B;
+  --color-accent-hover: #FBBF24;
+
+  /* Texto */
   --color-text: #F8FAFC;
   --color-text-muted: #9CA3AF;
+  --color-text-on-accent: #111827;
+
+  /* Estados */
   --color-success: #22c55e;
   --color-warning: #facc15;
   --color-danger: #ef4444;
