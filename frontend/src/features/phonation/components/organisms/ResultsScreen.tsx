@@ -2,8 +2,11 @@ import useDiagnosis from '../../hooks/useDiagnosis';
 import { VOICE_EXERCISES } from '../../services/exercises';
 import type { PhonationFrame } from '../../types';
 
+import type { VoiceExercise } from '../../types';
+
 interface ResultsScreenProps {
   recordedResults: Map<string, PhonationFrame[]>;
+  exercises: VoiceExercise[];
   onReset: () => void;
 }
 
@@ -24,8 +27,8 @@ function truncateInstruction(instruction: string, maxLength: number): string {
   return `${instruction.slice(0, maxLength - 3)}...`;
 }
 
-export const ResultsScreen = ({ recordedResults, onReset }: ResultsScreenProps) => {
-  const { result } = useDiagnosis(recordedResults);
+export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsScreenProps) => {
+  const { result } = useDiagnosis(recordedResults, exercises);
 
   if (!result) {
     return (
