@@ -1,6 +1,9 @@
+import { useEffect, useRef } from 'react';
 import CoachMessage from '../molecules/CoachMessage';
 import LoudnessMeter from '../molecules/LoudnessMeter';
 import SessionMetrics from '../molecules/SessionMetrics';
+import { HttpLoudnessRepository } from '../../infrastructure/repositories/HttpLoudnessRepository';
+import { toSaveLoudnessSessionDto } from '../../infrastructure/mappers/loudnessMapper';
 import type {
   CalibrationPhase,
   LoudnessBand,
@@ -42,6 +45,24 @@ export default function LoudnessCoachPanel({
 }: LoudnessCoachPanelProps) {
   const finished = hasFinishedSession(calibrationPhase, metrics);
   const idle = isIdle(calibrationPhase, metrics);
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    if (finished && metrics.durationMs > 0 && !savedRef.current) {
+      savedRef.current = true;
+      const dto = toSaveLoudnessSessionDto(metrics, preset.presetId);
+      HttpLoudnessRepository.saveSession(dto).catch((err) => {
+        console.error('Error saving loudness session:', err);
+      });
+    }
+  }, [finished, metrics, preset.presetId]);
+
+  useEffect(() => {
+    if (!finished) {
+      savedRef.current = false;
+    }
+  }, [finished]);
+
   const isNoiseCalibration = calibrationPhase === 'noise';
   const isVoiceCalibration = calibrationPhase === 'voice';
   const isActive = calibrationPhase === 'active' && effectiveConfig !== null;

@@ -7,6 +7,7 @@ import type {
 import type { User } from '../../domain/entities/User';
 import type { LoginResponseDto } from '../dto/AuthDtos';
 import { toLoginRequestDto, toUser } from '../mappers/authMapper';
+import { useAuthStore } from '../../presentation/store/authStore';
 
 const mapApiErrorToAuthError = (error: ApiError): AuthError => {
   if (error.status === 401) {
@@ -35,7 +36,9 @@ export class HttpAuthRepository implements AuthRepository {
         },
       );
 
-      return toUser(payload);
+      const user = toUser(payload);
+      useAuthStore.getState().setAuth(user, payload.access_token);
+      return user;
     } catch (error) {
       if (error instanceof ApiError) {
         throw mapApiErrorToAuthError(error);
@@ -45,4 +48,3 @@ export class HttpAuthRepository implements AuthRepository {
     }
   }
 }
-
