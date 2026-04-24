@@ -8,8 +8,10 @@ export type SessionPhase = 'idle' | 'countdown' | 'recording' | 'finished';
 const COUNTDOWN_START = 3;
 const RECORDING_TICK_MS = 100;
 
-export default function useEvaluationSession() {
+export default function useEvaluationSession(customExercises?: VoiceExercise[]) {
   const { hz, db, isCalibrating, frames, start, stop } = useVoiceMonitor();
+
+  const exercises = customExercises ?? VOICE_EXERCISES;
 
   const [phase, setPhase] = useState<SessionPhase>('idle');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,6 +23,19 @@ export default function useEvaluationSession() {
   const elapsedIntervalRef = useRef<number | null>(null);
   const recordingStartAtRef = useRef<number>(0);
   const lastCapturedTimestampRef = useRef<number>(0);
+
+  const exerciseKey = exercises.map((e) => e.id).join(',');
+
+  useEffect(() => {
+    setPhase('idle');
+    setCurrentIndex(0);
+    setCountdown(COUNTDOWN_START);
+    setElapsedMs(0);
+    setRecordedResults(new Map());
+    recordingStartAtRef.current = 0;
+    lastCapturedTimestampRef.current = 0;
+    void stop();
+  }, [exerciseKey, stop]);
 
   const clearCountdownInterval = useCallback(() => {
     if (countdownIntervalRef.current !== null) {
@@ -111,7 +126,7 @@ export default function useEvaluationSession() {
   }, [phase, clearElapsedInterval]);
 
   const currentExercise: VoiceExercise | null =
-    phase === 'idle' || phase === 'finished' ? null : (VOICE_EXERCISES[currentIndex] ?? null);
+    phase === 'idle' || phase === 'finished' ? null : (exercises[currentIndex] ?? null);
 
   useEffect(() => {
     if (phase !== 'recording' || !currentExercise) return;
@@ -139,7 +154,7 @@ export default function useEvaluationSession() {
 
     clearElapsedInterval();
 
-    if (currentIndex >= VOICE_EXERCISES.length - 1) {
+    if (currentIndex >= exercises.length - 1) {
       setPhase('finished');
       void stop();
       return;
@@ -169,7 +184,7 @@ export default function useEvaluationSession() {
     phase,
     currentExercise,
     currentIndex,
-    totalExercises: VOICE_EXERCISES.length,
+    totalExercises: exercises.length,
     countdown,
     elapsedMs,
     recordedResults,
