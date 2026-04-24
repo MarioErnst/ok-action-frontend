@@ -1,6 +1,9 @@
 import useDiagnosis from '../../hooks/useDiagnosis';
 import { VOICE_EXERCISES } from '../../services/exercises';
 import type { PhonationFrame } from '../../types';
+import { useEffect, useRef } from 'react';
+import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpPhonationRepository';
+import { toSavePhonationSessionDto } from '../../infrastructure/mappers/phonationMapper';
 
 import type { VoiceExercise } from '../../types';
 
@@ -29,6 +32,18 @@ function truncateInstruction(instruction: string, maxLength: number): string {
 
 export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsScreenProps) => {
   const { result } = useDiagnosis(recordedResults, exercises);
+
+  const savedRef = useRef(false);
+
+  useEffect(() => {
+    if (result && !savedRef.current) {
+      savedRef.current = true;
+      const dto = toSavePhonationSessionDto(result);
+      HttpPhonationRepository.saveSession(dto).catch((err) => {
+        console.error('Error saving phonation session:', err);
+      });
+    }
+  }, [result]);
 
   if (!result) {
     return (
