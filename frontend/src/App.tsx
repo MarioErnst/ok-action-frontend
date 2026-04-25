@@ -16,6 +16,9 @@ const LoudnessTestPage = lazy(() =>
 const AccentuationPage = lazy(() =>
   import('./features/accentuation').then((m) => ({ default: m.AccentuationPage })),
 );
+const PronunciationPage = lazy(() =>
+  import('./features/pronunciation').then((m) => ({ default: m.PronunciationPage })),
+);
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
@@ -36,6 +39,7 @@ export default function App() {
         <Route path="/evaluation" element={<PrivateRoute><EvaluationPage /></PrivateRoute>} />
         <Route path="/loudness" element={<PrivateRoute><LoudnessCoachPage /></PrivateRoute>} />
         <Route path="/accentuation" element={<PrivateRoute><AccentuationPage /></PrivateRoute>} />
+        <Route path="/pronunciation" element={<PrivateRoute><PronunciationPage /></PrivateRoute>} />
         {import.meta.env.DEV && (
           <Route path="/loudness/test" element={<LoudnessTestPage />} />
         )}
