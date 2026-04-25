@@ -1,5 +1,5 @@
-import type { PhonemeError, PhrasePronunciation, PronunciationMetrics } from '../../types'
-import type { PhonemeErrorDto, PhrasePronunciationDto } from '../dto/PronunciationDtos'
+import type { PhonemeError, PhrasePronunciation, PronunciationMetrics, PronunciationSessionResult } from '../../types'
+import type { PhonemeErrorDto, PhrasePronunciationDto, SavePhrasePronunciationDto, SavePronunciationSessionDto } from '../dto/PronunciationDtos'
 
 function toMetrics(dto: PhrasePronunciationDto): PronunciationMetrics {
   return {
@@ -48,5 +48,33 @@ export function averagePronunciationMetrics(evaluations: PhrasePronunciation[]):
     consonantScore: evaluations.reduce((sum, ev) => sum + ev.metrics.consonantScore, 0) / count,
     fluencyScore: evaluations.reduce((sum, ev) => sum + ev.metrics.fluencyScore, 0) / count,
     intelligibilityScore: evaluations.reduce((sum, ev) => sum + ev.metrics.intelligibilityScore, 0) / count,
+  }
+}
+
+export function toSavePronunciationSessionDto(result: PronunciationSessionResult): SavePronunciationSessionDto {
+  return {
+    level: result.level,
+    overall_score: result.metrics.overallScore,
+    vowel_score: result.metrics.vowelScore,
+    consonant_score: result.metrics.consonantScore,
+    fluency_score: result.metrics.fluencyScore,
+    intelligibility_score: result.metrics.intelligibilityScore,
+    summary_feedback: result.summaryFeedback,
+    evaluations: result.phraseEvaluations.map((ev): SavePhrasePronunciationDto => ({
+      phrase_text: ev.phraseText,
+      phrase_index: ev.phraseIndex,
+      overall_score: ev.metrics.overallScore,
+      vowel_score: ev.metrics.vowelScore,
+      consonant_score: ev.metrics.consonantScore,
+      fluency_score: ev.metrics.fluencyScore,
+      intelligibility_score: ev.metrics.intelligibilityScore,
+      feedback: ev.feedback,
+      phoneme_errors: ev.phonemeErrors.map((e) => ({
+        phoneme: e.phoneme,
+        word: e.word,
+        actual_issue: e.actualIssue,
+        suggestion: e.suggestion,
+      })),
+    })),
   }
 }
