@@ -29,3 +29,24 @@ export function toPhrasePronunciation(dto: PhrasePronunciationDto): PhrasePronun
     phonemeErrors: dto.phoneme_errors.map(toPhonemeError),
   }
 }
+
+export function averagePronunciationMetrics(evaluations: PhrasePronunciation[]): PronunciationMetrics {
+  const count = evaluations.length
+  if (count === 0) {
+    return {
+      overallScore: 0,
+      vowelScore: 0,
+      consonantScore: 0,
+      fluencyScore: 0,
+      intelligibilityScore: 0,
+    }
+  }
+
+  return {
+    overallScore: evaluations.reduce((sum, ev) => sum + ev.metrics.overallScore, 0) / count,
+    vowelScore: evaluations.reduce((sum, ev) => sum + ev.metrics.vowelScore, 0) / count,
+    consonantScore: evaluations.reduce((sum, ev) => sum + ev.metrics.consonantScore, 0) / count,
+    fluencyScore: evaluations.reduce((sum, ev) => sum + ev.metrics.fluencyScore, 0) / count,
+    intelligibilityScore: evaluations.reduce((sum, ev) => sum + ev.metrics.intelligibilityScore, 0) / count,
+  }
+}
