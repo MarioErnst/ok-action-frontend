@@ -13,36 +13,36 @@ const STATUS_LABELS: Record<string, string> = {
   error: 'Error',
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-gray-100 text-gray-500',
-  recording: 'bg-red-100 text-red-600',
-  uploading: 'bg-yellow-100 text-yellow-700',
-  evaluated: 'bg-green-100 text-green-700',
-  error: 'bg-red-100 text-red-700',
+function getStatusColorClass(status: string): string {
+  switch (status) {
+    case 'evaluated': return 'text-success'
+    case 'recording': return 'text-danger'
+    case 'uploading': return 'text-warning'
+    case 'error': return 'text-danger'
+    default: return 'text-text-muted'
+  }
 }
 
 export default function PhraseCard({ phraseState, isActive }: PhraseCardProps) {
   const { phrase, status, evaluation } = phraseState
-  const statusLabel = STATUS_LABELS[status] ?? status
-  const statusColor = STATUS_COLORS[status] ?? ''
 
   return (
     <div
-      className={`rounded-lg border p-4 transition-all ${
-        isActive ? 'border-blue-400 bg-blue-50' : 'border-gray-200 bg-white'
+      className={`flex items-center justify-between rounded-xl border bg-surface p-4 transition-all ${
+        isActive ? 'border-accent' : 'border-border'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-gray-800">{phrase.text}</p>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusColor}`}>
-          {statusLabel}
+      <p className="flex-1 truncate pr-3 text-sm text-text">{phrase.text}</p>
+      <div className="flex shrink-0 items-center gap-2">
+        <span className={`text-xs ${getStatusColorClass(status)}`}>
+          {STATUS_LABELS[status] ?? status}
         </span>
+        {evaluation && (
+          <span className={`text-xs font-bold ${getStatusColorClass('evaluated')}`}>
+            {Math.round(evaluation.metrics.overallScore)}
+          </span>
+        )}
       </div>
-      {evaluation && (
-        <p className="mt-1 text-right text-sm font-semibold text-blue-700">
-          {Math.round(evaluation.metrics.overallScore)}
-        </p>
-      )}
     </div>
   )
 }
