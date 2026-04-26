@@ -18,24 +18,26 @@ export default function PronunciationPage() {
     resetSession,
   } = usePronunciationSession()
 
-  if (phase === 'idle') {
-    return <LevelSelectionScreen onLevelSelect={startSession} />
-  }
-
-  if (phase === 'finished' && sessionResult) {
-    return <PronunciationResultsScreen result={sessionResult} onReset={resetSession} />
-  }
-
   return (
-    <RecordingScreen
-      level={currentLevel}
-      currentIndex={currentIndex}
-      totalPhrases={totalPhrases}
-      phraseStates={phraseStates}
-      isRecording={isRecording}
-      recordingError={recordingError}
-      onFinishPhrase={finishCurrentPhrase}
-      onReset={resetSession}
-    />
+    <div className="min-h-screen bg-bg">
+      {phase === 'idle' && <LevelSelectionScreen onLevelSelect={startSession} />}
+
+      {phase === 'finished' && sessionResult && (
+        <PronunciationResultsScreen result={sessionResult} onReset={resetSession} />
+      )}
+
+      {(phase === 'recording' || phase === 'processing') && (
+        <RecordingScreen
+          level={currentLevel}
+          currentIndex={currentIndex}
+          totalPhrases={totalPhrases}
+          phraseStates={phraseStates}
+          isRecording={isRecording}
+          recordingError={recordingError}
+          onFinishPhrase={finishCurrentPhrase}
+          onReset={resetSession}
+        />
+      )}
+    </div>
   )
 }
