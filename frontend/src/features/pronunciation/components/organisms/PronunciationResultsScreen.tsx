@@ -11,6 +11,18 @@ const LEVEL_LABELS: Record<string, string> = {
   avanzado: 'Avanzado',
 }
 
+function getScoreColorClass(score: number): string {
+  if (score >= 70) return 'text-success'
+  if (score >= 40) return 'text-warning'
+  return 'text-danger'
+}
+
+function getScoreBorderClass(score: number): string {
+  if (score >= 70) return 'border-success'
+  if (score >= 40) return 'border-warning'
+  return 'border-danger'
+}
+
 interface PronunciationResultsScreenProps {
   result: PronunciationSessionResult
   onReset: () => void
@@ -26,59 +38,61 @@ export default function PronunciationResultsScreen({
   useEffect(() => {
     if (savedRef.current) return
     savedRef.current = true
-
-    HttpPronunciationRepository.saveSession(toSavePronunciationSessionDto(result)).catch(
-      () => {},
-    )
+    HttpPronunciationRepository.saveSession(toSavePronunciationSessionDto(result)).catch(() => {})
   }, [result])
 
   const overallScore = Math.round(result.metrics.overallScore)
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Resultado</h2>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6">
+      <div className="flex flex-col items-center gap-3">
+        <div
+          className={`flex h-32 w-32 items-center justify-center rounded-full border-4 ${getScoreBorderClass(overallScore)}`}
+        >
+          <span className={`text-4xl font-bold ${getScoreColorClass(overallScore)}`}>
+            {overallScore}
+          </span>
+        </div>
+        <p className="text-sm text-text-muted">Puntuacion general</p>
+        <span className="rounded-full border border-border px-3 py-1 text-xs text-text-muted">
           Nivel: {LEVEL_LABELS[result.level] ?? result.level}
         </span>
       </div>
 
-      <div className="flex flex-col items-center gap-2">
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-blue-600 text-3xl font-bold text-white">
-          {overallScore}
-        </div>
-        <p className="text-sm text-gray-500">Puntaje general</p>
+      <PronunciationMetrics metrics={result.metrics} />
+
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <p className="text-xs uppercase tracking-wider text-text-muted">Retroalimentacion</p>
+        <p className="mt-2 text-sm text-text">{result.summaryFeedback}</p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 p-4">
-        <p className="mb-4 text-sm font-medium text-gray-700">Metricas</p>
-        <PronunciationMetrics metrics={result.metrics} />
-      </div>
-
-      <p className="text-sm text-gray-700">{result.summaryFeedback}</p>
-
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium text-gray-500">Detalle por frase</p>
+      <div className="flex flex-col gap-3">
+        <p className="text-xs uppercase tracking-wider text-text-muted">Detalle por frase</p>
         {result.phraseEvaluations.map((evaluation, index) => (
-          <div key={index} className="rounded-xl border border-gray-200">
+          <div key={index} className="rounded-xl border border-border bg-surface">
             <button
+              type="button"
               className="flex w-full items-center justify-between p-4 text-left"
               onClick={() => setExpandedIndex(expandedIndex === index ? null : index)}
             >
-              <span className="text-sm text-gray-800 flex-1 pr-2">{evaluation.phraseText}</span>
-              <span className="shrink-0 text-sm font-semibold text-blue-700">
-                {Math.round(evaluation.metrics.overallScore)}
-              </span>
+              <div className="min-w-0 flex-1 pr-3">
+                <p className="text-xs text-text-muted">Frase {index + 1}</p>
+                <p className="truncate text-sm text-text">{evaluation.phraseText}</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className={`font-bold ${getScoreColorClass(evaluation.metrics.overallScore)}`}>
+                  {Math.round(evaluation.metrics.overallScore)}
+                </span>
+                <span className="text-text-muted">{expandedIndex === index ? '▲' : '▼'}</span>
+              </div>
             </button>
             {expandedIndex === index && (
-              <div className="border-t border-gray-100 p-4">
+              <div className="flex flex-col gap-3 border-t border-border p-4">
                 <PronunciationMetrics metrics={evaluation.metrics} />
-                <div className="mt-3">
-                  <PhonemeFeedback
-                    feedback={evaluation.feedback}
-                    phonemeErrors={evaluation.phonemeErrors}
-                  />
-                </div>
+                <PhonemeFeedback
+                  feedback={evaluation.feedback}
+                  phonemeErrors={evaluation.phonemeErrors}
+                />
               </div>
             )}
           </div>
@@ -86,8 +100,9 @@ export default function PronunciationResultsScreen({
       </div>
 
       <button
+        type="button"
         onClick={onReset}
-        className="w-full rounded-xl border border-blue-600 py-3 text-blue-600 font-medium hover:bg-blue-50"
+        className="w-full rounded-xl bg-accent px-8 py-3 font-bold text-bg"
       >
         Nueva sesion
       </button>
