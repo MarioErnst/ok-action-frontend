@@ -1,19 +1,19 @@
-type PronunciationLevel = 'basico' | 'intermedio' | 'avanzado'
+export type PronunciationLevel = 'basico' | 'intermedio' | 'avanzado'
 
-interface PronunciationPhrase {
+export interface PronunciationPhrase {
   id: string
   text: string
   level: PronunciationLevel
 }
 
-interface PhonemeError {
+export interface PhonemeError {
   phoneme: string
   word: string
   actualIssue: string
   suggestion: string
 }
 
-interface PronunciationMetrics {
+export interface PronunciationMetrics {
   overallScore: number
   vowelScore: number
   consonantScore: number
@@ -21,7 +21,7 @@ interface PronunciationMetrics {
   intelligibilityScore: number
 }
 
-interface PhrasePronunciation {
+export interface PhrasePronunciation {
   phraseText: string
   phraseIndex: number
   metrics: PronunciationMetrics
@@ -31,13 +31,13 @@ interface PhrasePronunciation {
 
 type PhraseStatus = 'pending' | 'recording' | 'uploading' | 'evaluated' | 'error'
 
-interface PhraseState {
+export interface PhraseState {
   phrase: PronunciationPhrase
   status: PhraseStatus
   evaluation: PhrasePronunciation | null
 }
 
-interface PronunciationSessionResult {
+export interface PronunciationSessionResult {
   level: PronunciationLevel
   metrics: PronunciationMetrics
   summaryFeedback: string

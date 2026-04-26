@@ -3,14 +3,9 @@ import { VOICE_EXERCISES } from '../services/exercises';
 import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../types';
 
 // --- Umbrales basados en literatura científica ---
-const F0_SD_NORMAL_MAX = 5;
 const F0_SD_PATHOLOGICAL = 15;
 const BREAK_MIN_DURATION_FRAMES = 3;
 const GLISSANDO_SMOOTHNESS_GOOD = 90;
-
-function hasHz(frame: PhonationFrame): frame is PhonationFrame & { hz: number } {
-  return frame.hz !== null && frame.hz > 0;
-}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));

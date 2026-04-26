@@ -18,18 +18,6 @@ const typeGradients: Record<VoiceExercise['type'], string> = {
   glissando: 'from-violet-500/20 to-violet-500/5',
 };
 
-const typeBorderColors: Record<VoiceExercise['type'], string> = {
-  sustained: 'border-amber-500/30',
-  phrase: 'border-emerald-500/30',
-  glissando: 'border-violet-500/30',
-};
-
-const typeIconBg: Record<VoiceExercise['type'], string> = {
-  sustained: 'bg-amber-500/20',
-  phrase: 'bg-emerald-500/20',
-  glissando: 'bg-violet-500/20',
-};
-
 const exerciseTypes: VoiceExercise['type'][] = ['sustained', 'phrase', 'glissando'];
 
 export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {

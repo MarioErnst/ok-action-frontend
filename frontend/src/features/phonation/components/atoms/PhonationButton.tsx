@@ -1,13 +1,13 @@
 interface PhonationButtonProps {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   disabled?: boolean;
   variant?: 'primary' | 'secondary';
 }
 
 export default function PhonationButton({
   label,
-  onClick,
+  onClick = () => {},
   disabled = false,
   variant = 'primary',
 }: PhonationButtonProps) {
