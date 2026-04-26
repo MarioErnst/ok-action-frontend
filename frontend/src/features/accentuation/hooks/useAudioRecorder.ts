@@ -1,1 +1,1 @@
-export { default } from '../../../../shared/hooks/useAudioRecorder';
+export { default } from '../../../shared/hooks/useAudioRecorder';
