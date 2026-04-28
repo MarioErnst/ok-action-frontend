@@ -178,7 +178,7 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
       </div>
 
       {/* Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border/50 bg-bg/95 backdrop-blur-sm">
+      <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 border-t border-border/50 bg-bg/95 backdrop-blur-sm">
         <div className="mx-auto w-full max-w-md px-4 py-3">
           <button
             type="button"

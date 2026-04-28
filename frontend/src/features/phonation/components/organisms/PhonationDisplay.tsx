@@ -110,7 +110,6 @@ export default function PhonationDisplay({
             width={CANVAS_WIDTH}
             height={CANVAS_HEIGHT}
             className="w-full rounded-lg border border-border"
-            style={{ maxWidth: CANVAS_WIDTH }}
           />
         </div>
 
