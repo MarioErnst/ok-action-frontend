@@ -19,9 +19,8 @@ export const AppRouter = () => (
         <Route path="/pronunciacion" element={<PronunciationPage />} />
         <Route path="/acentuacion" element={<AccentuationPage />} />
         <Route path="/volumen" element={<LoudnessCoachPage />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>
-
-    <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>
 )
