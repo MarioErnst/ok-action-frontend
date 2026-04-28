@@ -17,10 +17,10 @@ export const DashboardPage = () => {
   const navigate = useNavigate()
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
-      <header className="mb-10">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
+      <header className="mb-8 md:mb-10">
         <p className="text-text-muted text-sm mb-1">Bienvenido de vuelta</p>
-        <h1 className="text-text text-3xl font-bold">{user?.fullName}</h1>
+        <h1 className="text-text text-2xl md:text-3xl font-bold">{user?.fullName}</h1>
       </header>
 
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -28,7 +28,7 @@ export const DashboardPage = () => {
           <button
             key={item.to}
             onClick={() => navigate(item.to)}
-            className="group flex flex-col gap-4 p-6 bg-surface border border-border rounded-2xl text-left hover:border-accent/50 hover:bg-surface-alt hover:shadow-[0_0_24px_0_rgba(245,158,11,0.07)] transition-all duration-300 cursor-pointer"
+            className="group flex flex-col gap-4 p-4 md:p-6 bg-surface border border-border rounded-2xl text-left hover:border-accent/50 hover:bg-surface-alt hover:shadow-[0_0_24px_0_rgba(245,158,11,0.07)] transition-all duration-300 cursor-pointer"
           >
             <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center group-hover:bg-accent/20 transition-colors duration-300">
               <NavIcon name={item.icon} active={false} size="lg" className="text-accent" />
