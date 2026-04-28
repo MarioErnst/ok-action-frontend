@@ -23,7 +23,7 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
     <form onSubmit={onSubmit} className="flex flex-col gap-5 w-full">
       {/* --- CORREO --- */}
       <div className="flex flex-col gap-1">
-        <label className="text-gray-400 text-xs font-medium uppercase tracking-wider">
+        <label className="text-text-muted text-xs font-medium uppercase tracking-wider">
           Correo
         </label>
         <Input
@@ -37,12 +37,12 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
       {/* --- CONTRASEÑA --- */}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
-          <label className="text-gray-400 text-xs font-medium uppercase tracking-wider">
+          <label className="text-text-muted text-xs font-medium uppercase tracking-wider">
             Contraseña
           </label>
-          <button 
-            type="button" 
-            className="text-xs text-amber-500 hover:text-amber-400 transition-colors font-medium cursor-pointer"
+          <button
+            type="button"
+            className="text-xs text-accent hover:text-accent-hover transition-colors font-medium cursor-pointer"
           >
             ¿Olvidaste tu contraseña?
           </button>
@@ -58,7 +58,7 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer p-1"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-accent transition-colors cursor-pointer p-1"
           >
             {showPassword ? (
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -81,15 +81,15 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
 
       {/* --- DIVISOR --- */}
       <div className="flex items-center gap-3 mt-2">
-        <div className="h-px bg-gray-700 flex-1"></div>
-        <span className="text-gray-500 text-xs font-medium">O continuar con</span>
-        <div className="h-px bg-gray-700 flex-1"></div>
+        <div className="h-px bg-border flex-1"></div>
+        <span className="text-text-muted text-xs font-medium">O continuar con</span>
+        <div className="h-px bg-border flex-1"></div>
       </div>
 
       {/* --- BOTONES SOCIALES --- */}
       <div className="grid grid-cols-4 gap-3">
         {/* Google */}
-        <button type="button" className="flex items-center justify-center p-2.5 border border-gray-700 rounded-lg hover:border-gray-500 hover:bg-gray-800 transition-all duration-300 group cursor-pointer">
+        <button type="button" className="flex items-center justify-center p-2.5 border border-border rounded-lg hover:border-border/60 hover:bg-surface transition-all duration-300 group cursor-pointer">
           <svg className="w-5 h-5 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300" viewBox="0 0 24 24" fill="currentColor">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -99,7 +99,7 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
         </button>
         
         {/* Apple */}
-        <button type="button" className="flex items-center justify-center p-2.5 border border-gray-700 rounded-lg hover:border-gray-500 hover:bg-gray-800 transition-all duration-300 group cursor-pointer">
+        <button type="button" className="flex items-center justify-center p-2.5 border border-border rounded-lg hover:border-border/60 hover:bg-surface transition-all duration-300 group cursor-pointer">
           <svg className="w-5 h-5 text-gray-500 group-hover:text-white transition-all duration-300" viewBox="0 0 24 24" fill="currentColor">
             <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.78 1.18-.19 2.31-.88 3.5-.84 1.58.11 2.76.75 3.51 1.84-3.05 1.83-2.53 5.54.54 6.74-1.12 2.15-2.54 4.54-4.54 4.58-.04 0-.08 0-.09-.13zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
           </svg>
@@ -124,28 +124,28 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
       {/* --- ESTADOS DE MUTATION --- */}
       {mutation.isError && (
         <div className="flex flex-col items-center gap-2 mt-2 animate-fade-in">
-          <div className="w-10 h-10 rounded-full border-2 border-red-500 flex items-center justify-center animate-scale-in">
-            <span className="text-red-500 text-xl font-bold">✕</span>
+          <div className="w-10 h-10 rounded-full border-2 border-danger flex items-center justify-center animate-scale-in">
+            <span className="text-danger text-xl font-bold">✕</span>
           </div>
-          <p className="text-red-400 text-sm">Correo o contraseña incorrectos</p>
+          <p className="text-danger text-sm">Correo o contraseña incorrectos</p>
         </div>
       )}
 
       {mutation.isSuccess && (
         <div className="flex flex-col items-center gap-2 mt-2 animate-fade-in">
-          <div className="w-10 h-10 rounded-full border-2 border-green-500 flex items-center justify-center animate-scale-in">
-            <span className="text-green-500 text-xl">✓</span>
+          <div className="w-10 h-10 rounded-full border-2 border-success flex items-center justify-center animate-scale-in">
+            <span className="text-success text-xl">✓</span>
           </div>
-          <p className="text-green-400 text-sm">¡Ingreso exitoso!</p>
+          <p className="text-success text-sm">¡Ingreso exitoso!</p>
         </div>
       )}
       {/* --- REGISTRO --- */}
-      <p className="text-center text-gray-500 text-sm mt-2">
+      <p className="text-center text-text-muted text-sm mt-2">
         ¿No tienes cuenta?{' '}
         <button
           type="button"
           onClick={onGoToRegister}
-          className="text-amber-500 hover:text-amber-400 font-medium transition-colors cursor-pointer"
+          className="text-accent hover:text-accent-hover font-medium transition-colors cursor-pointer"
         >
           Registrar usuario
         </button>
