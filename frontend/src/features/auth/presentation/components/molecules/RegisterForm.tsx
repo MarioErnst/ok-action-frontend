@@ -45,7 +45,7 @@ export const RegisterForm = ({ onGoToLogin }: RegisterFormProps) => {
         <button
           type="button"
           onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors cursor-pointer p-1"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-accent transition-colors cursor-pointer p-1"
         >
           {showPassword ? (
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
@@ -66,28 +66,28 @@ export const RegisterForm = ({ onGoToLogin }: RegisterFormProps) => {
 
       {mutation.isError && (
         <div className="flex flex-col items-center gap-2 mt-1 animate-fade-in">
-          <div className="w-10 h-10 rounded-full border-2 border-red-500 flex items-center justify-center animate-scale-in">
-            <span className="text-red-500 text-xl font-bold">✕</span>
+          <div className="w-10 h-10 rounded-full border-2 border-danger flex items-center justify-center animate-scale-in">
+            <span className="text-danger text-xl font-bold">✕</span>
           </div>
-          <p className="text-red-400 text-sm">No fue posible registrar el usuario</p>
+          <p className="text-danger text-sm">No fue posible registrar el usuario</p>
         </div>
       )}
 
       {mutation.isSuccess && (
         <div className="flex flex-col items-center gap-2 mt-1 animate-fade-in">
-          <div className="w-10 h-10 rounded-full border-2 border-green-500 flex items-center justify-center animate-scale-in">
-            <span className="text-green-500 text-xl">✓</span>
+          <div className="w-10 h-10 rounded-full border-2 border-success flex items-center justify-center animate-scale-in">
+            <span className="text-success text-xl">✓</span>
           </div>
-          <p className="text-green-400 text-sm">Usuario registrado correctamente</p>
+          <p className="text-success text-sm">Usuario registrado correctamente</p>
         </div>
       )}
 
-      <p className="text-center text-gray-500 text-sm mt-1">
+      <p className="text-center text-text-muted text-sm mt-1">
         ¿Ya tienes cuenta?{' '}
         <button
           type="button"
           onClick={onGoToLogin}
-          className="text-amber-500 hover:text-amber-400 font-medium transition-colors cursor-pointer"
+          className="text-accent hover:text-accent-hover font-medium transition-colors cursor-pointer"
         >
           Iniciar sesión
         </button>
