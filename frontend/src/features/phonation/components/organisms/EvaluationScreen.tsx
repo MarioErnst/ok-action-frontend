@@ -101,7 +101,7 @@ export const EvaluationScreen = ({ onFinish, exercises }: EvaluationScreenProps)
           )}
 
           {session.isCalibrating && (
-             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md">
+             <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md">
                  <div className="flex items-center justify-center gap-3 rounded-2xl border-2 border-amber-500/30 bg-amber-500/10 p-4 shadow-lg backdrop-blur-md">
                     <p className="text-sm font-medium text-amber-500">Calibrando micrófono, mantén silencio...</p>
                  </div>
