@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../../../shared/ui/atoms/Button';
 import { Input } from '../../../../../shared/ui/atoms/Input';
 import { useLoginMutation } from '../../hooks/useLoginMutation';
@@ -12,7 +13,10 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const mutation = useLoginMutation();
+  const navigate = useNavigate();
+  const mutation = useLoginMutation({
+    onSuccess: () => navigate('/dashboard'),
+  });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
