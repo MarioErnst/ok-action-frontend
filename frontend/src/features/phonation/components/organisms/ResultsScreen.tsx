@@ -116,7 +116,7 @@ export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsSc
       <div className="w-full">
         <h2 className="text-xl font-extrabold text-text tracking-wide mb-3">Observaciones</h2>
         <div className="flex flex-col gap-2 bg-surface/40 backdrop-blur-sm p-5 rounded-3xl border border-border/50">
-          {result.observations.map((observation, i) => (
+          {result.observations.map((observation,_i) => (
             <p key={observation} className="text-sm font-medium text-text-muted flex items-start gap-2">
               <span className="text-accent mt-0.5">•</span>
               <span>{observation}</span>
