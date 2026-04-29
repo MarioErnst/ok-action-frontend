@@ -70,128 +70,122 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
   };
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-bg">
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-8 p-6 pb-28 relative z-10">
       {/* Header con gradiente */}
-      <div className="bg-gradient-to-b from-accent/10 to-transparent px-4 pt-8 pb-4">
-        <div className="mx-auto w-full max-w-md text-center">
-          <h1 className="text-2xl font-bold text-text">Evaluación de Voz</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Selecciona los ejercicios a realizar
-          </p>
-        </div>
+      <div className="flex flex-col items-center gap-3 relative text-center mt-4">
+        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
+        <p className="text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] relative z-10">Evaluación de Voz</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold text-text tracking-tight drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] relative z-10">Ejercicios</h1>
+        <p className="text-sm font-medium text-text-muted bg-surface-alt/50 px-4 py-2 rounded-full border border-white/5 relative z-10 mt-2">
+          Selecciona los ejercicios a realizar
+        </p>
       </div>
 
-      {/* Contenido scrollable */}
-      <div className="flex-1 overflow-y-auto px-4 pb-32">
-        <div className="mx-auto w-full max-w-md">
-          {/* Quick Actions */}
-          <div className="mb-5 flex gap-2">
-            <button
-              type="button"
-              onClick={selectAll}
-              className="flex-1 rounded-xl border border-border/50 bg-surface py-2.5 text-sm font-medium text-text shadow-sm transition-all active:scale-95"
-            >
-              ✓ Todos
-            </button>
-            <button
-              type="button"
-              onClick={deselectAll}
-              className="flex-1 rounded-xl border border-border/50 bg-surface py-2.5 text-sm font-medium text-text shadow-sm transition-all active:scale-95"
-            >
-              ✕ Ninguno
-            </button>
-          </div>
-
-          {/* Exercise Groups by Type */}
-          <div className="flex flex-col gap-6">
-            {exerciseTypes.map((type) => {
-              const exercisesOfType = VOICE_EXERCISES.filter((e) => e.type === type);
-              const selectedCountOfType = exercisesOfType.filter((e) => selectedIds.has(e.id)).length;
-
-              return (
-                <div key={type}>
-                  {/* Type Header */}
-                  <div className="mb-3 flex items-center gap-2.5">
-                    <div>
-                      <h2 className="text-sm font-semibold text-text">{typeLabels[type]}</h2>
-                      <p className="text-xs text-text-muted">
-                        {selectedCountOfType} de {exercisesOfType.length} seleccionados
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Exercise Items */}
-                  <div className="flex flex-col gap-2">
-                    {exercisesOfType.map((exercise) => {
-                      const isSelected = selectedIds.has(exercise.id);
-                      const durationSeconds = exercise.durationMs / 1000;
-
-                      return (
-                        <button
-                          key={exercise.id}
-                          type="button"
-                          onClick={() => toggleExercise(exercise.id)}
-                          className={`group flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all active:scale-[0.98] ${
-                            isSelected
-                              ? `border-accent bg-gradient-to-r ${typeGradients[type]}`
-                              : 'border-border/50 bg-surface hover:border-border'
-                          }`}
-                        >
-                          {/* Check */}
-                          <div
-                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
-                              isSelected
-                                ? 'border-accent bg-accent shadow-sm'
-                                : 'border-border/50 bg-surface-alt'
-                            }`}
-                          >
-                            {isSelected && (
-                              <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </div>
-
-                          {/* Text */}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-text">
-                              {exercise.instruction}
-                            </p>
-                            <div className="mt-0.5 flex items-center gap-2">
-                              <span className="inline-flex items-center rounded-md bg-surface-alt px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
-                                {durationSeconds}s
-                              </span>
-                              <span className="inline-flex items-center rounded-md bg-surface-alt px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
-                                {exercise.targetHzRange.min}-{exercise.targetHzRange.max} Hz
-                              </span>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Bar */}
-      <div className="fixed bottom-16 lg:bottom-0 left-0 right-0 border-t border-border/50 bg-bg/95 backdrop-blur-sm">
-        <div className="mx-auto w-full max-w-md px-4 py-3">
+      <div className="flex flex-col gap-6">
+        {/* Quick Actions */}
+        <div className="flex gap-4">
           <button
             type="button"
-            onClick={handleStart}
-            disabled={selectedCount === 0}
-            className="w-full rounded-xl bg-accent py-3.5 text-base font-bold text-bg shadow-lg shadow-accent/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            onClick={selectAll}
+            className="flex-1 relative overflow-hidden rounded-2xl border border-border/60 bg-surface/60 backdrop-blur-sm py-3.5 text-sm font-bold text-text shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 active:scale-95 hover:border-accent/60 group"
           >
-            {selectedCount === 0
-              ? 'Selecciona al menos un ejercicio'
-              : `Iniciar evaluación · ${selectedCount} ejercicios · ${totalSeconds}s`}
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span className="relative z-10 group-hover:text-accent transition-colors">✓ Todos</span>
+          </button>
+          <button
+            type="button"
+            onClick={deselectAll}
+            className="flex-1 relative overflow-hidden rounded-2xl border border-border/60 bg-surface/60 backdrop-blur-sm py-3.5 text-sm font-bold text-text shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 active:scale-95 hover:border-accent/60 group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span className="relative z-10 group-hover:text-accent transition-colors">✕ Ninguno</span>
           </button>
         </div>
+
+        {/* Exercise Groups by Type */}
+        <div className="flex flex-col gap-6">
+          {exerciseTypes.map((type) => {
+            const exercisesOfType = VOICE_EXERCISES.filter((e) => e.type === type);
+            const selectedCountOfType = exercisesOfType.filter((e) => selectedIds.has(e.id)).length;
+
+            return (
+              <div key={type} className="animate-fade-in bg-surface/40 backdrop-blur-sm p-5 rounded-3xl border border-border/50">
+                {/* Type Header */}
+                <div className="mb-4">
+                  <h2 className="text-base font-bold text-text tracking-wide">{typeLabels[type]}</h2>
+                  <p className="text-xs font-medium text-text-muted mt-1">
+                    {selectedCountOfType} de {exercisesOfType.length} seleccionados
+                  </p>
+                </div>
+
+                {/* Exercise Items */}
+                <div className="flex flex-col gap-3">
+                  {exercisesOfType.map((exercise) => {
+                    const isSelected = selectedIds.has(exercise.id);
+                    const durationSeconds = exercise.durationMs / 1000;
+
+                    return (
+                      <button
+                        key={exercise.id}
+                        type="button"
+                        onClick={() => toggleExercise(exercise.id)}
+                        className={`group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 active:scale-95 ${
+                          isSelected
+                            ? `border-accent/60 bg-surface/80 shadow-[0_5px_15px_-5px_rgba(245,158,11,0.15)]`
+                            : 'border-border/40 bg-surface/30 hover:bg-surface/60'
+                        }`}
+                      >
+                        {/* Check */}
+                        <div
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-300 ${
+                            isSelected
+                              ? 'border-accent bg-accent shadow-[0_0_8px_rgba(245,158,11,0.5)]'
+                              : 'border-border/50 bg-surface-alt'
+                          }`}
+                        >
+                          {isSelected && (
+                            <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+
+                        {/* Text */}
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-bold transition-colors ${isSelected ? 'text-accent' : 'text-text/90'}`}>
+                            {exercise.instruction}
+                          </p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="inline-flex items-center rounded-lg bg-surface-alt/80 px-2 py-0.5 text-[10px] font-bold text-text-muted border border-white/5">
+                              {durationSeconds}s
+                            </span>
+                            <span className="inline-flex items-center rounded-lg bg-surface-alt/80 px-2 py-0.5 text-[10px] font-bold text-text-muted border border-white/5">
+                              {exercise.targetHzRange.min}-{exercise.targetHzRange.max} Hz
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      <button
+        type="button"
+        onClick={handleStart}
+        disabled={selectedCount === 0}
+        className="mt-2 w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-accent to-accent-hover py-4 text-base font-extrabold text-bg shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale disabled:shadow-none hover:shadow-[0_0_30px_rgba(245,158,11,0.5)]"
+      >
+        <span className="relative z-10">
+          {selectedCount === 0
+            ? 'SELECCIONA EJERCICIOS'
+            : `INICIAR EVALUACIÓN (${selectedCount})`}
+        </span>
+      </button>
     </div>
   );
 };

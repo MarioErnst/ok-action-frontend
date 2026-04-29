@@ -19,7 +19,7 @@ export default function PronunciationPage() {
   } = usePronunciationSession()
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="flex-1 flex flex-col justify-center">
       {phase === 'idle' && <LevelSelectionScreen onLevelSelect={startSession} />}
 
       {phase === 'finished' && sessionResult && (

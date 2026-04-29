@@ -34,40 +34,41 @@ export default function SessionMetrics({ metrics, presetLabel }: SessionMetricsP
   }
 
   return (
-    <section className="w-full rounded-[10px] border border-border bg-surface p-4 text-text">
-      <div className="mb-4">
-        <p className="m-0 text-sm text-text-muted">{presetLabel}</p>
-        <h3 className="m-0 mt-1 text-lg font-semibold text-text">Resumen de la sesión</h3>
+    <div className="w-full text-text animate-fade-in">
+      <div className="mb-6">
+        <p className="m-0 text-xs font-bold uppercase tracking-widest text-text-muted">{presetLabel}</p>
+        <h3 className="m-0 mt-2 text-2xl font-extrabold text-text tracking-wide">Resumen de la sesión</h3>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface-alt px-4 py-5 text-center">
-        <p className="m-0 text-sm text-text-muted">Tiempo en zona óptima</p>
-        <p className={`m-0 mt-2 text-4xl font-bold tracking-tight ${optimalPercentClass}`}>{optimalPercent}%</p>
+      <div className="relative rounded-3xl border border-border/50 bg-surface/40 backdrop-blur-md px-6 py-8 text-center overflow-hidden shadow-inner group transition-all duration-300 hover:border-accent/30 hover:bg-surface/60">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-accent/5 blur-[40px] rounded-full pointer-events-none group-hover:bg-accent/10 transition-colors duration-500" />
+        <p className="m-0 text-xs font-bold uppercase tracking-wider text-text-muted relative z-10">Tiempo en zona óptima</p>
+        <p className={`m-0 mt-3 text-5xl font-extrabold tracking-tight drop-shadow-md relative z-10 ${optimalPercentClass}`}>{optimalPercent}%</p>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-surface-alt p-4">
-          <p className="m-0 text-sm text-text-muted">Duración total</p>
-          <p className="m-0 mt-1 text-xl font-semibold text-text">{formatDuration(metrics.durationMs)}</p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border/50 bg-surface/40 backdrop-blur-sm p-5 transition-all duration-300 hover:bg-surface/60">
+          <p className="m-0 text-xs font-bold uppercase tracking-wider text-text-muted">Duración total</p>
+          <p className="m-0 mt-2 text-2xl font-extrabold text-text tracking-wide">{formatDuration(metrics.durationMs)}</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-surface-alt p-4">
-          <p className="m-0 text-sm text-text-muted">Pico máximo</p>
-          <p className="m-0 mt-1 text-xl font-semibold text-text">{metrics.peakDb.toFixed(1)} dB</p>
+        <div className="rounded-2xl border border-border/50 bg-surface/40 backdrop-blur-sm p-5 transition-all duration-300 hover:bg-surface/60">
+          <p className="m-0 text-xs font-bold uppercase tracking-wider text-text-muted">Pico máximo</p>
+          <p className="m-0 mt-2 text-2xl font-extrabold text-text tracking-wide">{metrics.peakDb.toFixed(1)} dB</p>
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border border-border bg-surface-alt p-4">
-        <p className="mb-3 text-sm text-text-muted">Desglose por banda</p>
-        <div className="space-y-2">
+      <div className="mt-4 rounded-3xl border border-border/50 bg-surface/40 backdrop-blur-sm p-6">
+        <p className="mb-4 text-xs font-bold uppercase tracking-wider text-text-muted">Desglose por banda</p>
+        <div className="space-y-3">
           {rows.map((row) => (
-            <div key={row.band} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface px-3 py-2">
-              <span className="text-sm font-medium text-text">{BAND_LABELS[row.band]}</span>
-              <span className="text-sm text-text-muted">{formatSeconds(row.valueMs)}</span>
+            <div key={row.band} className="flex items-center justify-between gap-3 rounded-xl border border-border/30 bg-surface/50 px-4 py-3 shadow-inner hover:bg-surface transition-colors">
+              <span className="text-sm font-bold text-text uppercase tracking-wider">{BAND_LABELS[row.band]}</span>
+              <span className="text-sm font-extrabold text-text-muted bg-surface-alt/50 px-2 py-0.5 rounded-lg border border-white/5">{formatSeconds(row.valueMs)}</span>
             </div>
           ))}
         </div>
       </div>
-    </section>
+    </div>
   );
 }
