@@ -12,7 +12,7 @@ export default function EvaluationPage() {
   const [selectedExercises, setSelectedExercises] = useState<VoiceExercise[]>([]);
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
+    <div className="flex-1 flex flex-col justify-center">
       {view === 'menu' && (
         <EvaluationMenu
           onStart={(exercises) => {
