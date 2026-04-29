@@ -20,7 +20,7 @@ export default function AccentuationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="flex-1 flex flex-col justify-center">
       {view === 'recording' && <RecordingScreen onFinish={handleSessionFinish} />}
       {view === 'results' && sessionResult && (
         <AccentuationResultsScreen result={sessionResult} onReset={handleReset} />
