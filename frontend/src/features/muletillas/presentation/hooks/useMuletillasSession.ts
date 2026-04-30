@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import { toMuletillasEvaluation } from '../../infrastructure/mappers/muletillasMapper'
 import { HttpMuletillasRepository } from '../../infrastructure/repositories/HttpMuletillasRepository'
 import type { MuletillasEvaluation } from '../../domain/MuletillasSession'
-import useAudioRecorder from '../../../../../shared/hooks/useAudioRecorder'
+import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder'
 
 // Fases del flujo de evaluacion: pregunta -> grabando -> evaluando -> resultados
 export type MuletillasPhase = 'idle' | 'question' | 'recording' | 'evaluating' | 'results'
