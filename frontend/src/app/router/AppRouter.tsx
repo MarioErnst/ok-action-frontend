@@ -7,6 +7,7 @@ import EvaluationPage from '../../features/phonation/pages/EvaluationPage'
 import PronunciationPage from '../../features/pronunciation/pages/PronunciationPage'
 import AccentuationPage from '../../features/accentuation/pages/AccentuationPage'
 import LoudnessCoachPage from '../../features/loudness/pages/LoudnessCoachPage'
+import MuletillasPage from '../../features/muletillas/presentation/pages/MuletillasPage'
 
 export const AppRouter = () => (
   <Routes>
@@ -19,6 +20,7 @@ export const AppRouter = () => (
         <Route path="/pronunciacion" element={<PronunciationPage />} />
         <Route path="/acentuacion" element={<AccentuationPage />} />
         <Route path="/volumen" element={<LoudnessCoachPage />} />
+        <Route path="/muletillas" element={<MuletillasPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>
