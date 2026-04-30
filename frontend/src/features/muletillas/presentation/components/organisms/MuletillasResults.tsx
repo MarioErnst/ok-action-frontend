@@ -90,7 +90,8 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         </div>
       )}
 
-      {!hasMuletillas && (
+      {/* Solo se muestra cuando hubo habla real pero sin muletillas — no en silencio */}
+      {!hasMuletillas && result.overallScore > 0 && (
         <div className="bg-green-400/10 border border-green-400/30 rounded-xl p-4 text-center">
           <p className="text-green-400 font-semibold text-sm sm:text-base">
             Excelente. No se detectaron muletillas en tu respuesta.
