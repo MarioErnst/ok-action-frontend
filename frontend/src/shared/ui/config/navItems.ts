@@ -13,4 +13,5 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/pronunciacion', icon: 'pronunciation', label: 'Pronunciación' },
   { to: '/acentuacion', icon: 'accentuation', label: 'Acentuación' },
   { to: '/volumen', icon: 'loudness', label: 'Volumen' },
+  { to: '/muletillas', icon: 'muletillas', label: 'Muletillas' },
 ]
