@@ -5,6 +5,7 @@ type AuthStore = {
   user: User | null;
   accessToken: string | null;
   setAuth: (user: User, token: string) => void;
+  updateUser: (user: Partial<User>) => void;
   logout: () => void;
 };
 
@@ -18,6 +19,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
     localStorage.setItem('auth_user', JSON.stringify(user));
     localStorage.setItem('auth_token', token);
     set({ user, accessToken: token });
+  },
+  updateUser: (partialUser) => {
+    set((state) => {
+      if (!state.user) return state;
+      const updatedUser = { ...state.user, ...partialUser };
+      localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+      return { user: updatedUser };
+    });
   },
   logout: () => {
     localStorage.removeItem('auth_user');

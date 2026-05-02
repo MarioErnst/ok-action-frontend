@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
+import { useAuthStore } from '../../auth/presentation/store/authStore';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
 import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
@@ -10,6 +11,15 @@ export default function LoudnessCoachPage() {
   const [selectedPreset, setSelectedPreset] = useState<LoudnessPreset | null>(null);
   const [presets, setPresets] = useState<LoudnessPreset[]>(LOUDNESS_PRESETS);
   const coach = useLoudnessCoach(selectedPreset ?? presets[0]);
+  const { user, updateUser } = useAuthStore();
+
+  useEffect(() => {
+    if (user && !user.completedExercises?.includes('volumen')) {
+      updateUser({
+        completedExercises: [...(user.completedExercises || []), 'volumen']
+      });
+    }
+  }, [user, updateUser]);
 
   useEffect(() => {
     HttpLoudnessRepository.listPresets()

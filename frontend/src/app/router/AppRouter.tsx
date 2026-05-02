@@ -7,6 +7,8 @@ import EvaluationPage from '../../features/phonation/pages/EvaluationPage'
 import PronunciationPage from '../../features/pronunciation/pages/PronunciationPage'
 import AccentuationPage from '../../features/accentuation/pages/AccentuationPage'
 import LoudnessCoachPage from '../../features/loudness/pages/LoudnessCoachPage'
+import ProfilePage from '../../features/auth/presentation/pages/ProfilePage'
+import ExerciseHistoryPage from '../../features/auth/presentation/pages/ExerciseHistoryPage'
 
 export const AppRouter = () => (
   <Routes>
@@ -19,6 +21,8 @@ export const AppRouter = () => (
         <Route path="/pronunciacion" element={<PronunciationPage />} />
         <Route path="/acentuacion" element={<AccentuationPage />} />
         <Route path="/volumen" element={<LoudnessCoachPage />} />
+        <Route path="/perfil" element={<ProfilePage />} />
+        <Route path="/perfil/ejercicios/:type" element={<ExerciseHistoryPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>

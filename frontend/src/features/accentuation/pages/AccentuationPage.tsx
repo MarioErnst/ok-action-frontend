@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AccentuationResultsScreen from '../components/organisms/AccentuationResultsScreen';
+import { useAuthStore } from '../../auth/presentation/store/authStore';
 import RecordingScreen from '../components/organisms/RecordingScreen';
 import type { AccentuationSessionResult } from '../types';
 
@@ -8,6 +9,15 @@ type AccentuationView = 'recording' | 'results';
 export default function AccentuationPage() {
   const [view, setView] = useState<AccentuationView>('recording');
   const [sessionResult, setSessionResult] = useState<AccentuationSessionResult | null>(null);
+  const { user, updateUser } = useAuthStore();
+
+  useEffect(() => {
+    if (user && !user.completedExercises?.includes('acentuacion')) {
+      updateUser({
+        completedExercises: [...(user.completedExercises || []), 'acentuacion']
+      });
+    }
+  }, [user, updateUser]);
 
   function handleSessionFinish(result: AccentuationSessionResult) {
     setSessionResult(result);

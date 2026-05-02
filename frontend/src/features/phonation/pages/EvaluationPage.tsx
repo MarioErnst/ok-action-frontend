@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { EvaluationMenu } from '../components/organisms/EvaluationMenu';
+import { useAuthStore } from '../../auth/presentation/store/authStore';
 import { EvaluationScreen } from '../components/organisms/EvaluationScreen';
 import { ResultsScreen } from '../components/organisms/ResultsScreen';
 import type { PhonationFrame, VoiceExercise } from '../types';
@@ -10,6 +11,15 @@ export default function EvaluationPage() {
   const [view, setView] = useState<EvaluationView>('menu');
   const [recordedResults, setRecordedResults] = useState<Map<string, PhonationFrame[]> | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<VoiceExercise[]>([]);
+  const { user, updateUser } = useAuthStore();
+
+  useEffect(() => {
+    if (user && !user.completedExercises?.includes('fonacion')) {
+      updateUser({
+        completedExercises: [...(user.completedExercises || []), 'fonacion']
+      });
+    }
+  }, [user, updateUser]);
 
   return (
     <div className="flex-1 flex flex-col justify-center">

@@ -3,4 +3,6 @@ export type User = {
   email: string;
   fullName: string;
   isActive: boolean;
+  avatar?: string;
+  completedExercises?: string[];
 };
