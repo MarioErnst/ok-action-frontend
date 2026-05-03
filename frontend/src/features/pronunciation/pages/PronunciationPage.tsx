@@ -1,3 +1,4 @@
+// Documentacion detallada de este modulo: documentacion/modulos/pronunciacion.md
 import LevelSelectionScreen from '../components/organisms/LevelSelectionScreen'
 import PronunciationResultsScreen from '../components/organisms/PronunciationResultsScreen'
 import RecordingScreen from '../components/organisms/RecordingScreen'
