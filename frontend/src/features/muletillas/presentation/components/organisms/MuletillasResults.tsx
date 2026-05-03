@@ -29,7 +29,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         Resultado de tu evaluacion
       </h2>
 
-      {/* Pregunta respondida como referencia */}
+      {/* Answered question shown for reference */}
       <div className="bg-[#232B38] rounded-xl p-3 sm:p-4 border border-[#334155]">
         <p className="text-[#9CA3AF] text-xs uppercase tracking-widest mb-1">Pregunta respondida</p>
         <p className="text-[#F8FAFC] text-sm sm:text-base">{questionText}</p>
@@ -43,7 +43,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
           <ScoreCircle score={result.muletillasScore} label="Sin muletillas" />
         </div>
 
-        {/* Contador de muletillas detectadas */}
+        {/* Detected muletillas counter */}
         <div className="mt-4 pt-4 border-t border-[#334155] flex justify-between items-center">
           <span className="text-[#9CA3AF] text-sm">Muletillas detectadas</span>
           <span className="text-[#F8FAFC] font-bold text-lg">
@@ -57,7 +57,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         </div>
       </div>
 
-      {/* Feedback general */}
+      {/* General feedback */}
       <div className="bg-[#232B38] rounded-xl p-4 sm:p-5 border border-[#334155] space-y-3">
         <p className="text-[#F8FAFC] text-sm sm:text-base leading-relaxed">{result.feedback}</p>
         {result.strengths && (
@@ -78,7 +78,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         )}
       </div>
 
-      {/* Lista detallada de muletillas */}
+      {/* Detailed muletillas list */}
       {hasMuletillas && (
         <div className="space-y-2 sm:space-y-3">
           <h3 className="text-[#F8FAFC] text-sm font-semibold uppercase tracking-wide">
@@ -90,7 +90,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         </div>
       )}
 
-      {/* Solo se muestra cuando hubo habla real pero sin muletillas — no en silencio */}
+      {/* Only shown when there was real speech but no muletillas — not on silence */}
       {!hasMuletillas && result.overallScore > 0 && (
         <div className="bg-green-400/10 border border-green-400/30 rounded-xl p-4 text-center">
           <p className="text-green-400 font-semibold text-sm sm:text-base">
