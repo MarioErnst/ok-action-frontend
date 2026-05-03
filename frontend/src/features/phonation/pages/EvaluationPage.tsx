@@ -1,3 +1,4 @@
+// Documentacion detallada de este modulo: documentacion/modulos/fonacion.md
 import { useState } from 'react';
 import { EvaluationMenu } from '../components/organisms/EvaluationMenu';
 import { EvaluationScreen } from '../components/organisms/EvaluationScreen';
