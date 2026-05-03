@@ -1,3 +1,4 @@
+// Documentacion detallada de este modulo: documentacion/modulos/muletillas.md
 import { useEffect } from 'react'
 import useMuletillasSession from '../hooks/useMuletillasSession'
 import QuestionScreen from '../components/organisms/QuestionScreen'
