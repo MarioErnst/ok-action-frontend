@@ -1,3 +1,4 @@
+// Documentacion detallada de este modulo: documentacion/modulos/volumen.md
 import { useEffect, useState } from 'react';
 import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
