@@ -1,11 +1,11 @@
-// Logica de sesion del modulo de muletillas: documentacion/modulos/muletillas.md
+// Session logic for the muletillas module: documentacion/modulos/muletillas.md
 import { useCallback, useRef, useState } from 'react'
 import { toMuletillasEvaluation } from '../../infrastructure/mappers/muletillasMapper'
 import { HttpMuletillasRepository } from '../../infrastructure/repositories/HttpMuletillasRepository'
 import type { MuletillasEvaluation } from '../../domain/MuletillasSession'
 import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder'
 
-// Fases del flujo de evaluacion: pregunta -> grabando -> evaluando -> resultados
+// Evaluation flow phases: question -> recording -> evaluating -> results
 export type MuletillasPhase = 'idle' | 'question' | 'recording' | 'evaluating' | 'results'
 
 export default function useMuletillasSession() {
@@ -18,7 +18,7 @@ export default function useMuletillasSession() {
   const { isRecording, recordingError, startRecording, stopRecording, releaseResources } =
     useAudioRecorder()
 
-  // Ref para mantener la pregunta disponible durante el ciclo completo de evaluacion
+  // Ref to keep the question available throughout the full evaluation cycle
   const questionRef = useRef<string>('')
 
   const loadQuestion = useCallback(async () => {
@@ -53,7 +53,7 @@ export default function useMuletillasSession() {
       const dto = await HttpMuletillasRepository.evaluateResponse(audioBlob, questionRef.current)
       const evaluation = toMuletillasEvaluation(dto)
 
-      // Guardar la sesion en BD de forma no bloqueante para no retrasar la visualizacion
+      // Save session to DB without blocking to avoid delaying result display
       HttpMuletillasRepository.saveSession({
         question_text: questionRef.current,
         overall_score: dto.overall_score,
