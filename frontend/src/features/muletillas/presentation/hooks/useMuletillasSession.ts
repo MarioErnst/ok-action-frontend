@@ -1,3 +1,4 @@
+// Logica de sesion del modulo de muletillas: documentacion/modulos/muletillas.md
 import { useCallback, useRef, useState } from 'react'
 import { toMuletillasEvaluation } from '../../infrastructure/mappers/muletillasMapper'
 import { HttpMuletillasRepository } from '../../infrastructure/repositories/HttpMuletillasRepository'
