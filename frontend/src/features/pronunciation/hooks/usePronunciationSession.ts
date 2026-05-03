@@ -1,3 +1,4 @@
+// Logica de sesion del modulo de pronunciacion: documentacion/modulos/pronunciacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toPhrasePronunciation, averagePronunciationMetrics } from '../infrastructure/mappers/pronunciationMapper';
 import { HttpPronunciationRepository } from '../infrastructure/repositories/HttpPronunciationRepository';
