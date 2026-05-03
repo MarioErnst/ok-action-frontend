@@ -25,8 +25,8 @@ export const EvaluationScreen = ({ onFinish, exercises }: EvaluationScreenProps)
     }
   }, [session.phase, session.recordedResults, onFinish]);
 
-  // Si acabamos de iniciar la pantalla y está en 'idle', iniciamos la sesión automáticamente
-  // para mantener el flujo directo que pide el usuario
+  // Start the session automatically when the screen first enters 'idle'
+  // to preserve the direct flow the user expects
   useEffect(() => {
     if (session.phase === 'idle') {
       void session.startSession();
@@ -35,7 +35,7 @@ export const EvaluationScreen = ({ onFinish, exercises }: EvaluationScreenProps)
 
   return (
     <div className="flex min-h-[100dvh] w-full flex-col bg-bg">
-      {/* Header (Misma onda que el menú) */}
+      {/* Header (same style as the menu) */}
       <div className="bg-gradient-to-b from-accent/10 to-transparent px-4 pt-8 pb-4">
         <div className="mx-auto w-full max-w-md text-center">
           <h1 className="text-2xl font-bold text-text">Evaluación de Voz</h1>
