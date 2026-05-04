@@ -1,3 +1,4 @@
+// Session logic for the loudness module: documentacion/modulos/volumen.md
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
 import { computeEffectiveConfig } from '../services/loudnessEffectiveConfig';

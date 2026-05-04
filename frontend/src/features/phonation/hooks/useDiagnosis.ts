@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { VOICE_EXERCISES } from '../services/exercises';
 import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../types';
 
-// --- Umbrales basados en literatura científica ---
+// --- Thresholds based on scientific literature ---
 const F0_SD_NORMAL_MAX = 5;
 const F0_SD_PATHOLOGICAL = 15;
 const BREAK_MIN_DURATION_FRAMES = 3;
@@ -31,9 +31,9 @@ function calculateStandardDeviation(values: number[]): number {
 function sustainedStability(hzValues: number[]): number {
   if (hzValues.length === 0) return 0;
   
-  // Limpiar outliers que disparan la desviación estándar (errores de YIN típicos como octavación)
+  // Remove outliers that inflate standard deviation (typical YIN errors such as octave jumps)
   const mean = calculateAverage(hzValues);
-  const cleanValues = hzValues.filter(hz => Math.abs(hz - mean) < mean * 0.3); // Excluir variaciones > 30% de la media
+  const cleanValues = hzValues.filter(hz => Math.abs(hz - mean) < mean * 0.3); // Exclude variations > 30% of the mean
   
   if (cleanValues.length < 2) return 0;
   
@@ -109,7 +109,7 @@ function countRealBreaks(frames: PhonationFrame[], exerciseType: VoiceExercise['
 }
 
 function analyzeExercise(exercise: VoiceExercise, frames: PhonationFrame[]): ExerciseResult {
-  // Aseguramos de filtrar no solo null, sino que hz > 0
+  // Filter out null values and hz <= 0 to avoid invalid frames
   const voicedHzValues = frames.filter(f => f.hz !== null && f.hz > 0).map((f) => f.hz!);
   const avgHz = calculateAverage(voicedHzValues);
 
@@ -146,7 +146,7 @@ export default function useDiagnosis(
   const result = useMemo<SessionResult | null>(() => {
     if (recordedResults.size === 0) return null;
 
-    // Solo ejercicios con datos reales
+    // Only exercises with actual recorded data
     const activeExercises = exercises.filter((e) => {
       const frames = recordedResults.get(e.id);
       return frames && frames.length > 0;
@@ -159,7 +159,7 @@ export default function useDiagnosis(
       return analyzeExercise(exercise, frames);
     });
 
-    // Filtrar por exerciseId en lugar de índice
+    // Filter by exerciseId instead of array index
     const sustained = exerciseResults.filter((r) => {
       const ex = activeExercises.find(e => e.id === r.exerciseId);
       return ex?.type === 'sustained';

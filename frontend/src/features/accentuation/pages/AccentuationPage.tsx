@@ -1,3 +1,4 @@
+// Full module documentation: documentacion/modulos/acentuacion.md
 import { useState } from 'react';
 import AccentuationResultsScreen from '../components/organisms/AccentuationResultsScreen';
 import RecordingScreen from '../components/organisms/RecordingScreen';

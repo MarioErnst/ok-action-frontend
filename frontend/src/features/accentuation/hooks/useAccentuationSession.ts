@@ -1,3 +1,4 @@
+// Session logic for the accentuation module: documentacion/modulos/acentuacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toPhraseEvaluation } from '../infrastructure/mappers/accentuationMapper';
 import { HttpAccentuationRepository } from '../infrastructure/repositories/HttpAccentuationRepository';

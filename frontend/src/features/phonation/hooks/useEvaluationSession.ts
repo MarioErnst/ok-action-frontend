@@ -1,3 +1,4 @@
+// Session logic for the phonation module: documentacion/modulos/fonacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
 import useVoiceMonitor from '../hooks/useVoiceMonitor';
 import { VOICE_EXERCISES } from '../services/exercises';
