@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AnalysisResult, CorrectionEvent, LiveDim, LiveSessionPhase } from '../../domain/LiveSession'
 import { AudioCapture } from '../../services/audioCapture'
-
-const WS_BASE_URL =
-  (globalThis as { __APP_WS_URL__?: string }).__APP_WS_URL__ ??
-  import.meta.env.VITE_WS_URL ??
-  `ws://${window.location.host}/api`
+import { WS_BASE_URL } from '../../../../api/client'
 
 export interface LiveSessionControls {
   phase: LiveSessionPhase

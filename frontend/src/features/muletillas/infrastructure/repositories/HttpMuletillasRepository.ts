@@ -1,4 +1,4 @@
-import { apiRequest, ApiError } from '../../../../api/client'
+import { apiRequest, ApiError, API_BASE_URL } from '../../../../api/client'
 import type {
   MuletillasEvaluationDto,
   MuletillasSessionDto,
@@ -6,11 +6,6 @@ import type {
   RandomQuestionDto,
   SaveMuletillasSessionDto,
 } from '../dto/MuletillasDtos'
-
-const API_BASE_URL =
-  (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ??
-  import.meta.env.VITE_API_URL ??
-  '/api'
 
 async function evaluateResponse(
   audioBlob: Blob,

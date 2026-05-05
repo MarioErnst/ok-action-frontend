@@ -1,15 +1,10 @@
-import { apiRequest, ApiError } from '../../../../api/client';
+import { apiRequest, ApiError, API_BASE_URL } from '../../../../api/client';
 import type {
   AccentuationSessionDto,
   AccentuationSessionListItemDto,
   PhraseEvaluationDto,
   SaveAccentuationSessionDto,
 } from '../dto/AccentuationDtos';
-
-const API_BASE_URL =
-  (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ??
-  import.meta.env.VITE_API_URL ??
-  '/api';
 
 async function evaluatePhrase(
   audioBlob: Blob,
