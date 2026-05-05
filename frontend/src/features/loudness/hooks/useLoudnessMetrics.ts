@@ -1,7 +1,7 @@
 // Accumulates per-frame loudness metrics during an active session.
 // Used exclusively by useLoudnessCoach; not part of the public API.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PhonationFrame } from '../../phonation/types';
+import type { AudioFrame } from '../../../shared/types/audioTypes';
 import { classifyLoudness } from '../services/loudnessClassifier';
 import type { LoudnessConfig, LoudnessMetrics } from '../types';
 
@@ -55,7 +55,7 @@ interface UseLoudnessMetricsResult {
  *   and resets the anchor so calibration frames are never counted.
  */
 export function useLoudnessMetrics(
-  frames: PhonationFrame[],
+  frames: AudioFrame[],
   noiseFloor: number,
   effectiveConfig: LoudnessConfig | null,
 ): UseLoudnessMetricsResult {
