@@ -31,6 +31,7 @@ src/features/loudness/
     LoudnessCoachPage.tsx       carga presets, seleccion, monta el panel de coaching
   components/organisms/
     LoudnessCoachPanel.tsx      panel principal con medidor, mensajes y metricas
+    PresetSelector.tsx          pantalla de seleccion de preset antes de iniciar sesion
   components/molecules/
     LoudnessMeter.tsx           visualizacion del nivel de dB en tiempo real
     CoachMessage.tsx            mensaje contextual segun la banda actual
@@ -117,6 +118,10 @@ usuario, se usan los presets locales de `services/loudnessPresets.ts`.
 
 `LoudnessCoachPage` carga los presets con `HttpLoudnessRepository.listPresets()` al montar.
 Si la llamada falla, mantiene los presets locales sin mostrar error bloqueante al usuario.
+
+La pantalla de seleccion de preset esta encapsulada en el organism `PresetSelector`, que recibe
+`presets: LoudnessPreset[]` y `onSelect(preset: LoudnessPreset): void`. La pagina mantiene el
+estado `selectedPreset` y lo pasa a `useLoudnessCoach`; `PresetSelector` no conoce ese estado.
 
 ## 8. Tipos de dominio
 
