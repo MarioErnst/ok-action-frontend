@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PhonationFrame } from '../../phonation/types';
+import type { AudioFrame } from '../../../shared/types/audioTypes';
 import { computeVoiceBaseline } from '../services/loudnessEffectiveConfig';
 
 const BASELINE_DURATION_MS = 10_000;
@@ -14,7 +14,7 @@ export default function useVoiceBaseline(
   noiseFloor: number,
   isCalibrating: boolean,
   isListening: boolean,
-  frames: PhonationFrame[],
+  frames: AudioFrame[],
 ): UseVoiceBaselineResult {
   const [voiceBaseline, setVoiceBaseline] = useState<number | null>(null);
   const [isBaselineCalibrating, setIsBaselineCalibrating] = useState(false);
