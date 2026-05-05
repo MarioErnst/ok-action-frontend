@@ -9,7 +9,7 @@ type Props = {
 
 function ScoreCircle({ score, label }: { score: number; label: string }) {
   const color =
-    score >= 70 ? 'text-green-400' : score >= 40 ? 'text-yellow-400' : 'text-red-400'
+    score >= 70 ? 'text-success' : score >= 40 ? 'text-warning' : 'text-danger'
   return (
     <div className="flex flex-col items-center gap-1">
       <span className={`text-2xl sm:text-3xl font-bold ${color}`}>
@@ -62,7 +62,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         <p className="text-[#F8FAFC] text-sm sm:text-base leading-relaxed">{result.feedback}</p>
         {result.strengths && (
           <div>
-            <p className="text-green-400 text-xs font-semibold uppercase tracking-wide mb-1">
+            <p className="text-success text-xs font-semibold uppercase tracking-wide mb-1">
               Fortalezas
             </p>
             <p className="text-[#9CA3AF] text-sm leading-relaxed">{result.strengths}</p>
@@ -70,7 +70,7 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
         )}
         {result.improvementAreas && (
           <div>
-            <p className="text-amber-400 text-xs font-semibold uppercase tracking-wide mb-1">
+            <p className="text-warning text-xs font-semibold uppercase tracking-wide mb-1">
               Areas de mejora
             </p>
             <p className="text-[#9CA3AF] text-sm leading-relaxed">{result.improvementAreas}</p>
@@ -92,8 +92,8 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
 
       {/* Only shown when there was real speech but no muletillas — not on silence */}
       {!hasMuletillas && result.overallScore > 0 && (
-        <div className="bg-green-400/10 border border-green-400/30 rounded-xl p-4 text-center">
-          <p className="text-green-400 font-semibold text-sm sm:text-base">
+        <div className="bg-success/10 border border-success/30 rounded-xl p-4 text-center">
+          <p className="text-success font-semibold text-sm sm:text-base">
             Excelente. No se detectaron muletillas en tu respuesta.
           </p>
         </div>
