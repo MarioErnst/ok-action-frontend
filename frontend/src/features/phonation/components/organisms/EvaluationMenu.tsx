@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
 import { VOICE_EXERCISES } from '../../services/exercises';
 import type { VoiceExercise } from '../../types';
+import { useExerciseSelection } from '../../hooks/useExerciseSelection';
 
 interface EvaluationMenuProps {
   onStart: (selectedExercises: VoiceExercise[]) => void;
@@ -12,58 +12,14 @@ const typeLabels: Record<VoiceExercise['type'], string> = {
   glissando: 'Glissando',
 };
 
-const typeGradients: Record<VoiceExercise['type'], string> = {
-  sustained: 'from-amber-500/20 to-amber-500/5',
-  phrase: 'from-emerald-500/20 to-emerald-500/5',
-  glissando: 'from-violet-500/20 to-violet-500/5',
-};
-
-const typeBorderColors: Record<VoiceExercise['type'], string> = {
-  sustained: 'border-amber-500/30',
-  phrase: 'border-emerald-500/30',
-  glissando: 'border-violet-500/30',
-};
-
-const typeIconBg: Record<VoiceExercise['type'], string> = {
-  sustained: 'bg-amber-500/20',
-  phrase: 'bg-emerald-500/20',
-  glissando: 'bg-violet-500/20',
-};
-
 const exerciseTypes: VoiceExercise['type'][] = ['sustained', 'phrase', 'glissando'];
 
 export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(VOICE_EXERCISES.map((e) => e.id)),
-  );
-
-  const toggleExercise = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const selectAll = useCallback(() => {
-    setSelectedIds(new Set(VOICE_EXERCISES.map((e) => e.id)));
-  }, []);
-
-  const deselectAll = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
-
-  const selectedCount = selectedIds.size;
-  const totalDuration = VOICE_EXERCISES.filter((e) => selectedIds.has(e.id))
-    .reduce((sum, e) => sum + e.durationMs, 0);
-  const totalSeconds = Math.round(totalDuration / 1000);
+  const { selectedIds, selectedCount, toggle, selectAll, deselectAll, getSelectedExercises } =
+    useExerciseSelection();
 
   const handleStart = () => {
-    const selected = VOICE_EXERCISES.filter((e) => selectedIds.has(e.id));
+    const selected = getSelectedExercises();
     if (selected.length > 0) {
       onStart(selected);
     }
@@ -71,7 +27,7 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-8 p-6 pb-28 relative z-10">
-      {/* Header con gradiente */}
+      {/* Header */}
       <div className="flex flex-col items-center gap-3 relative text-center mt-4">
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
         <p className="text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] relative z-10">Evaluación de Voz</p>
@@ -128,7 +84,7 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
                       <button
                         key={exercise.id}
                         type="button"
-                        onClick={() => toggleExercise(exercise.id)}
+                        onClick={() => toggle(exercise.id)}
                         className={`group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-300 active:scale-95 ${
                           isSelected
                             ? `border-accent/60 bg-surface/80 shadow-[0_5px_15px_-5px_rgba(245,158,11,0.15)]`
