@@ -49,7 +49,11 @@ export function useLiveSession(): LiveSessionControls {
   }, [])
 
   const endSession = useCallback(() => {
-    wsRef.current?.send(JSON.stringify({ type: 'end' }))
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'end' }))
+    } else {
+      wsRef.current?.close()
+    }
     captureRef.current?.stop()
     if (timerRef.current) clearInterval(timerRef.current)
   }, [])
