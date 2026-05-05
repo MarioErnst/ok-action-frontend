@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { EvaluationMenu } from '../components/organisms/EvaluationMenu';
 import { EvaluationScreen } from '../components/organisms/EvaluationScreen';
 import { ResultsScreen } from '../components/organisms/ResultsScreen';
-import type { PhonationFrame, VoiceExercise } from '../types';
+import type { SessionResult, VoiceExercise } from '../types';
 
 type EvaluationView = 'menu' | 'evaluating' | 'results';
 
 export default function EvaluationPage() {
   const [view, setView] = useState<EvaluationView>('menu');
-  const [recordedResults, setRecordedResults] = useState<Map<string, PhonationFrame[]> | null>(null);
+  const [diagnosisResult, setDiagnosisResult] = useState<SessionResult | null>(null);
   const [selectedExercises, setSelectedExercises] = useState<VoiceExercise[]>([]);
 
   return (
@@ -26,19 +26,18 @@ export default function EvaluationPage() {
       {view === 'evaluating' && (
         <EvaluationScreen
           exercises={selectedExercises}
-          onFinish={(results) => {
-            setRecordedResults(results);
+          onFinish={(result) => {
+            setDiagnosisResult(result);
             setView('results');
           }}
         />
       )}
 
-      {view === 'results' && recordedResults !== null && (
+      {view === 'results' && (
         <ResultsScreen
-          recordedResults={recordedResults}
-          exercises={selectedExercises}
+          result={diagnosisResult}
           onReset={() => {
-            setRecordedResults(null);
+            setDiagnosisResult(null);
             setSelectedExercises([]);
             setView('menu');
           }}

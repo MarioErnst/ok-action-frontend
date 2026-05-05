@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
-import type { PhonationFrame, VoiceExercise } from '../../types';
+import type { SessionResult, VoiceExercise } from '../../types';
 import useEvaluationSession from '../../hooks/useEvaluationSession';
 import { ExercisePrompt } from '../molecules/ExercisePrompt';
 import { LiveFeedback } from '../molecules/LiveFeedback';
 import { SessionProgress } from '../molecules/SessionProgress';
 
 interface EvaluationScreenProps {
-  onFinish: (results: Map<string, PhonationFrame[]>) => void;
+  // Receives SessionResult so the page can pass it to ResultsScreen without coupling.
+  onFinish: (result: SessionResult | null) => void;
   exercises?: VoiceExercise[];
 }
 
@@ -17,13 +18,13 @@ export const EvaluationScreen = ({ onFinish, exercises }: EvaluationScreenProps)
   useEffect(() => {
     if (session.phase === 'finished' && !hasNotifiedFinishRef.current) {
       hasNotifiedFinishRef.current = true;
-      onFinish(session.recordedResults);
+      onFinish(session.diagnosisResult);
     }
 
     if (session.phase !== 'finished') {
       hasNotifiedFinishRef.current = false;
     }
-  }, [session.phase, session.recordedResults, onFinish]);
+  }, [session.phase, session.diagnosisResult, onFinish]);
 
   // Start the session automatically when the screen first enters 'idle'
   // to preserve the direct flow the user expects

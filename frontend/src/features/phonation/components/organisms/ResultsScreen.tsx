@@ -1,13 +1,8 @@
-import useDiagnosis from '../../hooks/useDiagnosis';
 import { VOICE_EXERCISES } from '../../services/exercises';
-import type { PhonationFrame, VoiceExercise } from '../../types';
-import { useEffect, useRef } from 'react';
-import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpPhonationRepository';
-import { toSavePhonationSessionDto } from '../../infrastructure/mappers/phonationMapper';
+import type { SessionResult } from '../../types';
 
 interface ResultsScreenProps {
-  recordedResults: Map<string, PhonationFrame[]>;
-  exercises: VoiceExercise[];
+  result: SessionResult | null;
   onReset: () => void;
 }
 
@@ -28,21 +23,7 @@ function truncateInstruction(instruction: string, maxLength: number): string {
   return `${instruction.slice(0, maxLength - 3)}...`;
 }
 
-export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsScreenProps) => {
-  const { result } = useDiagnosis(recordedResults, exercises);
-
-  const savedRef = useRef(false);
-
-  useEffect(() => {
-    if (result && !savedRef.current) {
-      savedRef.current = true;
-      const dto = toSavePhonationSessionDto(result);
-      HttpPhonationRepository.saveSession(dto).catch((err) => {
-        console.error('Error saving phonation session:', err);
-      });
-    }
-  }, [result]);
-
+export const ResultsScreen = ({ result, onReset }: ResultsScreenProps) => {
   if (!result) {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 p-6">
@@ -61,7 +42,7 @@ export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsSc
     <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-8 p-6 pb-28 animate-fade-in relative z-10">
       <div className="flex flex-col items-center gap-4 relative">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-accent/10 blur-[50px] rounded-full pointer-events-none animate-pulse-glow" />
-        
+
         <div
           className={`relative flex h-36 w-36 items-center justify-center rounded-full border-4 ${scoreBorderClass} shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-surface/50 backdrop-blur-md transition-all duration-500 hover:scale-105`}
           style={result.overallScore >= 70 ? { boxShadow: '0 0 30px rgba(34,197,94,0.3)' } : result.overallScore >= 40 ? { boxShadow: '0 0 30px rgba(250,204,21,0.3)' } : { boxShadow: '0 0 30px rgba(239,68,68,0.3)' }}
@@ -114,7 +95,7 @@ export const ResultsScreen = ({ recordedResults, exercises, onReset }: ResultsSc
       <div className="w-full">
         <h2 className="text-xl font-extrabold text-text tracking-wide mb-3">Observaciones</h2>
         <div className="flex flex-col gap-2 bg-surface/40 backdrop-blur-sm p-5 rounded-3xl border border-border/50">
-          {result.observations.map((observation,_i) => (
+          {result.observations.map((observation) => (
             <p key={observation} className="text-sm font-medium text-text-muted flex items-start gap-2">
               <span className="text-accent mt-0.5">•</span>
               <span>{observation}</span>

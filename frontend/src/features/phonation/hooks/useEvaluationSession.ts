@@ -1,8 +1,11 @@
 // Session logic for the phonation module: documentacion/modulos/fonacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
-import useVoiceMonitor from '../hooks/useVoiceMonitor';
+import { toSavePhonationSessionDto } from '../infrastructure/mappers/phonationMapper';
+import { HttpPhonationRepository } from '../infrastructure/repositories/HttpPhonationRepository';
 import { VOICE_EXERCISES } from '../services/exercises';
-import type { PhonationFrame, VoiceExercise } from '../types';
+import type { PhonationFrame, SessionResult, VoiceExercise } from '../types';
+import useDiagnosis from './useDiagnosis';
+import useVoiceMonitor from './useVoiceMonitor';
 
 export type SessionPhase = 'idle' | 'countdown' | 'recording' | 'finished';
 
@@ -181,6 +184,33 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
     };
   }, [clearCountdownInterval, clearElapsedInterval]);
 
+  // Diagnosis is computed here so the hook owns all session data including results.
+  // The organism receives the computed result as a prop and stays purely visual.
+  const { result: diagnosisResult } = useDiagnosis(
+    phase === 'finished' ? recordedResults : new Map<string, PhonationFrame[]>(),
+    exercises,
+  );
+
+  const savedRef = useRef(false);
+
+  // Save the session to the backend once, when the diagnosis result is available.
+  // Persistence belongs in the hook, not in the results organism.
+  useEffect(() => {
+    if (diagnosisResult && !savedRef.current) {
+      savedRef.current = true;
+      const dto = toSavePhonationSessionDto(diagnosisResult);
+      HttpPhonationRepository.saveSession(dto).catch((err) => {
+        console.error('Error saving phonation session:', err);
+      });
+    }
+  }, [diagnosisResult]);
+
+  useEffect(() => {
+    if (phase !== 'finished') {
+      savedRef.current = false;
+    }
+  }, [phase]);
+
   return {
     phase,
     currentExercise,
@@ -189,6 +219,7 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
     countdown,
     elapsedMs,
     recordedResults,
+    diagnosisResult,
     hz,
     db,
     isCalibrating,
