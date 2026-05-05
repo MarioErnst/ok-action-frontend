@@ -1,17 +1,16 @@
 import type { AnalysisResult, LiveDim } from '../../../domain/LiveSession'
 import { DIM_LABELS } from '../../../domain/liveDimLabels'
 
-function ScoreBadge({ score }: { score: number }) {
-  // Color thresholds: green >= 70, yellow >= 40, red below 40.
-  const color =
-    score >= 70 ? 'text-green-600 bg-green-50' :
-    score >= 40 ? 'text-yellow-600 bg-yellow-50' :
-                  'text-red-600 bg-red-50'
-  return (
-    <span className={`text-lg font-bold px-2 py-1 rounded-lg ${color}`}>
-      {score}
-    </span>
-  )
+function scoreColor(score: number) {
+  if (score >= 70) return 'text-success'
+  if (score >= 40) return 'text-warning'
+  return 'text-danger'
+}
+
+function scoreBg(score: number) {
+  if (score >= 70) return 'bg-success/10 border-success/30'
+  if (score >= 40) return 'bg-warning/10 border-warning/30'
+  return 'bg-danger/10 border-danger/30'
 }
 
 interface Props {
@@ -25,36 +24,37 @@ export function LiveFeedbackPanel({ analysis, selectedDims, elapsedSeconds }: Pr
   const seconds = (elapsedSeconds % 60).toString().padStart(2, '0')
 
   return (
-    <div className="w-full rounded-2xl border border-gray-100 bg-white shadow-sm p-4 flex flex-col gap-4">
+    <div className="w-full rounded-2xl border border-border/50 bg-surface/80 backdrop-blur-md p-4 flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-500 font-medium">Análisis en tiempo real</span>
-        <span className="font-mono text-sm text-gray-400">{minutes}:{seconds}</span>
+        <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Análisis en vivo</p>
+        <span className="font-mono text-xs text-accent">{minutes}:{seconds}</span>
       </div>
 
-      <div className="grid gap-3">
+      <div className="flex flex-col gap-3">
         {selectedDims.map((dim) => {
           const dimData = analysis.dims[dim]
           if (!dimData) return null
-          // Count both typed error arrays and detected muletillas entries.
           const errorCount = (dimData.err?.length ?? 0) + (dimData.det?.length ?? 0)
           return (
             <div key={dim} className="flex items-center justify-between">
-              <div>
-                <span className="text-sm font-medium text-gray-700">{DIM_LABELS[dim]}</span>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-text">{DIM_LABELS[dim]}</span>
                 {errorCount > 0 && (
-                  <span className="ml-2 text-xs text-red-500">
-                    {errorCount} error{errorCount !== 1 ? 'es' : ''}
+                  <span className="text-xs text-danger">
+                    {errorCount} error{errorCount !== 1 ? 'es' : ''} detectado{errorCount !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
-              <ScoreBadge score={dimData.sc} />
+              <span className={`text-lg font-extrabold px-3 py-1 rounded-xl border ${scoreColor(dimData.sc)} ${scoreBg(dimData.sc)}`}>
+                {dimData.sc}
+              </span>
             </div>
           )
         })}
       </div>
 
       {analysis.fb && (
-        <p className="text-sm text-gray-600 border-t pt-3 border-gray-100 italic">
+        <p className="text-sm text-text-muted border-t border-border/40 pt-3 leading-relaxed italic">
           {analysis.fb}
         </p>
       )}
