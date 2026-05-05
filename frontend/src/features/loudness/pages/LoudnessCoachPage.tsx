@@ -1,5 +1,6 @@
 // Full module documentation: documentacion/modulos/volumen.md
 import { useEffect, useState } from 'react';
+import { useVoiceMonitor } from '../../phonation/index';
 import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
@@ -10,7 +11,10 @@ import type { LoudnessPreset } from '../types';
 export default function LoudnessCoachPage() {
   const [selectedPreset, setSelectedPreset] = useState<LoudnessPreset | null>(null);
   const [presets, setPresets] = useState<LoudnessPreset[]>(LOUDNESS_PRESETS);
-  const coach = useLoudnessCoach(selectedPreset ?? presets[0]);
+  // useVoiceMonitor is created here and injected into useLoudnessCoach so the
+  // hook layer (useLoudnessCoach) stays decoupled from the phonation feature.
+  const voiceMonitor = useVoiceMonitor();
+  const coach = useLoudnessCoach(selectedPreset ?? presets[0], voiceMonitor);
 
   useEffect(() => {
     HttpLoudnessRepository.listPresets()
