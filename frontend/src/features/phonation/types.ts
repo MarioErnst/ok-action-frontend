@@ -1,8 +1,6 @@
-export interface PhonationFrame {
-  hz: number | null;
-  db: number;
-  timestamp: number;
-}
+// PhonationFrame is an alias for the shared AudioFrame type.
+// The shared type is the source of truth; this alias keeps phonation internals unchanged.
+export type { AudioFrame as PhonationFrame } from '../../../shared/types/audioTypes';
 
 export interface VoiceExercise {
   id: string;
