@@ -1,6 +1,6 @@
 // Session logic for the loudness module: documentacion/modulos/volumen.md
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useVoiceMonitor } from '../../phonation/index';
+import type { VoiceMonitor } from '../../../shared/types/audioTypes';
 import { toSaveLoudnessSessionDto } from '../infrastructure/mappers/loudnessMapper';
 import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
 import { computeEffectiveConfig } from '../services/loudnessEffectiveConfig';
@@ -66,7 +66,12 @@ function updateOptimalPercent(metrics: LoudnessMetrics): void {
   metrics.optimalPercent = activeTimeMs > 0 ? (metrics.bandTimeMs.optimal / activeTimeMs) * 100 : 0;
 }
 
-export default function useLoudnessCoach(preset: LoudnessPreset): {
+// voiceMonitor is injected so that loudness does not depend on phonation directly.
+// The caller (LoudnessCoachPage, LoudnessTestPage) creates the monitor and passes it in.
+export default function useLoudnessCoach(
+  preset: LoudnessPreset,
+  voiceMonitor: VoiceMonitor,
+): {
   band: LoudnessBand;
   db: number;
   noiseFloor: number;
@@ -85,7 +90,7 @@ export default function useLoudnessCoach(preset: LoudnessPreset): {
     frames,
     start: startVoiceMonitor,
     stop: stopVoiceMonitor,
-  } = useVoiceMonitor();
+  } = voiceMonitor;
 
   const { voiceBaseline, isBaselineCalibrating } = useVoiceBaseline(
     noiseFloor,
