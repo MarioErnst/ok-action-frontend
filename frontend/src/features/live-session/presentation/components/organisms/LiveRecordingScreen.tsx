@@ -26,41 +26,42 @@ export function LiveRecordingScreen({
 }: Props) {
   const progressPercent = Math.min((elapsedSeconds / MAX_SESSION_SECONDS) * 100, 100)
   const remainingSeconds = Math.max(0, MAX_SESSION_SECONDS - elapsedSeconds)
+  const mins = Math.floor(remainingSeconds / 60)
+  const secs = String(remainingSeconds % 60).padStart(2, '0')
 
   return (
-    <div className="flex flex-col items-center gap-6 p-4 w-full max-w-md mx-auto min-h-screen pt-8">
+    <div className="flex flex-col items-center gap-6 p-4 w-full max-w-md mx-auto min-h-screen pt-8 animate-fade-in">
+
       {/* Session progress bar */}
       <div className="w-full">
-        <div className="flex justify-between text-xs text-gray-400 mb-1">
-          <span>Sesión libre</span>
-          <span>
-            {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')} restantes
-          </span>
+        <div className="flex justify-between text-xs text-text-muted mb-1.5">
+          <span className="font-bold uppercase tracking-widest text-accent">Sesión libre</span>
+          <span className="font-mono">{mins}:{secs} restantes</span>
         </div>
-        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full rounded-full bg-surface-alt overflow-hidden">
           <div
-            className="h-full bg-blue-500 transition-all duration-1000"
+            className="h-full rounded-full bg-accent transition-all duration-1000"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Recording indicator — spinner while connecting, pulse dot while active */}
-      <div className="flex flex-col items-center gap-3">
+      {/* Recording indicator */}
+      <div className="flex flex-col items-center gap-3 py-2">
         {phase === 'connecting' ? (
-          <div className="w-16 h-16 rounded-full border-4 border-gray-200 border-t-blue-500 animate-spin" />
+          <div className="w-16 h-16 rounded-full border-4 border-border border-t-accent animate-spin" />
         ) : (
           <div className="relative flex items-center justify-center w-16 h-16">
-            <div className="absolute w-16 h-16 rounded-full bg-red-100 animate-ping opacity-75" />
-            <div className="w-10 h-10 rounded-full bg-red-500" />
+            <div className="absolute w-16 h-16 rounded-full bg-danger/20 animate-ping opacity-75" />
+            <div className="w-10 h-10 rounded-full bg-danger shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
           </div>
         )}
-        <p className="text-sm text-gray-500">
+        <p className="text-sm font-medium text-text-muted">
           {phase === 'connecting' ? 'Conectando...' : 'Escuchando...'}
         </p>
       </div>
 
-      {/* Real-time feedback panel or placeholder before first analysis arrives */}
+      {/* Real-time feedback panel */}
       {latestAnalysis ? (
         <LiveFeedbackPanel
           analysis={latestAnalysis}
@@ -68,8 +69,8 @@ export function LiveRecordingScreen({
           elapsedSeconds={elapsedSeconds}
         />
       ) : (
-        <div className="w-full rounded-2xl border border-gray-100 bg-gray-50 p-6 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="w-full rounded-2xl border border-border/40 bg-surface/40 backdrop-blur-sm p-6 text-center">
+          <p className="text-sm text-text-muted">
             El análisis aparecerá aquí mientras hablas.
           </p>
         </div>
@@ -78,13 +79,12 @@ export function LiveRecordingScreen({
       {/* End session button */}
       <button
         onClick={onEnd}
-        className="w-full py-4 rounded-xl border-2 border-gray-200 text-gray-600 font-medium
-                   hover:border-red-300 hover:text-red-600 active:scale-95 transition-all"
+        className="w-full py-4 rounded-2xl border border-border/60 bg-surface-alt/50 text-text-muted
+                   font-medium hover:border-danger/50 hover:text-danger active:scale-95 transition-all duration-200"
       >
         Terminar sesión
       </button>
 
-      {/* Correction modal — shown when the session triggers a correction event */}
       {correction && (
         <CorrectionOverlay correction={correction} onContinue={onReset} />
       )}
