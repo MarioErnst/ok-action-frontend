@@ -1,6 +1,6 @@
 // Session logic for the accentuation module: documentacion/modulos/acentuacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toPhraseEvaluation } from '../infrastructure/mappers/accentuationMapper';
+import { toPhraseEvaluation, toSaveAccentuationSessionDto } from '../infrastructure/mappers/accentuationMapper';
 import { HttpAccentuationRepository } from '../infrastructure/repositories/HttpAccentuationRepository';
 import { ACCENTUATION_PHRASES } from '../services/phrases';
 import type {
@@ -76,6 +76,7 @@ export default function useAccentuationSession() {
     useAudioRecorder();
 
   const sessionResultRef = useRef<AccentuationSessionResult | null>(null);
+  const savedRef = useRef(false);
 
   useEffect(() => {
     if (phase === 'processing' && pendingEvaluationCount === 0) {
@@ -83,6 +84,19 @@ export default function useAccentuationSession() {
       setPhase('finished');
     }
   }, [phase, pendingEvaluationCount, phraseStates]);
+
+  // Save the session to the backend once, when results are ready.
+  // Persistence belongs in the hook, not in the results organism.
+  useEffect(() => {
+    const result = sessionResultRef.current;
+    if (phase === 'finished' && result && !savedRef.current) {
+      savedRef.current = true;
+      const dto = toSaveAccentuationSessionDto(result);
+      HttpAccentuationRepository.saveSession(dto).catch((error) => {
+        console.error('Error saving accentuation session:', error);
+      });
+    }
+  }, [phase]);
 
   const sendForEvaluation = useCallback(
     (audioBlob: Blob, phraseIndex: number, phraseText: string) => {
@@ -163,6 +177,7 @@ export default function useAccentuationSession() {
     setCurrentIndex(0);
     setPendingEvaluationCount(0);
     sessionResultRef.current = null;
+    savedRef.current = false;
     setPhase('idle');
   }, [releaseResources]);
 

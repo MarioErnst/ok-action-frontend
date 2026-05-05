@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { toSaveAccentuationSessionDto } from '../../infrastructure/mappers/accentuationMapper';
-import { HttpAccentuationRepository } from '../../infrastructure/repositories/HttpAccentuationRepository';
+import { useState } from 'react';
 import type { AccentuationSessionResult, PhraseEvaluation } from '../../types';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
@@ -65,18 +63,6 @@ export default function AccentuationResultsScreen({
   result,
   onReset,
 }: AccentuationResultsScreenProps) {
-  const savedRef = useRef(false);
-
-  useEffect(() => {
-    if (!savedRef.current) {
-      savedRef.current = true;
-      const dto = toSaveAccentuationSessionDto(result);
-      HttpAccentuationRepository.saveSession(dto).catch((error) => {
-        console.error('Error al guardar la sesion de acentuacion:', error);
-      });
-    }
-  }, [result]);
-
   const overallScore = Math.round(result.metrics.overallScore);
   const scoreColorClass = getScoreColorClass(overallScore);
   const scoreBorderClass = getScoreBorderClass(overallScore);
