@@ -1,11 +1,9 @@
 import useDiagnosis from '../../hooks/useDiagnosis';
 import { VOICE_EXERCISES } from '../../services/exercises';
-import type { PhonationFrame } from '../../types';
+import type { PhonationFrame, VoiceExercise } from '../../types';
 import { useEffect, useRef } from 'react';
 import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpPhonationRepository';
 import { toSavePhonationSessionDto } from '../../infrastructure/mappers/phonationMapper';
-
-import type { VoiceExercise } from '../../types';
 
 interface ResultsScreenProps {
   recordedResults: Map<string, PhonationFrame[]>;
