@@ -15,6 +15,7 @@ export interface AccError {
 export interface MulDetected {
   w: string
   n: number
+  ctx: string
 }
 
 export interface DimResult {
