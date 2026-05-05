@@ -24,31 +24,37 @@ interface Props {
 export function CorrectionOverlay({ correction, onContinue }: Props) {
   const navigate = useNavigate()
   const { dim, reason, errors } = correction
-  // Fall back to a generic message if the reason key is not mapped.
   const message = REASON_MESSAGES[reason] ?? 'La sesión terminó.'
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-md p-6 flex flex-col gap-5 shadow-xl">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4">
+      <div className="bg-surface border border-border/60 rounded-3xl w-full max-w-md p-6 flex flex-col gap-5 shadow-[0_20px_60px_rgba(0,0,0,0.5)] animate-scale-in">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-bold text-gray-900">Sesión pausada</h2>
-          <p className="text-gray-600 text-sm">{message}</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Sesión pausada</p>
+          <h2 className="text-xl font-extrabold text-text">
+            {dim ? `Problema en ${DIM_LABELS[dim]}` : 'Sesión finalizada'}
+          </h2>
+          <p className="text-sm text-text-muted">{message}</p>
         </div>
 
         {errors.length > 0 && dim && (
-          <div className="bg-red-50 rounded-xl p-4 flex flex-col gap-2">
-            <p className="text-sm font-semibold text-red-700">
-              Errores detectados en {DIM_LABELS[dim]}:
+          <div className="bg-danger/10 border border-danger/20 rounded-2xl p-4 flex flex-col gap-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-danger">
+              Errores detectados
             </p>
-            <ul className="flex flex-col gap-1">
+            <ul className="flex flex-col gap-2">
               {errors.slice(0, 3).map((error, i) => {
-                // Each error type has a distinct shape; render the most useful fields.
                 const label =
-                  'fix' in error ? `/${error.ph}/ en "${error.w}" — ${error.fix}` :
-                  'exp' in error ? `"${error.w}": esperado ${error.exp}, detectado ${error.act}` :
-                  `"${(error as { w: string; n: number }).w}" x ${(error as { w: string; n: number }).n}`
+                  'fix' in error
+                    ? `/${(error as { ph: string }).ph}/ en "${(error as { w: string }).w}" — ${(error as { fix: string }).fix}`
+                    : 'exp' in error
+                    ? `"${(error as { w: string }).w}": esperado ${(error as { exp: string }).exp}, detectado ${(error as { act: string }).act}`
+                    : `"${(error as { w: string }).w}" × ${(error as { n: number }).n}`
                 return (
-                  <li key={i} className="text-sm text-red-600">- {label}</li>
+                  <li key={i} className="text-sm text-danger flex items-start gap-2">
+                    <span className="text-danger/50 mt-0.5">—</span>
+                    <span>{label}</span>
+                  </li>
                 )
               })}
             </ul>
@@ -59,16 +65,17 @@ export function CorrectionOverlay({ correction, onContinue }: Props) {
           {dim && (
             <button
               onClick={() => navigate(DIM_ROUTES[dim])}
-              className="w-full py-3 rounded-xl bg-blue-600 text-white font-semibold
-                         hover:bg-blue-700 active:scale-95 transition-all"
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-accent to-accent-hover font-extrabold text-bg
+                         shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_30px_rgba(245,158,11,0.5)]
+                         active:scale-95 transition-all duration-300"
             >
-              Ir al ejercicio de {DIM_LABELS[dim]}
+              Practicar {DIM_LABELS[dim]}
             </button>
           )}
           <button
             onClick={onContinue}
-            className="w-full py-3 rounded-xl border border-gray-200 text-gray-700 font-medium
-                       hover:bg-gray-50 active:scale-95 transition-all"
+            className="w-full py-3 rounded-2xl border border-border/60 bg-surface-alt/50 text-text-muted
+                       font-medium hover:text-text hover:border-border active:scale-95 transition-all duration-200"
           >
             Nueva sesión
           </button>
