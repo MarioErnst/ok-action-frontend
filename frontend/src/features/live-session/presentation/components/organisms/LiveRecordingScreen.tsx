@@ -1,6 +1,5 @@
-import type { AnalysisResult, CorrectionEvent, LiveDim, LiveSessionPhase } from '../../../domain/LiveSession'
+import type { AnalysisResult, LiveDim, LiveSessionPhase } from '../../../domain/LiveSession'
 import { LiveFeedbackPanel } from '../molecules/LiveFeedbackPanel'
-import { CorrectionOverlay } from '../molecules/CorrectionOverlay'
 
 // Maximum session duration in seconds; progress bar fills to 100% at this point.
 const MAX_SESSION_SECONDS = 300
@@ -9,20 +8,16 @@ interface Props {
   phase: LiveSessionPhase
   selectedDims: LiveDim[]
   latestAnalysis: AnalysisResult | null
-  correction: CorrectionEvent | null
   elapsedSeconds: number
   onEnd: () => void
-  onReset: () => void
 }
 
 export function LiveRecordingScreen({
   phase,
   selectedDims,
   latestAnalysis,
-  correction,
   elapsedSeconds,
   onEnd,
-  onReset,
 }: Props) {
   const progressPercent = Math.min((elapsedSeconds / MAX_SESSION_SECONDS) * 100, 100)
   const remainingSeconds = Math.max(0, MAX_SESSION_SECONDS - elapsedSeconds)
@@ -85,9 +80,6 @@ export function LiveRecordingScreen({
         Terminar sesión
       </button>
 
-      {correction && (
-        <CorrectionOverlay correction={correction} onContinue={onReset} />
-      )}
     </div>
   )
 }

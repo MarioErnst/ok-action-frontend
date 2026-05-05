@@ -29,12 +29,12 @@ export default function LiveSessionPage() {
     )
   }
 
-  if (phase === 'ended') {
+  if (phase === 'ended' || phase === 'correction') {
     return (
       <SessionSummaryScreen
         analyses={analyses}
         selectedDims={selectedDims}
-        stopReason={stopReason}
+        stopReason={correction?.reason ?? stopReason}
         onReset={resetSession}
       />
     )
@@ -45,10 +45,8 @@ export default function LiveSessionPage() {
       phase={phase}
       selectedDims={selectedDims}
       latestAnalysis={latestAnalysis}
-      correction={correction}
       elapsedSeconds={elapsedSeconds}
       onEnd={endSession}
-      onReset={resetSession}
     />
   )
 }
