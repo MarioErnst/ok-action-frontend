@@ -128,6 +128,10 @@ export function useLiveSession(): LiveSessionControls {
       if (timerRef.current) clearInterval(timerRef.current)
       setPhase('idle')
     }
+
+    ws.onclose = () => {
+      wsRef.current = null
+    }
   }, [selectedDims])
 
   const resetSession = useCallback(() => {
