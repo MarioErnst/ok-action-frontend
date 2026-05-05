@@ -1,18 +1,12 @@
 import type { CorrectionEvent, LiveDim } from '../../../domain/LiveSession'
 import { useNavigate } from 'react-router-dom'
+import { DIM_LABELS } from '../../../domain/liveDimLabels'
 
 // Routes match the paths defined in AppRouter.tsx.
 const DIM_ROUTES: Record<LiveDim, string> = {
   pron: '/pronunciacion',
   acc: '/acentuacion',
   mul: '/muletillas',
-}
-
-// Labels match those used across all live-session components.
-const DIM_LABELS: Record<LiveDim, string> = {
-  pron: 'Pronunciación',
-  acc: 'Acentuación',
-  mul: 'Muletillas',
 }
 
 const REASON_MESSAGES: Record<string, string> = {

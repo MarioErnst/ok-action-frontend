@@ -1,11 +1,5 @@
 import type { AnalysisResult, LiveDim } from '../../../domain/LiveSession'
-
-// Labels match those used across all live-session components.
-const DIM_LABELS: Record<LiveDim, string> = {
-  pron: 'Pronunciación',
-  acc: 'Acentuación',
-  mul: 'Muletillas',
-}
+import { DIM_LABELS } from '../../../domain/liveDimLabels'
 
 function ScoreBadge({ score }: { score: number }) {
   // Color thresholds: green >= 70, yellow >= 40, red below 40.

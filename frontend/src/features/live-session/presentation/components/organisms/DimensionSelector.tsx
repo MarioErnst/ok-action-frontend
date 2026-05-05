@@ -1,11 +1,5 @@
 import type { LiveDim } from '../../../domain/LiveSession'
-
-// Labels shown to the user for each training dimension.
-const DIM_LABELS: Record<LiveDim, string> = {
-  pron: 'Pronunciación',
-  acc: 'Acentuación',
-  mul: 'Muletillas',
-}
+import { DIM_LABELS } from '../../../domain/liveDimLabels'
 
 interface Props {
   selected: LiveDim[]
