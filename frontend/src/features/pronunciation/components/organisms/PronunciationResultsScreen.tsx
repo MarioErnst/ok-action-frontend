@@ -1,6 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { toSavePronunciationSessionDto } from '../../infrastructure/mappers/pronunciationMapper'
-import { HttpPronunciationRepository } from '../../infrastructure/repositories/HttpPronunciationRepository'
+import { useState } from 'react'
 import type { PronunciationSessionResult } from '../../types'
 import PhonemeFeedback from '../molecules/PhonemeFeedback'
 import PronunciationMetrics from '../molecules/PronunciationMetrics'
@@ -32,14 +30,7 @@ export default function PronunciationResultsScreen({
   result,
   onReset,
 }: PronunciationResultsScreenProps) {
-  const savedRef = useRef(false)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
-
-  useEffect(() => {
-    if (savedRef.current) return
-    savedRef.current = true
-    HttpPronunciationRepository.saveSession(toSavePronunciationSessionDto(result)).catch(() => {})
-  }, [result])
 
   const overallScore = Math.round(result.metrics.overallScore)
 

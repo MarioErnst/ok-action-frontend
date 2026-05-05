@@ -1,6 +1,6 @@
 // Session logic for the pronunciation module: documentacion/modulos/pronunciacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toPhrasePronunciation, averagePronunciationMetrics } from '../infrastructure/mappers/pronunciationMapper';
+import { toPhrasePronunciation, averagePronunciationMetrics, toSavePronunciationSessionDto } from '../infrastructure/mappers/pronunciationMapper';
 import { HttpPronunciationRepository } from '../infrastructure/repositories/HttpPronunciationRepository';
 import { getPhrasesByLevel } from '../services/phrases';
 import type {
@@ -144,12 +144,27 @@ export default function usePronunciationSession() {
     );
   }, [currentIndex, currentLevel, stopRecording, sendForEvaluation, startRecording]);
 
+  const savedRef = useRef(false);
+
+  // Save the session to the backend once, when results are ready.
+  // Persistence belongs in the hook, not in the results organism.
+  useEffect(() => {
+    const result = sessionResultRef.current;
+    if (phase === 'finished' && result && !savedRef.current) {
+      savedRef.current = true;
+      HttpPronunciationRepository.saveSession(toSavePronunciationSessionDto(result)).catch((err) => {
+        console.error('Error saving pronunciation session:', err);
+      });
+    }
+  }, [phase]);
+
   const resetSession = useCallback(() => {
     releaseResources();
     setPhraseStates([]);
     setCurrentIndex(0);
     setPendingEvaluationCount(0);
     sessionResultRef.current = null;
+    savedRef.current = false;
     setPhase('idle');
   }, [releaseResources]);
 
