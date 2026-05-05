@@ -1,6 +1,8 @@
 // Session logic for the loudness module: documentacion/modulos/volumen.md
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
+import { toSaveLoudnessSessionDto } from '../infrastructure/mappers/loudnessMapper';
+import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
 import { computeEffectiveConfig } from '../services/loudnessEffectiveConfig';
 import { classifyLoudness } from '../services/loudnessClassifier';
 import type {
@@ -235,6 +237,24 @@ export default function useLoudnessCoach(preset: LoudnessPreset): {
     pendingBandRef.current = 'silence';
     setBand('silence');
   }, [isCalibrating, isListening]);
+
+  const sessionSavedRef = useRef(false);
+
+  // A finished session is detected when calibrationPhase returns to idle after active use.
+  // Save once per completed session; reset the guard when a new session starts.
+  useEffect(() => {
+    const finished = calibrationPhase === 'idle' && metrics.durationMs > 0;
+    if (finished && !sessionSavedRef.current) {
+      sessionSavedRef.current = true;
+      const dto = toSaveLoudnessSessionDto(metrics, preset.presetId);
+      HttpLoudnessRepository.saveSession(dto).catch((err) => {
+        console.error('Error saving loudness session:', err);
+      });
+    }
+    if (!finished) {
+      sessionSavedRef.current = false;
+    }
+  }, [calibrationPhase, metrics, preset.presetId]);
 
   return {
     band,
