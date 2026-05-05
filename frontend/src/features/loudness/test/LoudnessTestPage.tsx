@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useVoiceMonitor } from '../../phonation/index';
 import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
 
 export default function LoudnessTestPage() {
   const [activePresetIndex, setActivePresetIndex] = useState(0);
-  const coach = useLoudnessCoach(LOUDNESS_PRESETS[activePresetIndex]);
+  const voiceMonitor = useVoiceMonitor();
+  const coach = useLoudnessCoach(LOUDNESS_PRESETS[activePresetIndex], voiceMonitor);
 
   if (import.meta.env.PROD) {
     return <p className="text-text-muted">Página no disponible en producción</p>;
