@@ -133,8 +133,20 @@ export function useLiveSession(): LiveSessionControls {
       setPhase('idle')
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       wsRef.current = null
+      captureRef.current?.stop()
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (event.code === 4001) {
+        localStorage.removeItem('auth_user')
+        localStorage.removeItem('auth_token')
+        window.location.href = '/login'
+        return
+      }
+      setPhase((current) => {
+        if (current === 'connecting' || current === 'recording') return 'idle'
+        return current
+      })
     }
   }, [selectedDims])
 
