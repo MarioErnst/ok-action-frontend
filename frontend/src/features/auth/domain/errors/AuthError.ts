@@ -2,7 +2,8 @@ export type AuthErrorCode =
   | 'invalid_credentials'
   | 'unauthorized'
   | 'network_error'
-  | 'unknown_error';
+  | 'unknown_error'
+  | 'user_not_found';
 
 export class AuthError extends Error {
   constructor(

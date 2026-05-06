@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../../../shared/ui/atoms/Button';
 import { Input } from '../../../../../shared/ui/atoms/Input';
 import { useRegisterMutation } from '../../hooks/useRegisterMutation';
@@ -13,7 +14,10 @@ export const RegisterForm = ({ onGoToLogin }: RegisterFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const mutation = useRegisterMutation();
+  const navigate = useNavigate();
+  const mutation = useRegisterMutation({
+    onSuccess: () => navigate('/dashboard'),
+  });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -69,7 +73,9 @@ export const RegisterForm = ({ onGoToLogin }: RegisterFormProps) => {
           <div className="w-10 h-10 rounded-full border-2 border-danger flex items-center justify-center animate-scale-in">
             <span className="text-danger text-xl font-bold">✕</span>
           </div>
-          <p className="text-danger text-sm">No fue posible registrar el usuario</p>
+          <p className="text-danger text-sm text-center">
+            {mutation.error instanceof Error ? mutation.error.message : 'No fue posible registrar el usuario'}
+          </p>
         </div>
       )}
 

@@ -9,10 +9,12 @@ import AccentuationPage from '../../features/accentuation/pages/AccentuationPage
 import LoudnessCoachPage from '../../features/loudness/pages/LoudnessCoachPage'
 import ProfilePage from '../../features/auth/presentation/pages/ProfilePage'
 import ExerciseHistoryPage from '../../features/auth/presentation/pages/ExerciseHistoryPage'
+import { ForgotPasswordPage } from '../../features/auth/presentation/pages/ForgotPasswordPage'
 
 export const AppRouter = () => (
   <Routes>
     <Route path="/auth" element={<AuthPage />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
     <Route element={<ProtectedRoute />}>
       <Route element={<AppLayout />}>

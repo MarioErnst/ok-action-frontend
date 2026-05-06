@@ -59,13 +59,60 @@ export class HttpAuthRepository implements AuthRepository {
         },
       );
 
-      return toUser(payload);
+      const user = toUser(payload);
+      useAuthStore.getState().setAuth(user, payload.access_token);
+      return user;
     } catch (error) {
       if (error instanceof ApiError) {
         throw mapApiErrorToAuthError(error);
       }
 
       throw new AuthError('unknown_error', 'Error inesperado en registro', error);
+    }
+  }
+
+  async forgotPassword(email: string): Promise<void> {
+    try {
+      await apiRequest<void>('/auth/forgot-password', {
+        method: 'POST',
+        body: { email },
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (error.status === 404) {
+          throw new AuthError('user_not_found', 'El correo no existe', error.details);
+        }
+        throw mapApiErrorToAuthError(error);
+      }
+      throw new AuthError('unknown_error', 'Error inesperado al recuperar contraseña', error);
+    }
+  }
+
+  async socialLogin(data: import('../../domain/repositories/AuthRepository').SocialLoginData): Promise<User> {
+    try {
+      // Convert mapping logic here or inline it
+      const payload = await apiRequest<LoginResponseDto, any>(
+        '/auth/social-login',
+        {
+          method: 'POST',
+          body: {
+            email: data.email,
+            full_name: data.fullName,
+            provider: data.provider,
+            token: data.token,
+          },
+        },
+      );
+
+      const user = toUser(payload);
+      useAuthStore.getState().setAuth(user, payload.access_token);
+      return user;
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw mapApiErrorToAuthError(error);
+      }
+
+      throw new AuthError('unknown_error', 'Error inesperado en login social', error);
     }
   }
 }
