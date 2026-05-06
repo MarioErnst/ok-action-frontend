@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fondos */
+  --color-bg: #0A0A0A;
+  --color-surface: #1C1C1E;
+  --color-surface-alt: #232B38;
+  --color-input: #1F2937;
+
+  /* Bordes */
+  --color-border: #334155;
+
+  /* Acento (ámbar) */
+  --color-accent: #F59E0B;
+  --color-accent-hover: #FBBF24;
+
+  /* Texto */
+  --color-text: #F8FAFC;
+  --color-text-muted: #9CA3AF;
+  --color-text-on-accent: #111827;
+
+  /* Estados */
+  --color-success: #22c55e;
+  --color-warning: #facc15;
+  --color-danger: #ef4444;
+}
+
+@keyframes scale-in {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.4s ease forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
