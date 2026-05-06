@@ -1,6 +1,6 @@
-import type { PrecisionRound } from '../../../../domain/PrecisionRound'
+import type { PrecisionRound } from '../../../domain/PrecisionRound'
 import { PrecisionScoreRow } from '../molecules/PrecisionScoreRow'
-import { scoreColor } from '../../../../domain/PrecisionScores'
+import { scoreColor } from '../../../domain/PrecisionScores'
 
 interface RoundResultScreenProps {
   round: PrecisionRound

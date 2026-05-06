@@ -1,6 +1,6 @@
 import { QuestionCard } from '../molecules/QuestionCard'
 import { PrecisionTimer } from '../atoms/PrecisionTimer'
-import type { PrecisionQuestion } from '../../../../domain/PrecisionQuestion'
+import type { PrecisionQuestion } from '../../../domain/PrecisionQuestion'
 
 interface RecordAnswerScreenProps {
   question: PrecisionQuestion

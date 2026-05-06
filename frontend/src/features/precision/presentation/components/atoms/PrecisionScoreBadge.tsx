@@ -1,4 +1,4 @@
-import { scoreColor } from '../../../../domain/PrecisionScores'
+import { scoreColor } from '../../../domain/PrecisionScores'
 
 interface PrecisionScoreBadgeProps {
   score: number

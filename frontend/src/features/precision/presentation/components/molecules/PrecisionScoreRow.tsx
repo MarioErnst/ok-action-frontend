@@ -1,4 +1,4 @@
-import { scoreColor, scoreBgColor } from '../../../../domain/PrecisionScores'
+import { scoreColor, scoreBgColor } from '../../../domain/PrecisionScores'
 
 interface PrecisionScoreRowProps {
   label: string

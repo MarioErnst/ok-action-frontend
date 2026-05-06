@@ -1,5 +1,5 @@
-import type { PrecisionRound } from '../../../../domain/PrecisionRound'
-import { scoreColor } from '../../../../domain/PrecisionScores'
+import type { PrecisionRound } from '../../../domain/PrecisionRound'
+import { scoreColor } from '../../../domain/PrecisionScores'
 
 interface SessionSummaryScreenProps {
   overallScore: number | null
