@@ -48,31 +48,47 @@ export function usePrecisionSession() {
   const { isRecording, startRecording, stopRecording, releaseResources } = useAudioRecorder()
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevPhaseRef = useRef<Phase>('IDLE')
+  // Tracks latest sessionId and phase so the unmount cleanup reads current values, not stale closure values from mount time.
+  const sessionStateRef = useRef({ sessionId: state.sessionId, phase: state.phase })
+  // Tracks latest elapsedSeconds so stopAndEvaluate never reads a stale value from its closure.
+  const elapsedRef = useRef(0)
+
+  // Keep sessionStateRef current on every render so the unmount cleanup always has fresh values.
+  useEffect(() => {
+    sessionStateRef.current = { sessionId: state.sessionId, phase: state.phase }
+  })
 
   // Timer for recording elapsed time
   useEffect(() => {
     if (state.phase === 'RECORDING') {
       timerRef.current = setInterval(() => {
-        setState(s => ({ ...s, elapsedSeconds: s.elapsedSeconds + 1 }))
+        setState(s => {
+          const next = s.elapsedSeconds + 1
+          elapsedRef.current = next
+          return { ...s, elapsedSeconds: next }
+        })
       }, 1000)
     } else {
       if (timerRef.current) clearInterval(timerRef.current)
       if (state.phase !== 'ASKING') {
+        elapsedRef.current = 0
         setState(s => ({ ...s, elapsedSeconds: 0 }))
       }
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current) }
   }, [state.phase])
 
-  // Abandon session on unmount if still active
+  // Abandon session on unmount if still active.
+  // Reads from sessionStateRef so it always sees the latest sessionId/phase, not the stale closure captured at mount.
   useEffect(() => {
     return () => {
-      if (state.sessionId && ['ASKING', 'RECORDING', 'EVALUATING', 'ROUND_RESULT', 'UNINTELLIGIBLE'].includes(state.phase)) {
-        abandonPrecisionSession(state.sessionId).catch(() => {})
+      const { sessionId, phase } = sessionStateRef.current
+      if (sessionId && ['ASKING', 'RECORDING', 'EVALUATING', 'ROUND_RESULT', 'UNINTELLIGIBLE'].includes(phase)) {
+        abandonPrecisionSession(sessionId).catch(() => {})
         releaseResources()
       }
     }
-  }, []) // intentionally empty — captures sessionId/phase via closure at mount
+  }, []) // safe because sessionStateRef is always current
 
   const startSession = useCallback(async (totalRounds = 5) => {
     setState(s => ({ ...s, phase: 'LOADING_SESSION', errorMessage: null }))
@@ -112,7 +128,7 @@ export function usePrecisionSession() {
         currentQuestion.id,
         audioBlob,
         state.noiseLevel,
-        state.elapsedSeconds
+        elapsedRef.current  // use ref, not state — state would be stale
       )
       setState(s => ({
         ...s,
@@ -135,7 +151,8 @@ export function usePrecisionSession() {
         setState(s => ({ ...s, phase: 'COMPLETED', overallScore }))
         releaseResources()
       } catch (err) {
-        prevPhaseRef.current = 'COMPLETED'
+        // The session was never completed, so ROUND_RESULT is the correct previous phase for retry logic.
+        prevPhaseRef.current = 'ROUND_RESULT'
         setState(s => ({ ...s, phase: 'ERROR', errorMessage: String(err) }))
       }
     } else {
