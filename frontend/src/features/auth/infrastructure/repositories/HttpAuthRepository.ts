@@ -59,7 +59,9 @@ export class HttpAuthRepository implements AuthRepository {
         },
       );
 
-      return toUser(payload);
+      const user = toUser(payload);
+      useAuthStore.getState().setAuth(user, payload.access_token);
+      return user;
     } catch (error) {
       if (error instanceof ApiError) {
         throw mapApiErrorToAuthError(error);

@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
 import { NavIcon } from '../atoms/NavIcon'
-import { NavIndicator } from '../atoms/NavIndicator'
 import { NAV_ITEMS } from '../config/navItems'
 
 export const AppBottomBar = () => {

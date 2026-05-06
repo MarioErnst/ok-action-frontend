@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toSavePhonationSessionDto } from '../infrastructure/mappers/phonationMapper';
 import { HttpPhonationRepository } from '../infrastructure/repositories/HttpPhonationRepository';
 import { VOICE_EXERCISES } from '../services/exercises';
-import type { PhonationFrame, SessionResult, VoiceExercise } from '../types';
+import type { PhonationFrame, VoiceExercise } from '../types';
 import useDiagnosis from './useDiagnosis';
 import useVoiceMonitor from './useVoiceMonitor';
 import { useFrameAccumulator } from './useFrameAccumulator';
@@ -11,8 +11,6 @@ import { useSessionCountdown } from './useSessionCountdown';
 import { useSessionTimer } from './useSessionTimer';
 
 export type SessionPhase = 'idle' | 'countdown' | 'recording' | 'finished';
-
-const COUNTDOWN_START = 3;
 
 export default function useEvaluationSession(customExercises?: VoiceExercise[]) {
   const { hz, db, isCalibrating, frames, start, stop } = useVoiceMonitor();

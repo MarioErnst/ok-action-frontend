@@ -91,7 +91,7 @@ export default function PhonationDisplay({
           {isListening && !isCalibrating && (
             <PhonationButton label="Detener" onClick={onStop} variant="secondary" />
           )}
-          {isCalibrating && <PhonationButton label="Calibrando..." disabled variant="secondary" />}
+          {isCalibrating && <PhonationButton label="Calibrando..." onClick={() => {}} disabled variant="secondary" />}
         </div>
 
         {isCalibrating && (
