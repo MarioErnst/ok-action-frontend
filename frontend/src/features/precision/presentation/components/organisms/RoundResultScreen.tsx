@@ -34,7 +34,7 @@ export function RoundResultScreen({
               onClick={onNext}
               className="flex-1 rounded-2xl bg-gradient-to-r from-accent to-accent-hover px-6 py-3 font-extrabold text-text-on-accent active:scale-95 transition-all duration-300"
             >
-              {isLastRound ? 'Ver resultados' : 'Siguiente pregunta'}
+              {isLastRound ? 'Ver resumen' : 'Siguiente pregunta'}
             </button>
           </div>
         </div>
@@ -42,7 +42,8 @@ export function RoundResultScreen({
     )
   }
 
-  const scores = round.scores!
+  if (!round.scores) return null
+  const scores = round.scores
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6 md:p-8 pb-28 lg:pb-6 animate-fade-in">
       <div className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-6 md:p-8 flex flex-col gap-6">
