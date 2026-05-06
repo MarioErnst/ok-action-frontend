@@ -1,4 +1,3 @@
-import { VOICE_EXERCISES } from '../../services/exercises';
 import type { VoiceExercise } from '../../types';
 
 interface ExerciseCardProps {
