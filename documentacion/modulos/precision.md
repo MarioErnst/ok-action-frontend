@@ -321,3 +321,71 @@ navegacion fijos propios de la aplicacion. En pantallas grandes (`lg:`) el paddi
 la barra de navegacion se desplaza a un rail lateral. El ancho maximo `max-w-lg` centra el contenido
 en pantallas amplias sin estirar el formulario de grabacion hasta el ancho completo, lo que
 mejoraria la legibilidad del texto de la pregunta y la accesibilidad de los controles en escritorio.
+
+## 8. Integracion con Sesion Libre (Live Session)
+
+Cuando el usuario selecciona la dimension `"precision"` en la pantalla `DimensionSelector` de la
+sesion libre, el frontend activa el modo Q&A dentro del WebSocket existente.
+
+### Cambios en el dominio LiveSession.ts
+
+Se agrego `'precision'` al tipo `LiveDim` y se incorporaron nuevas fases al tipo `LiveSessionPhase`:
+
+- `qa_question`: pregunta activa, el usuario esta grabando su respuesta.
+- `qa_evaluating`: audio enviado al backend, esperando resultado.
+- `qa_result`: resultado de la ronda visible al usuario.
+- `qa_unintelligible`: el audio de la ronda no fue inteligible.
+- `qa_complete`: todas las preguntas respondidas, esperando cierre de sesion.
+
+Se agrego la interfaz `QARoundResult` con los campos `relevance`, `directness`, `conciseness`,
+`overall`, `feedback`, `audio_intelligible`.
+
+### Nuevos manejadores de mensajes WebSocket en useLiveSession
+
+| Tipo de mensaje | Accion |
+|---|---|
+| `question` | Guarda `{text, number, total}` en `qaQuestion`. Transicion de fase a `qa_question`. |
+| `round_result` | Guarda `precision` en `qaLastResult`. Transicion a `qa_result`. |
+| `round_unintelligible` | Transicion a `qa_unintelligible`. |
+| `session_complete` | Transicion a `qa_complete`. |
+
+El hook expone `sendAnswerDone()`: envia `{"type": "answer_done"}` al backend y transiciona la fase
+a `qa_evaluating` inmediatamente, antes de recibir confirmacion del backend.
+
+### Indicador de nivel de ruido
+
+El hook `useLiveSession` calcula el nivel de ruido directamente desde los chunks PCM que produce
+`AudioCapture`. En cada chunk recibido, se calcula el RMS de las muestras Int16 y se clasifica:
+
+- RMS > 1500: `'high'`
+- RMS > 600: `'medium'`
+- RMS <= 600: `'low'`
+
+El estado `noiseLevel` se actualiza en cada chunk. `LiveRecordingScreen` muestra un indicador
+visual de tres barras con colores (`text-success`, `text-warning`, `text-danger`) que refleja
+el nivel actual.
+
+### Boton "Termine de responder"
+
+El boton es visible en `LiveRecordingScreen` cuando:
+1. La dimension `'precision'` esta en `selectedDims`.
+2. La fase actual es `'qa_question'`.
+
+Al pulsarlo se llama `sendAnswerDone()`, que transiciona a `'qa_evaluating'` y envia el mensaje
+al backend. El backend usa esto como senal de fin de respuesta alternativa a la deteccion de silencio.
+
+### Reutilizacion de componentes de precision
+
+`LiveRecordingScreen` importa `QuestionCard` desde el modulo de precision
+(`features/precision/presentation/components/molecules/QuestionCard`). Esto garantiza consistencia
+visual entre el modo standalone y el modo Q&A de sesion libre.
+
+Como el backend de sesion libre no envia la categoria de la pregunta en el mensaje `question`,
+se usa la cadena fija `"Precision"` como valor de la prop `category` en el contexto de sesion libre.
+
+### Compatibilidad con el modo de analisis continuo
+
+La dimension `'precision'` puede coexistir con las otras dimensiones (`pron`, `acc`, `mul`).
+En ese caso, `analysis_timer` en el backend analiza continuamente las dimensiones estandar,
+mientras que `qa_mode` gestiona el ciclo de preguntas en paralelo. El audio se escribe en ambos
+buffers desde `stream_audio`.
