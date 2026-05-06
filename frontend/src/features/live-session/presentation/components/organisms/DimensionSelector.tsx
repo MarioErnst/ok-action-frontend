@@ -5,6 +5,7 @@ const DIM_DESCRIPTIONS: Record<LiveDim, string> = {
   pron: 'Vocales, consonantes y fluidez fónica',
   acc: 'Acento prosódico y entonación',
   mul: 'Palabras de relleno y repeticiones',
+  precision: 'Responde preguntas con claridad y concisión',
 }
 
 interface Props {
