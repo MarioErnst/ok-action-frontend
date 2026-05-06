@@ -83,7 +83,7 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
           )}
 
           <div className="flex flex-col gap-3">
-            {phraseStates.slice(0, currentIndex).map((phraseState, index) => {
+            {phraseStates.slice(0, currentIndex).map((phraseState) => {
               const evaluatedState = phraseState;
               return (
                 <div key={phraseState.phrase.id} className="flex flex-col gap-3 opacity-90 transition-opacity hover:opacity-100">
