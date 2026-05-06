@@ -1,4 +1,4 @@
-export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'live'
+export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live'
 
 type NavIconProps = {
   name: NavIconName
@@ -52,6 +52,14 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <line x1="9" y1="10" x2="9" y2="10" strokeWidth={2.5} strokeLinecap="round" />
       <line x1="12" y1="10" x2="12" y2="10" strokeWidth={2.5} strokeLinecap="round" />
       <line x1="15" y1="10" x2="15" y2="10" strokeWidth={2.5} strokeLinecap="round" />
+    </>
+  ),
+  // diana — represents precision in communication
+  precision: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0} />
     </>
   ),
   // Microfono — representa sesion de habla en vivo
