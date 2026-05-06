@@ -12,10 +12,14 @@ export default function LiveSessionPage() {
     elapsedSeconds,
     stopReason,
     analyses,
+    noiseLevel,
+    qaQuestion,
+    qaLastResult,
     toggleDim,
     startSession,
     endSession,
     resetSession,
+    sendAnswerDone,
   } = useLiveSession()
 
   if (phase === 'idle') {
@@ -46,7 +50,11 @@ export default function LiveSessionPage() {
       selectedDims={selectedDims}
       latestAnalysis={latestAnalysis}
       elapsedSeconds={elapsedSeconds}
+      noiseLevel={noiseLevel}
+      qaQuestion={qaQuestion}
+      qaLastResult={qaLastResult}
       onEnd={endSession}
+      onAnswerDone={sendAnswerDone}
     />
   )
 }
