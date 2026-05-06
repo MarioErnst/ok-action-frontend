@@ -94,6 +94,10 @@ export function usePrecisionSession() {
     setState(s => ({ ...s, phase: 'LOADING_SESSION', errorMessage: null }))
     try {
       const { sessionId, questions } = await startPrecisionSession(totalRounds)
+      if (questions.length === 0) {
+        setState(s => ({ ...s, phase: 'ERROR', errorMessage: 'No hay preguntas disponibles en este momento.' }))
+        return
+      }
       setState(s => ({
         ...s,
         phase: 'ASKING',
