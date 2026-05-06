@@ -9,7 +9,12 @@ export async function submitPrecisionAnswer(
   audioDurationSecs?: number
 ): Promise<PrecisionRound> {
   const dto = await PrecisionRepository.submitAnswer(sessionId, questionId, audioBlob, noiseLevel, audioDurationSecs)
-  const hasScores = dto.audio_intelligible && dto.overall_score !== null
+  const hasScores =
+    dto.audio_intelligible &&
+    dto.relevance_score !== null &&
+    dto.directness_score !== null &&
+    dto.conciseness_score !== null &&
+    dto.overall_score !== null
   return {
     id: dto.round_id,
     questionText: '',  // not returned by EvaluateRoundDTO; displayed from questions[] state in the hook
