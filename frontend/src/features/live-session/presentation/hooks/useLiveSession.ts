@@ -200,6 +200,9 @@ export function useLiveSession(): LiveSessionControls {
       }
       setPhase((current) => {
         if (current === 'connecting' || current === 'recording') return 'idle'
+        // If WS closes while an active phase is still running (e.g. ping timeout),
+        // go to ended so the summary screen is shown instead of blocking.
+        if (current !== 'ended' && current !== 'correction' && current !== 'idle') return 'ended'
         return current
       })
     }
