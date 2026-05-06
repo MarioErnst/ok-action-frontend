@@ -1,11 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AnalysisResult, CorrectionEvent, LiveDim, LiveSessionPhase } from '../../domain/LiveSession'
+import type { AnalysisResult, CorrectionEvent, LiveDim, LiveSessionPhase, QARoundResult } from '../../domain/LiveSession'
 import { AudioCapture } from '../../services/audioCapture'
 
 const WS_BASE_URL =
   (globalThis as { __APP_WS_URL__?: string }).__APP_WS_URL__ ??
   import.meta.env.VITE_WS_URL ??
   `ws://${window.location.host}/api`
+
+function computeNoiseLevel(pcm: ArrayBuffer): 'low' | 'medium' | 'high' {
+  const int16 = new Int16Array(pcm)
+  if (int16.length === 0) return 'low'
+  const rms = Math.sqrt(int16.reduce((sum, s) => sum + s * s, 0) / int16.length)
+  if (rms > 1500) return 'high'
+  if (rms > 600) return 'medium'
+  return 'low'
+}
+
+export interface QAQuestion {
+  text: string
+  number: number
+  total: number
+}
 
 export interface LiveSessionControls {
   phase: LiveSessionPhase
@@ -15,10 +30,14 @@ export interface LiveSessionControls {
   correction: CorrectionEvent | null
   stopReason: string | null
   elapsedSeconds: number
+  noiseLevel: 'low' | 'medium' | 'high'
+  qaQuestion: QAQuestion | null
+  qaLastResult: QARoundResult | null
   toggleDim: (dim: LiveDim) => void
   startSession: () => Promise<void>
   endSession: () => void
   resetSession: () => void
+  sendAnswerDone: () => void
 }
 
 export function useLiveSession(): LiveSessionControls {
@@ -29,6 +48,9 @@ export function useLiveSession(): LiveSessionControls {
   const [correction, setCorrection] = useState<CorrectionEvent | null>(null)
   const [stopReason, setStopReason] = useState<string | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [noiseLevel, setNoiseLevel] = useState<'low' | 'medium' | 'high'>('low')
+  const [qaQuestion, setQaQuestion] = useState<QAQuestion | null>(null)
+  const [qaLastResult, setQaLastResult] = useState<QARoundResult | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const captureRef = useRef<AudioCapture | null>(null)
@@ -58,6 +80,13 @@ export function useLiveSession(): LiveSessionControls {
     if (timerRef.current) clearInterval(timerRef.current)
   }, [])
 
+  const sendAnswerDone = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'answer_done' }))
+      setPhase('qa_evaluating')
+    }
+  }, [])
+
   const startSession = useCallback(async () => {
     // auth_token matches the key used in api/client.ts
     const token = localStorage.getItem('auth_token')
@@ -69,6 +98,9 @@ export function useLiveSession(): LiveSessionControls {
     setCorrection(null)
     setStopReason(null)
     setElapsedSeconds(0)
+    setNoiseLevel('low')
+    setQaQuestion(null)
+    setQaLastResult(null)
 
     const ws = new WebSocket(`${WS_BASE_URL}/live/session?token=${token}`)
     wsRef.current = ws
@@ -93,6 +125,7 @@ export function useLiveSession(): LiveSessionControls {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(chunk)
           }
+          setNoiseLevel(computeNoiseLevel(chunk))
         })
       }
 
@@ -111,6 +144,28 @@ export function useLiveSession(): LiveSessionControls {
           errors: (msg.errors as CorrectionEvent['errors']) ?? [],
         })
         setPhase('correction')
+      }
+
+      if (msg.type === 'question') {
+        setQaQuestion({
+          text: msg.text as string,
+          number: msg.number as number,
+          total: msg.total as number,
+        })
+        setPhase('qa_question')
+      }
+
+      if (msg.type === 'round_result') {
+        setQaLastResult(msg.precision as QARoundResult)
+        setPhase('qa_result')
+      }
+
+      if (msg.type === 'round_unintelligible') {
+        setPhase('qa_unintelligible')
+      }
+
+      if (msg.type === 'session_complete') {
+        setPhase('qa_complete')
       }
 
       if (msg.type === 'session_ended') {
@@ -162,6 +217,9 @@ export function useLiveSession(): LiveSessionControls {
     setCorrection(null)
     setStopReason(null)
     setElapsedSeconds(0)
+    setNoiseLevel('low')
+    setQaQuestion(null)
+    setQaLastResult(null)
   }, [])
 
   return {
@@ -172,9 +230,13 @@ export function useLiveSession(): LiveSessionControls {
     correction,
     stopReason,
     elapsedSeconds,
+    noiseLevel,
+    qaQuestion,
+    qaLastResult,
     toggleDim,
     startSession,
     endSession,
     resetSession,
+    sendAnswerDone,
   }
 }
