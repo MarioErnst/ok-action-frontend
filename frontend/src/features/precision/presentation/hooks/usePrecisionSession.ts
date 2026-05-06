@@ -1,0 +1,189 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { PrecisionQuestion } from '../../domain/PrecisionQuestion'
+import type { PrecisionRound } from '../../domain/PrecisionRound'
+import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder'
+import { startPrecisionSession } from '../../use_cases/startPrecisionSession'
+import { submitPrecisionAnswer } from '../../use_cases/submitPrecisionAnswer'
+import { finalizePrecisionSession } from '../../use_cases/finalizePrecisionSession'
+import { abandonPrecisionSession } from '../../use_cases/abandonPrecisionSession'
+
+type Phase =
+  | 'IDLE'
+  | 'LOADING_SESSION'
+  | 'ASKING'
+  | 'RECORDING'
+  | 'EVALUATING'
+  | 'ROUND_RESULT'
+  | 'UNINTELLIGIBLE'
+  | 'COMPLETED'
+  | 'ERROR'
+  | 'ABANDONED'
+
+interface PrecisionSessionState {
+  phase: Phase
+  sessionId: string | null
+  questions: PrecisionQuestion[]
+  currentQuestionIndex: number
+  rounds: PrecisionRound[]
+  overallScore: number | null
+  errorMessage: string | null
+  noiseLevel: 'low' | 'medium' | 'high'
+  elapsedSeconds: number
+}
+
+export function usePrecisionSession() {
+  const [state, setState] = useState<PrecisionSessionState>({
+    phase: 'IDLE',
+    sessionId: null,
+    questions: [],
+    currentQuestionIndex: 0,
+    rounds: [],
+    overallScore: null,
+    errorMessage: null,
+    noiseLevel: 'low',
+    elapsedSeconds: 0,
+  })
+
+  // useAudioRecorder is a default export; startRecording and stopRecording are async
+  const { isRecording, startRecording, stopRecording, releaseResources } = useAudioRecorder()
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const prevPhaseRef = useRef<Phase>('IDLE')
+
+  // Timer for recording elapsed time
+  useEffect(() => {
+    if (state.phase === 'RECORDING') {
+      timerRef.current = setInterval(() => {
+        setState(s => ({ ...s, elapsedSeconds: s.elapsedSeconds + 1 }))
+      }, 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (state.phase !== 'ASKING') {
+        setState(s => ({ ...s, elapsedSeconds: 0 }))
+      }
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [state.phase])
+
+  // Abandon session on unmount if still active
+  useEffect(() => {
+    return () => {
+      if (state.sessionId && ['ASKING', 'RECORDING', 'EVALUATING', 'ROUND_RESULT', 'UNINTELLIGIBLE'].includes(state.phase)) {
+        abandonPrecisionSession(state.sessionId).catch(() => {})
+        releaseResources()
+      }
+    }
+  }, []) // intentionally empty — captures sessionId/phase via closure at mount
+
+  const startSession = useCallback(async (totalRounds = 5) => {
+    setState(s => ({ ...s, phase: 'LOADING_SESSION', errorMessage: null }))
+    try {
+      const { sessionId, questions } = await startPrecisionSession(totalRounds)
+      setState(s => ({
+        ...s,
+        phase: 'ASKING',
+        sessionId,
+        questions,
+        currentQuestionIndex: 0,
+        rounds: [],
+        overallScore: null,
+      }))
+    } catch (err) {
+      prevPhaseRef.current = 'LOADING_SESSION'
+      setState(s => ({ ...s, phase: 'ERROR', errorMessage: String(err) }))
+    }
+  }, [])
+
+  const startRecordingAnswer = useCallback(async () => {
+    await startRecording()
+    setState(s => ({ ...s, phase: 'RECORDING', elapsedSeconds: 0 }))
+  }, [startRecording])
+
+  const stopAndEvaluate = useCallback(async () => {
+    // stopRecording returns Promise<Blob> — the resolved value is the audio blob
+    const audioBlob = await stopRecording()
+    if (!audioBlob || !state.sessionId) return
+
+    const currentQuestion = state.questions[state.currentQuestionIndex]
+    setState(s => ({ ...s, phase: 'EVALUATING' }))
+
+    try {
+      const round = await submitPrecisionAnswer(
+        state.sessionId,
+        currentQuestion.id,
+        audioBlob,
+        state.noiseLevel,
+        state.elapsedSeconds
+      )
+      setState(s => ({
+        ...s,
+        phase: round.audioIntelligible ? 'ROUND_RESULT' : 'UNINTELLIGIBLE',
+        rounds: [...s.rounds, round],
+      }))
+    } catch (err) {
+      prevPhaseRef.current = 'EVALUATING'
+      setState(s => ({ ...s, phase: 'ERROR', errorMessage: String(err) }))
+    }
+  }, [state.sessionId, state.questions, state.currentQuestionIndex, state.noiseLevel, stopRecording])
+
+  const nextQuestion = useCallback(async () => {
+    const nextIndex = state.currentQuestionIndex + 1
+    if (nextIndex >= state.questions.length) {
+      // Finalize session when all questions have been answered
+      setState(s => ({ ...s, phase: 'EVALUATING' }))
+      try {
+        const { overallScore } = await finalizePrecisionSession(state.sessionId!)
+        setState(s => ({ ...s, phase: 'COMPLETED', overallScore }))
+        releaseResources()
+      } catch (err) {
+        prevPhaseRef.current = 'COMPLETED'
+        setState(s => ({ ...s, phase: 'ERROR', errorMessage: String(err) }))
+      }
+    } else {
+      setState(s => ({ ...s, phase: 'ASKING', currentQuestionIndex: nextIndex }))
+    }
+  }, [state.currentQuestionIndex, state.questions.length, state.sessionId, releaseResources])
+
+  const retryRecording = useCallback(async () => {
+    await startRecording()
+    setState(s => ({ ...s, phase: 'RECORDING', elapsedSeconds: 0 }))
+  }, [startRecording])
+
+  const retry = useCallback(() => {
+    const fallback = prevPhaseRef.current === 'LOADING_SESSION' ? 'IDLE' : 'ASKING'
+    setState(s => ({ ...s, phase: fallback, errorMessage: null }))
+  }, [])
+
+  const setNoiseLevel = useCallback((level: 'low' | 'medium' | 'high') => {
+    setState(s => ({ ...s, noiseLevel: level }))
+  }, [])
+
+  const reset = useCallback(() => {
+    releaseResources()
+    setState({
+      phase: 'IDLE',
+      sessionId: null,
+      questions: [],
+      currentQuestionIndex: 0,
+      rounds: [],
+      overallScore: null,
+      errorMessage: null,
+      noiseLevel: 'low',
+      elapsedSeconds: 0,
+    })
+  }, [releaseResources])
+
+  return {
+    ...state,
+    currentQuestion: state.questions[state.currentQuestionIndex] ?? null,
+    isLastRound: state.currentQuestionIndex === state.questions.length - 1,
+    isRecording,
+    startSession,
+    startRecordingAnswer,
+    stopAndEvaluate,
+    nextQuestion,
+    retryRecording,
+    retry,
+    setNoiseLevel,
+    reset,
+  }
+}
