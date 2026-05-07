@@ -2,10 +2,12 @@ import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 import type { LiveBlendshapes } from '../domain/FacialExpression'
 
 // MediaPipe WASM and model are loaded from CDN to avoid bundling the binary.
-// The lite model (~5MB) is used for mobile performance (vs ~30MB full model).
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+// The face_landmarker.task model (~3.7MB) is the only public version of this
+// task — there is no "lite" variant; the model is already small enough for mobile.
+// WASM version must stay in sync with the @mediapipe/tasks-vision entry in package.json.
+const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm'
 const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker_lite/float16/1/face_landmarker_lite.task'
+  'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 
 // Detection is capped at 15fps to avoid overloading mobile hardware.
 const FRAME_INTERVAL_MS = 1000 / 15
