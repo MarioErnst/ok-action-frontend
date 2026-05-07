@@ -57,31 +57,26 @@ export function RecordingSession({
           isRecording={isRecording}
         />
 
-        {isRecording && (
+        {isRecording ? (
           <>
             {/* Live expression feedback is only shown during active recording */}
             <ExpressionPanel blendshapes={blendshapes ?? NEUTRAL_BLENDSHAPES} />
             <VoiceIndicator isSpeaking={isListening} />
+            <button
+              type="button"
+              onClick={onNext}
+              className="w-full py-3 rounded-xl text-sm font-semibold bg-accent text-white active:bg-accent/80 transition-colors"
+            >
+              {nextLabel}
+            </button>
           </>
-        )}
-
-        {!isRecording && (
+        ) : (
           <button
             type="button"
             onClick={onStartRecording}
             className="w-full py-3 rounded-xl text-sm font-semibold bg-accent text-white active:bg-accent/80 transition-colors"
           >
             Iniciar grabación
-          </button>
-        )}
-
-        {isRecording && (
-          <button
-            type="button"
-            onClick={onNext}
-            className="w-full py-3 rounded-xl text-sm font-semibold bg-accent text-white active:bg-accent/80 transition-colors mt-auto"
-          >
-            {nextLabel}
           </button>
         )}
       </div>
