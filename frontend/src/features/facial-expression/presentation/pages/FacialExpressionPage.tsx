@@ -1,132 +1,152 @@
-import { useEffect } from 'react'
-import { useExpressionSession } from '../hooks/useExpressionSession'
-import { useFaceDetector } from '../hooks/useFaceDetector'
-import { useVoiceActivity } from '../hooks/useVoiceActivity'
-import { CalibrationScreen } from '../components/organisms/CalibrationScreen'
-import { RecordingSession } from '../components/organisms/RecordingSession'
-import { SessionResults } from '../components/organisms/SessionResults'
+import { useNavigate } from 'react-router-dom'
+import { useEmotionTracking } from '../hooks/useEmotionTracking'
+import { LiveDetectionView } from '../components/organisms/LiveDetectionView'
+import { SessionResultsView } from '../components/organisms/SessionResultsView'
 
+/**
+ * Top-level page for facial expression analysis.
+ *
+ * The page is a thin status-driven router around `useEmotionTracking`:
+ *  - idle    → intro card with "Iniciar análisis" button
+ *  - live    → camera + HUD + stop button
+ *  - saving  → spinner while POST /sessions completes
+ *  - results → distribution + gestures + restart/exit buttons
+ *  - error   → message + retry
+ *
+ * The page itself uses h-[100dvh] (not h-screen) so iOS Safari's collapsing
+ * URL bar does not chop off the bottom action button.
+ */
 export function FacialExpressionPage() {
-  const {
-    phase,
-    currentQuestion,
-    questionIndex,
-    totalQuestions,
-    calibrationProgress,
-    result,
-    error,
-    onCalibrationFrame,
-    onRecordingFrame,
-    startCalibration,
-    startQuestion,
-    finishQuestion,
-    reset,
-  } = useExpressionSession()
-
-  const {
-    isLoaded,
-    isCameraActive,
-    blendshapes,
-    videoRef,
-    startCamera,
-    setRawFrameCallback,
-    error: cameraError,
-  } = useFaceDetector()
-
-  const { isSpeaking, startListening, stopListening } = useVoiceActivity()
-
-  // Start the camera once the face detection model finishes loading.
-  // isLoaded changes at most once per mount so this effect runs once.
-  useEffect(() => {
-    if (isLoaded) {
-      startCamera()
-    }
-  }, [isLoaded, startCamera])
-
-  // Transition from loading to calibration phase once the camera is active
-  // and the session is still in the initial loading state.
-  useEffect(() => {
-    if (isCameraActive && phase === 'loading') {
-      // Phase is set by useExpressionSession; we signal readiness here
-      // so CalibrationScreen can show the start button.
-      startCalibration()
-    }
-  }, [isCameraActive, phase, startCalibration])
-
-  // Subscribe to raw detection frames directly from the detection loop, so frame
-  // capture never depends on React's render cycle. Switch handler when phase changes.
-  useEffect(() => {
-    if (phase === 'calibration') {
-      setRawFrameCallback(onCalibrationFrame)
-    } else if (phase === 'recording') {
-      setRawFrameCallback(onRecordingFrame)
-    } else {
-      setRawFrameCallback(null)
-    }
-  }, [phase, onCalibrationFrame, onRecordingFrame, setRawFrameCallback])
-
-  // Manage voice activity detector alongside question recording.
-  useEffect(() => {
-    if (phase === 'recording') {
-      startListening()
-    } else {
-      stopListening()
-    }
-  }, [phase, startListening, stopListening])
+  const navigate = useNavigate()
+  const tracking = useEmotionTracking()
 
   return (
-    <div className="flex flex-col items-center justify-start w-full h-[100dvh] overflow-y-auto bg-background px-4 pt-6 pb-safe">
-      {(phase === 'loading' || phase === 'calibration') && (
-        <CalibrationScreen
-          videoRef={videoRef}
-          isCameraActive={isCameraActive}
-          calibrationProgress={calibrationProgress}
-          phase={phase}
-          onStart={startCalibration}
+    <div className="h-[100dvh] w-full bg-background overflow-hidden flex flex-col">
+      {tracking.status === 'idle' && (
+        <IntroScreen
+          isLoaded={tracking.isLoaded}
+          loadError={tracking.cameraError}
+          onStart={tracking.startTracking}
         />
       )}
 
-      {(phase === 'question' || phase === 'recording') && (
-        <RecordingSession
-          videoRef={videoRef}
-          isCameraActive={isCameraActive}
-          blendshapes={blendshapes}
-          isListening={isSpeaking}
-          question={currentQuestion}
-          questionNumber={questionIndex + 1}
-          totalQuestions={totalQuestions}
-          phase={phase}
-          onStartRecording={startQuestion}
-          onNext={finishQuestion}
+      {(tracking.status === 'live' || tracking.status === 'saving') && (
+        <LiveDetectionView
+          videoRef={tracking.videoRef}
+          isCameraActive={tracking.isCameraActive}
+          detection={tracking.detection}
+          elapsedMs={tracking.elapsedMs}
+          setLandmarksCallback={tracking.setLandmarksCallback}
+          onStop={tracking.stopTracking}
         />
       )}
 
-      {phase === 'submitting' && (
-        <div className="flex flex-col items-center justify-center gap-4 h-64">
-          {/* Spinner shown while the session payload is being saved to the backend */}
-          <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-          <p className="text-sm text-text-muted">Guardando resultados...</p>
-        </div>
+      {tracking.status === 'saving' && (
+        <SavingOverlay />
       )}
 
-      {phase === 'results' && result && (
-        <SessionResults result={result} onRestart={reset} />
+      {tracking.status === 'results' && tracking.result && (
+        <SessionResultsView
+          result={tracking.result}
+          onRestart={() => {
+            tracking.reset()
+            tracking.startTracking()
+          }}
+          onExit={() => {
+            tracking.reset()
+            navigate('/dashboard')
+          }}
+        />
       )}
 
-      {phase === 'error' && (
-        <div className="flex flex-col items-center gap-4 max-w-xs w-full py-8">
-          <p className="text-sm text-danger text-center">
-            {cameraError ?? error ?? 'Ocurrió un error inesperado.'}
-          </p>
-          <button
-            type="button"
-            onClick={reset}
-            className="w-full py-3 rounded-xl text-sm font-semibold bg-surface-alt text-text active:bg-surface transition-colors"
-          >
-            Reintentar
-          </button>
-        </div>
+      {tracking.status === 'error' && (
+        <ErrorScreen
+          message={tracking.error ?? tracking.cameraError ?? 'Ocurrió un error.'}
+          onRetry={tracking.reset}
+        />
       )}
+    </div>
+  )
+}
+
+/* --------------------------- Sub-screens --------------------------- */
+
+function IntroScreen({
+  isLoaded,
+  loadError,
+  onStart,
+}: {
+  isLoaded: boolean
+  loadError: string | null
+  onStart: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full w-full max-w-md mx-auto px-6 gap-6 text-center">
+      {/* Stylized face placeholder built with concentric rings — no emoji. */}
+      <div className="relative w-40 h-40">
+        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-accent/5 blur-xl" />
+        <svg viewBox="0 0 100 100" className="relative w-full h-full text-accent">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
+          <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.6" />
+          <circle cx="50" cy="50" r="22" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          {/* Eyes and mouth as minimal traces. */}
+          <circle cx="42" cy="46" r="1.5" fill="currentColor" />
+          <circle cx="58" cy="46" r="1.5" fill="currentColor" />
+          <path d="M 42 56 Q 50 62 58 56" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h1 className="text-2xl font-extrabold text-text">
+          Análisis facial en tiempo real
+        </h1>
+        <p className="text-sm text-text-muted leading-relaxed">
+          Detectaremos tus emociones y gestos mientras te filmás. La cámara se
+          activa solo durante la sesión y nunca se sube ningún video al
+          servidor.
+        </p>
+      </div>
+
+      {loadError && (
+        <p className="text-sm text-red-400 px-4 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
+          {loadError}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={onStart}
+        disabled={!isLoaded}
+        className="w-full max-w-xs py-4 rounded-2xl text-base font-semibold bg-accent text-white shadow-[0_8px_24px_rgba(245,158,11,0.35)] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+      >
+        {isLoaded ? 'Iniciar análisis' : 'Cargando detector…'}
+      </button>
+    </div>
+  )
+}
+
+function SavingOverlay() {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+        <p className="text-sm text-text-muted">Guardando sesión…</p>
+      </div>
+    </div>
+  )
+}
+
+function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full w-full max-w-md mx-auto px-6 gap-4 text-center">
+      <p className="text-base text-red-400">{message}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="w-full max-w-xs py-3 rounded-xl text-sm font-semibold bg-surface-alt text-text active:bg-surface transition-colors"
+      >
+        Reintentar
+      </button>
     </div>
   )
 }
