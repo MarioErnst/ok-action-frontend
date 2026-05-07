@@ -16,4 +16,5 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/muletillas', icon: 'muletillas', label: 'Muletillas' },
   { to: '/precision', icon: 'precision', label: 'Precisión' },
   { to: '/sesion-libre', icon: 'live', label: 'Sesión Libre' },
+  { to: '/expresion-facial', icon: 'facial', label: 'Expresión Facial' },
 ]
