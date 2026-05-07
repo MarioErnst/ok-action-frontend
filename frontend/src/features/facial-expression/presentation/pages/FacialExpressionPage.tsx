@@ -29,6 +29,7 @@ export function FacialExpressionPage() {
     blendshapes,
     videoRef,
     startCamera,
+    setRawFrameCallback,
     error: cameraError,
   } = useFaceDetector()
 
@@ -52,15 +53,17 @@ export function FacialExpressionPage() {
     }
   }, [isCameraActive, phase, startCalibration])
 
-  // Forward each blendshape frame to the correct session callback based on phase.
-  // blendshapes updates at 15fps from useFaceDetector's detection loop.
+  // Subscribe to raw detection frames directly from the detection loop, so frame
+  // capture never depends on React's render cycle. Switch handler when phase changes.
   useEffect(() => {
     if (phase === 'calibration') {
-      onCalibrationFrame(blendshapes)
+      setRawFrameCallback(onCalibrationFrame)
     } else if (phase === 'recording') {
-      onRecordingFrame(blendshapes)
+      setRawFrameCallback(onRecordingFrame)
+    } else {
+      setRawFrameCallback(null)
     }
-  }, [blendshapes, phase, onCalibrationFrame, onRecordingFrame])
+  }, [phase, onCalibrationFrame, onRecordingFrame, setRawFrameCallback])
 
   // Manage voice activity detector alongside question recording.
   useEffect(() => {
