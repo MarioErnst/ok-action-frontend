@@ -1,65 +1,73 @@
-export interface BlendshapeFrame {
-  t: number;   // timestamp in ms from question start
-  pk: number;  // mouthPucker blendshape value
-  bd: number;  // average browDown blendshape value
-  ld: number;  // average lipsDown blendshape value
+// Canonical emotion ids — must match backend ALLOWED_EMOTIONS in
+// app/presentation/schemas/facial_expression.py.
+export type EmotionId =
+  | 'happy'
+  | 'sad'
+  | 'angry'
+  | 'surprise'
+  | 'fear'
+  | 'disgust'
+  | 'neutral'
+
+// Curated subset of MediaPipe ARKit blendshapes that map to user-facing
+// gestures. The full 52-blendshape list is too noisy to display.
+export type GestureId =
+  | 'mouthSmile'
+  | 'mouthFrown'
+  | 'mouthOpen'
+  | 'mouthPucker'
+  | 'mouthPress'
+  | 'browDown'
+  | 'browInnerUp'
+  | 'browOuterUp'
+  | 'eyeWide'
+  | 'eyeSquint'
+  | 'eyeBlinkLeft'
+  | 'eyeBlinkRight'
+  | 'cheekPuff'
+  | 'cheekSquint'
+  | 'noseSneer'
+  | 'jawForward'
+  | 'jawLeft'
+  | 'jawRight'
+  | 'tongueOut'
+
+// Score per emotion in 0..1, computed from blendshapes.
+export type EmotionScores = Record<EmotionId, number>
+
+// Score per gesture in 0..1, with the gesture id as key.
+export type GestureScores = Partial<Record<GestureId, number>>
+
+export interface LiveDetection {
+  emotions: EmotionScores
+  gestures: GestureScores
+  dominantEmotion: EmotionId
 }
 
-export interface Baseline {
-  pucker: number;
-  brow_down: number;
-  lips_down: number;
-}
-
-export interface QuestionPayload {
-  question_id: string;
-  question_text: string;
-  duration_ms: number;
-  frames: BlendshapeFrame[];
-}
-
-export interface FacialExpressionQuestion {
-  id: string;
-  text: string;
-}
-
-export interface QuestionResult {
-  question_id: string;
-  question_text: string;
-  duration_ms: number;
-  // Scores are nullable: backend returns null when scoring couldn't run
-  // (e.g., empty frames). Treat null as "no data", not as a zero score.
-  pucker_score: number | null;
-  brow_down_score: number | null;
-  lips_down_score: number | null;
-  question_score: number | null;
+export interface EmotionEvent {
+  t_ms: number
+  emotion: EmotionId
+  // Captures the gestures active at the instant the dominant emotion changed.
+  gestures: GestureScores
 }
 
 export interface SessionResult {
-  id: string;
-  overall_score: number | null;
-  question_results: QuestionResult[];
-  created_at: string;
+  id: string
+  duration_ms: number
+  dominant_emotion: EmotionId | null
+  dominant_percentage: number | null
+  // Map of emotion -> percentage of total session duration. Sums to 100.
+  emotion_distribution: Partial<Record<EmotionId, number>>
+  created_at: string
+  events: EmotionEvent[]
 }
 
 export interface SessionListItem {
-  id: string;
-  overall_score: number | null;
-  created_at: string;
+  id: string
+  duration_ms: number
+  dominant_emotion: EmotionId | null
+  dominant_percentage: number | null
+  created_at: string
 }
 
-// Real-time blendshapes exposed by useFaceDetector during detection loop
-export interface LiveBlendshapes {
-  pucker: number;
-  brow_down: number;
-  lips_down: number;
-}
-
-export type SessionPhase =
-  | 'loading'
-  | 'calibration'
-  | 'question'
-  | 'recording'
-  | 'submitting'
-  | 'results'
-  | 'error';
+export type TrackingStatus = 'idle' | 'live' | 'saving' | 'results' | 'error'
