@@ -5,4 +5,5 @@ export const DIM_LABELS: Record<LiveDim, string> = {
   pron: 'Pronunciación',
   acc: 'Acentuación',
   mul: 'Muletillas',
+  precision: 'Precisión',
 }

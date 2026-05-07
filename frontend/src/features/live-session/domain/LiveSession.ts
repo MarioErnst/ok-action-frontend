@@ -1,4 +1,13 @@
-export type LiveDim = 'pron' | 'acc' | 'mul'
+export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision'
+
+export interface QARoundResult {
+  relevance: number
+  directness: number
+  conciseness: number
+  overall: number
+  feedback: string
+  audio_intelligible: boolean
+}
 
 export interface PronError {
   ph: string
@@ -42,6 +51,11 @@ export type LiveSessionPhase =
   | 'recording'
   | 'correction'
   | 'ended'
+  | 'qa_question'
+  | 'qa_evaluating'
+  | 'qa_result'
+  | 'qa_unintelligible'
+  | 'qa_complete'
 
 export interface LiveSessionState {
   phase: LiveSessionPhase

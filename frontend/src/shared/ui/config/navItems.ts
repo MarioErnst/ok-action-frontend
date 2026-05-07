@@ -14,5 +14,6 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/acentuacion', icon: 'accentuation', label: 'Acentuación' },
   { to: '/volumen', icon: 'loudness', label: 'Volumen' },
   { to: '/muletillas', icon: 'muletillas', label: 'Muletillas' },
+  { to: '/precision', icon: 'precision', label: 'Precisión' },
   { to: '/sesion-libre', icon: 'live', label: 'Sesión Libre' },
 ]
