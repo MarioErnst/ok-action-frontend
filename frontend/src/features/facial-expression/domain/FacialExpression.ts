@@ -1,8 +1,8 @@
 export interface BlendshapeFrame {
-  t: number;   // ms desde el inicio de la pregunta
-  pk: number;  // mouthPucker
-  bd: number;  // browDown promedio
-  ld: number;  // lipsDown promedio
+  t: number;   // timestamp in ms from question start
+  pk: number;  // mouthPucker blendshape value
+  bd: number;  // average browDown blendshape value
+  ld: number;  // average lipsDown blendshape value
 }
 
 export interface Baseline {
