@@ -18,18 +18,22 @@ export class LandmarkRenderer {
   }
 
   /**
-   * Resize the backing canvas to match the rendered video size, accounting for
-   * device pixel ratio so the wireframe stays crisp on high-DPI screens.
+   * Match the canvas internal pixel grid to the video's intrinsic frame size.
+   *
+   * Why not use the rendered (CSS) size: MediaPipe landmark coordinates are
+   * normalized to the source video frame (0..1 across `videoWidth × videoHeight`).
+   * `DrawingUtils.drawConnectors` multiplies them by `canvas.width × canvas.height`,
+   * so the canvas must use the video's bitmap dimensions for points to land on
+   * the same pixels as the face. The canvas CSS box can still be any size —
+   * the browser scales the canvas content to fit, and `object-fit: cover`
+   * (set in CSS by the consumer) crops it identically to the video.
    */
   syncCanvasSize(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): void {
-    const rect = videoEl.getBoundingClientRect()
-    const dpr = window.devicePixelRatio || 1
-    const targetW = Math.max(1, Math.round(rect.width * dpr))
-    const targetH = Math.max(1, Math.round(rect.height * dpr))
-    if (canvas.width !== targetW) canvas.width = targetW
-    if (canvas.height !== targetH) canvas.height = targetH
-    canvas.style.width = `${rect.width}px`
-    canvas.style.height = `${rect.height}px`
+    const vw = videoEl.videoWidth
+    const vh = videoEl.videoHeight
+    if (!vw || !vh) return
+    if (canvas.width !== vw) canvas.width = vw
+    if (canvas.height !== vh) canvas.height = vh
   }
 
   clear(canvas: HTMLCanvasElement): void {
