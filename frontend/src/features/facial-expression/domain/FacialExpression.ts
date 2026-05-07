@@ -27,15 +27,17 @@ export interface QuestionResult {
   question_id: string;
   question_text: string;
   duration_ms: number;
-  pucker_score: number;
-  brow_down_score: number;
-  lips_down_score: number;
-  question_score: number;
+  // Scores are nullable: backend returns null when scoring couldn't run
+  // (e.g., empty frames). Treat null as "no data", not as a zero score.
+  pucker_score: number | null;
+  brow_down_score: number | null;
+  lips_down_score: number | null;
+  question_score: number | null;
 }
 
 export interface SessionResult {
   id: string;
-  overall_score: number;
+  overall_score: number | null;
   question_results: QuestionResult[];
   created_at: string;
 }
