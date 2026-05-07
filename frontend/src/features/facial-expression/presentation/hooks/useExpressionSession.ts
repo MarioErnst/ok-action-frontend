@@ -50,12 +50,23 @@ export function useExpressionSession() {
       const avg = (key: keyof LiveBlendshapes) =>
         frames.reduce((s, f) => s + f[key], 0) / frames.length
 
-      baselineRef.current = {
+      const baseline = {
         pucker: avg('pucker'),
         brow_down: avg('brow_down'),
         lips_down: avg('lips_down'),
       }
 
+      // Reject NaN/Infinity from corrupted detection frames before persisting.
+      const valid = Object.values(baseline).every(
+        (v) => Number.isFinite(v) && v >= 0 && v <= 1
+      )
+      if (!valid) {
+        setError('La calibración produjo valores inválidos. Intenta de nuevo.')
+        setPhase('error')
+        return
+      }
+
+      baselineRef.current = baseline
       setPhase('question')
     }
   }, [])
@@ -72,7 +83,12 @@ export function useExpressionSession() {
 
   // submitSession uses only refs so it needs no reactive deps.
   const submitSession = useCallback(async () => {
-    if (!baselineRef.current) return
+    if (!baselineRef.current) {
+      // Surface the inconsistent state instead of hanging the UI in 'submitting'.
+      setError('La calibración no se completó correctamente. Reinicia la sesión.')
+      setPhase('error')
+      return
+    }
     setPhase('submitting')
 
     try {
@@ -91,19 +107,33 @@ export function useExpressionSession() {
   }, [])
 
   const startCalibration = useCallback(() => {
+    // Only valid from the loading phase; double-trigger is a no-op.
+    if (phaseRef.current !== 'loading') return
+    phaseRef.current = 'calibration'
     baselineFramesRef.current = []
     calibrationStartRef.current = Date.now()
     setCalibrationProgress(0)
     setPhase('calibration')
   }, [])
 
+  // phaseRef mirrors phase so action callbacks (which have stable identities)
+  // can guard against being invoked from a stale UI state (double-click, etc).
+  const phaseRef = useRef<SessionPhase>('loading')
+  phaseRef.current = phase
+
   const startQuestion = useCallback(() => {
+    if (phaseRef.current !== 'question') return
+    // Mutate the ref immediately so a synchronous double-click is rejected.
+    phaseRef.current = 'recording'
     questionFramesRef.current = []
     questionStartTimeRef.current = Date.now()
     setPhase('recording')
   }, [])
 
   const finishQuestion = useCallback(() => {
+    if (phaseRef.current !== 'recording') return
+    // Block re-entry on rapid double-click; actual phase is set below.
+    phaseRef.current = 'submitting'
     const idx = questionIndexRef.current
     const q = FACIAL_EXPRESSION_QUESTIONS[idx]
     const duration = Date.now() - questionStartTimeRef.current
