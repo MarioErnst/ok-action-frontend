@@ -43,13 +43,15 @@ export function CalibrationScreen({
           </p>
         )}
 
-        {/* Progress bar — fills as calibration frames accumulate */}
-        <div className="w-full h-1.5 bg-surface-alt rounded-full overflow-hidden">
-          <div
-            className="h-full bg-blue-500 rounded-full transition-all duration-200"
-            style={{ width: `${calibrationProgress * 100}%` }}
-          />
-        </div>
+        {/* Progress bar — only visible once calibration phase is active */}
+        {!isLoading && (
+          <div className="w-full h-1.5 bg-surface-alt rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-500 rounded-full transition-all duration-200"
+              style={{ width: `${calibrationProgress * 100}%` }}
+            />
+          </div>
+        )}
 
         {showButton && (
           <button
