@@ -55,8 +55,8 @@ loading → calibration → question → recording → (siguiente pregunta o) su
 
 ## Detección MediaPipe
 
-- Modelo: `face_landmarker_lite` (~5MB), cargado desde Google Cloud Storage.
-- WASM: cargado desde jsDelivr CDN.
+- Modelo: `face_landmarker.task` (~3.7MB, float16, versión pinned `1`), cargado desde `storage.googleapis.com/mediapipe-models`. Es el único modelo público de esta tarea — no existe variante "lite" separada.
+- WASM: cargado desde jsDelivr CDN, pinned a la versión `0.10.32` para que coincida con `@mediapipe/tasks-vision` en `package.json`. Si se actualiza el paquete, también hay que actualizar la URL en `faceDetectionService.ts`.
 - Frecuencia máxima: 15fps (`FRAME_INTERVAL_MS = 1000/15`) para preservar batería en móvil.
 - Suavizado LERP con factor 0.2 para reducir jitter sin introducir latencia visible.
 
@@ -119,8 +119,8 @@ Las transiciones de fase críticas (`startCalibration`, `startQuestion`, `finish
 
 ## Decisiones de diseño
 
-### MediaPipe lite model (no full model)
-El modelo full pesa ~30MB y tarda varios segundos en descargar en redes lentas. El modelo lite (~5MB) detecta los blendshapes necesarios con precisión suficiente para esta evaluación.
+### MediaPipe FaceLandmarker (~3.7MB)
+Se usa el modelo público `face_landmarker.task` (float16). MediaPipe no publica una variante "lite" para esta tarea; el modelo regular ya es suficientemente liviano para móvil, especialmente con el cap de 15fps. La carga es lazy (solo cuando el usuario abre la pantalla de expresión facial) y se muestra spinner durante la descarga.
 
 ### Frontend captura, backend puntúa
 Se decidió que el frontend envíe frames crudos (blendshapes + timestamps) y el backend calcule todos los puntajes. Esto permite cambiar el algoritmo de scoring sin actualizar la app del cliente.
