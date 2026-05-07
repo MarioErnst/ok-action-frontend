@@ -60,9 +60,9 @@ function ScoreCircle({ score }: { score: number }) {
   )
 }
 
-// Scales a raw score (0.0–1.0 from the backend) to display as 0–100.
+// Backend returns scores as integers 0–100; round defensively for any float drift.
 function toDisplayScore(raw: number): number {
-  return Math.round(raw * 100)
+  return Math.round(raw)
 }
 
 function QuestionResultRow({ item, index }: { item: QuestionResult; index: number }) {
