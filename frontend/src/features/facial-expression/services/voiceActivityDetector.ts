@@ -16,17 +16,24 @@ export class VoiceActivityDetector {
 
   async start(onVoiceChange: VoiceCallback): Promise<void> {
     this.stopped = false
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true },
-    })
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      })
 
-    this.audioCtx = new AudioContext()
-    // iOS Safari creates AudioContext in 'suspended' state; resume() activates it.
-    await this.audioCtx.resume()
-    const source = this.audioCtx.createMediaStreamSource(this.stream)
-    this.analyser = this.audioCtx.createAnalyser()
-    this.analyser.fftSize = 1024
-    source.connect(this.analyser)
+      this.audioCtx = new AudioContext()
+      // iOS Safari creates AudioContext in 'suspended' state; resume() activates it.
+      await this.audioCtx.resume()
+      const source = this.audioCtx.createMediaStreamSource(this.stream)
+      this.analyser = this.audioCtx.createAnalyser()
+      this.analyser.fftSize = 1024
+      source.connect(this.analyser)
+    } catch (err) {
+      // Clean up partial state (stream, audio context) before re-raising so
+      // microphone indicator turns off and no AudioContext is leaked.
+      this.stop()
+      throw err
+    }
 
     const buffer = new Float32Array(this.analyser.fftSize)
 
