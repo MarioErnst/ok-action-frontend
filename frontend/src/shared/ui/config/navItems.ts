@@ -13,6 +13,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/pronunciacion', icon: 'pronunciation', label: 'Pronunciación' },
   { to: '/acentuacion', icon: 'accentuation', label: 'Acentuación' },
   { to: '/volumen', icon: 'loudness', label: 'Volumen' },
+  { to: '/pausas', icon: 'pauses', label: 'Pausas' },
   { to: '/muletillas', icon: 'muletillas', label: 'Muletillas' },
   { to: '/precision', icon: 'precision', label: 'Precisión' },
   { to: '/sesion-libre', icon: 'live', label: 'Sesión Libre' },

@@ -10,6 +10,7 @@ import LoudnessCoachPage from '../../features/loudness/pages/LoudnessCoachPage'
 import MuletillasPage from '../../features/muletillas/presentation/pages/MuletillasPage'
 import { PrecisionPage } from '../../features/precision/presentation/pages/PrecisionPage'
 import LiveSessionPage from '../../features/live-session/presentation/pages/LiveSessionPage'
+import { PauseEvaluationPage } from '../../features/pauses'
 
 export const AppRouter = () => (
   <Routes>
@@ -22,6 +23,7 @@ export const AppRouter = () => (
         <Route path="/pronunciacion" element={<PronunciationPage />} />
         <Route path="/acentuacion" element={<AccentuationPage />} />
         <Route path="/volumen" element={<LoudnessCoachPage />} />
+        <Route path="/pausas" element={<PauseEvaluationPage />} />
         <Route path="/muletillas" element={<MuletillasPage />} />
         <Route path="/precision" element={<PrecisionPage />} />
         <Route path="/sesion-libre" element={<LiveSessionPage />} />
