@@ -27,6 +27,8 @@ export function useExpressionSession() {
   const questionPayloadsRef = useRef<QuestionPayload[]>([])
   const questionStartTimeRef = useRef<number>(0)
   const calibrationStartRef = useRef<number>(0)
+  // Stable ref to questionIndex so submitSession doesn't need it as a dep.
+  const questionIndexRef = useRef(0)
 
   const currentQuestion = FACIAL_EXPRESSION_QUESTIONS[questionIndex]
 
@@ -59,6 +61,7 @@ export function useExpressionSession() {
   }, [])
 
   // Called every frame by useFaceDetector during a question recording.
+  // refs are stable; no reactive deps needed.
   const onRecordingFrame = useCallback(
     (bs: LiveBlendshapes) => {
       const t = Date.now() - questionStartTimeRef.current
@@ -67,38 +70,8 @@ export function useExpressionSession() {
     []
   )
 
-  function startCalibration() {
-    baselineFramesRef.current = []
-    calibrationStartRef.current = Date.now()
-    setCalibrationProgress(0)
-    setPhase('calibration')
-  }
-
-  function startQuestion() {
-    questionFramesRef.current = []
-    questionStartTimeRef.current = Date.now()
-    setPhase('recording')
-  }
-
-  function finishQuestion() {
-    const duration = Date.now() - questionStartTimeRef.current
-    questionPayloadsRef.current.push({
-      question_id: currentQuestion.id,
-      question_text: currentQuestion.text,
-      duration_ms: duration,
-      frames: [...questionFramesRef.current],
-    })
-
-    const next = questionIndex + 1
-    if (next < FACIAL_EXPRESSION_QUESTIONS.length) {
-      setQuestionIndex(next)
-      setPhase('question')
-    } else {
-      submitSession()
-    }
-  }
-
-  async function submitSession() {
+  // submitSession uses only refs so it needs no reactive deps.
+  const submitSession = useCallback(async () => {
     if (!baselineRef.current) return
     setPhase('submitting')
 
@@ -107,6 +80,7 @@ export function useExpressionSession() {
         baseline: baselineRef.current,
         questions: questionPayloadsRef.current,
       })
+      // setResult before setPhase so the results screen always has data on first render.
       setResult(sessionResult)
       setPhase('results')
     } catch (err: unknown) {
@@ -114,9 +88,43 @@ export function useExpressionSession() {
       setError(msg)
       setPhase('error')
     }
-  }
+  }, [])
 
-  function reset() {
+  const startCalibration = useCallback(() => {
+    baselineFramesRef.current = []
+    calibrationStartRef.current = Date.now()
+    setCalibrationProgress(0)
+    setPhase('calibration')
+  }, [])
+
+  const startQuestion = useCallback(() => {
+    questionFramesRef.current = []
+    questionStartTimeRef.current = Date.now()
+    setPhase('recording')
+  }, [])
+
+  const finishQuestion = useCallback(() => {
+    const idx = questionIndexRef.current
+    const q = FACIAL_EXPRESSION_QUESTIONS[idx]
+    const duration = Date.now() - questionStartTimeRef.current
+    questionPayloadsRef.current.push({
+      question_id: q.id,
+      question_text: q.text,
+      duration_ms: duration,
+      frames: [...questionFramesRef.current],
+    })
+
+    const next = idx + 1
+    if (next < FACIAL_EXPRESSION_QUESTIONS.length) {
+      questionIndexRef.current = next
+      setQuestionIndex(next)
+      setPhase('question')
+    } else {
+      submitSession()
+    }
+  }, [submitSession])
+
+  const reset = useCallback(() => {
     setPhase('loading')
     setQuestionIndex(0)
     setCalibrationProgress(0)
@@ -126,7 +134,8 @@ export function useExpressionSession() {
     baselineRef.current = null
     questionFramesRef.current = []
     questionPayloadsRef.current = []
-  }
+    questionIndexRef.current = 0
+  }, [])
 
   return {
     phase,
