@@ -18,8 +18,8 @@ export function CalibrationScreen({
   onStart,
 }: CalibrationScreenProps) {
   const isLoading = phase === 'loading'
-  // Hide the button once calibration has started (progress > 0)
-  const showButton = calibrationProgress === 0
+  // Show button only before calibration begins — both conditions must hold to be unambiguous
+  const showButton = phase === 'calibration' && calibrationProgress === 0
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-xs mx-auto py-8 px-4">
