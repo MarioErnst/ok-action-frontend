@@ -1,4 +1,4 @@
-export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live'
+export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live' | 'facial'
 
 type NavIconProps = {
   name: NavIconName
@@ -60,6 +60,15 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="5" />
       <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0} />
+    </>
+  ),
+  // Cara con expresion neutra — representa evaluacion de expresion facial
+  facial: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="9" cy="10" r="1" fill="currentColor" strokeWidth={0} />
+      <circle cx="15" cy="10" r="1" fill="currentColor" strokeWidth={0} />
+      <path d="M9 16 Q12 14 15 16" />
     </>
   ),
   // Microfono — representa sesion de habla en vivo
