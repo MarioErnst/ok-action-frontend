@@ -1,5 +1,4 @@
-import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
-import type { LiveBlendshapes } from '../domain/FacialExpression'
+import { FaceLandmarker, FilesetResolver, type NormalizedLandmark } from '@mediapipe/tasks-vision'
 
 // MediaPipe WASM and model are loaded from CDN to avoid bundling the binary.
 // The face_landmarker.task model (~3.7MB) is the only public version of this
@@ -12,7 +11,15 @@ const MODEL_URL =
 // Detection is capped at 15fps to avoid overloading mobile hardware.
 const FRAME_INTERVAL_MS = 1000 / 15
 
-export type BlendshapeCallback = (blendshapes: LiveBlendshapes) => void
+export type BlendshapeCategory = { categoryName: string; score: number }
+export type LandmarkPoint = NormalizedLandmark
+
+export type DetectionFrame = {
+  blendshapes: BlendshapeCategory[]
+  landmarks: LandmarkPoint[]
+}
+
+export type FrameCallback = (frame: DetectionFrame) => void
 
 export class FaceDetectionService {
   private landmarker: FaceLandmarker | null = null
@@ -25,6 +32,8 @@ export class FaceDetectionService {
     this.landmarker = await FaceLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: MODEL_URL },
       outputFaceBlendshapes: true,
+      // outputFacialTransformationMatrixes is intentionally omitted — we don't
+      // need head pose, just landmarks for the wireframe overlay.
       runningMode: 'VIDEO',
       numFaces: 1,
     })
@@ -52,7 +61,7 @@ export class FaceDetectionService {
     return this.animFrameId !== null
   }
 
-  startDetection(videoEl: HTMLVideoElement, onFrame: BlendshapeCallback): void {
+  startDetection(videoEl: HTMLVideoElement, onFrame: FrameCallback): void {
     if (!this.landmarker) throw new Error('Model not loaded')
 
     const detect = (now: number) => {
@@ -64,19 +73,12 @@ export class FaceDetectionService {
       if (videoEl.readyState < 2) return
 
       const result = this.landmarker!.detectForVideo(videoEl, now)
-      if (!result.faceBlendshapes?.length) return
+      if (!result.faceBlendshapes?.length || !result.faceLandmarks?.length) return
 
-      const shapes = result.faceBlendshapes[0].categories
-      const get = (name: string) =>
-        shapes.find((b) => b.categoryName === name)?.score ?? 0
-
-      const blendshapes: LiveBlendshapes = {
-        pucker: get('mouthPucker'),
-        brow_down: (get('browDownLeft') + get('browDownRight')) / 2,
-        lips_down: (get('mouthFrownLeft') + get('mouthFrownRight')) / 2,
-      }
-
-      onFrame(blendshapes)
+      onFrame({
+        blendshapes: result.faceBlendshapes[0].categories,
+        landmarks: result.faceLandmarks[0],
+      })
     }
 
     this.animFrameId = requestAnimationFrame(detect)
