@@ -7,17 +7,21 @@ type SessionResultsProps = {
 
 // ScoreCircle renders an SVG ring that fills proportionally to the score (0–100).
 // Color thresholds: green >= 70, yellow >= 40, red < 40.
-function ScoreCircle({ score }: { score: number }) {
+// `label` is the rendered text — separate from the numeric score so callers
+// can show "—" for missing data while still passing 0 for the geometry.
+function ScoreCircle({ score, label }: { score: number; label: string }) {
+  // Clamp to [0, 100] so a corrupted score never renders an arc outside the ring.
+  const safeScore = Math.max(0, Math.min(100, score))
   const radius = 40
   const strokeWidth = 8
   const normalizedRadius = radius - strokeWidth / 2
   const circumference = 2 * Math.PI * normalizedRadius
-  const fillOffset = circumference - (score / 100) * circumference
+  const fillOffset = circumference - (safeScore / 100) * circumference
 
   let colorClass: string
-  if (score >= 70) {
+  if (safeScore >= 70) {
     colorClass = 'text-green-500'
-  } else if (score >= 40) {
+  } else if (safeScore >= 40) {
     colorClass = 'text-yellow-500'
   } else {
     colorClass = 'text-red-500'
@@ -29,7 +33,7 @@ function ScoreCircle({ score }: { score: number }) {
         width={radius * 2}
         height={radius * 2}
         viewBox={`0 0 ${radius * 2} ${radius * 2}`}
-        aria-label={`Puntaje general: ${score}`}
+        aria-label={`Puntaje general: ${label}`}
       >
         {/* Background track */}
         <circle
@@ -54,15 +58,17 @@ function ScoreCircle({ score }: { score: number }) {
           transform={`rotate(-90 ${radius} ${radius})`}
         />
       </svg>
-      <span className={`text-3xl font-bold ${colorClass}`}>{Math.round(score)}</span>
+      <span className={`text-3xl font-bold ${colorClass}`}>{label}</span>
       <span className="text-xs text-text-muted uppercase tracking-widest">Puntaje general</span>
     </div>
   )
 }
 
-// Backend returns scores as integers 0–100; round defensively for any float drift.
-function toDisplayScore(raw: number): number {
-  return Math.round(raw)
+// Backend returns scores as integers 0–100, or null when scoring couldn't run.
+// Render null as an em-dash so users see "no data" instead of a misleading 0.
+function toDisplayScore(raw: number | null): string {
+  if (raw === null) return '—'
+  return String(Math.round(raw))
 }
 
 function QuestionResultRow({ item, index }: { item: QuestionResult; index: number }) {
@@ -91,9 +97,9 @@ function QuestionResultRow({ item, index }: { item: QuestionResult; index: numbe
 export function SessionResults({ result, onRestart }: SessionResultsProps) {
   return (
     <div className="flex flex-col gap-8 w-full max-w-2xl mx-auto py-8 px-4">
-      {/* Overall score displayed as a filled SVG ring */}
+      {/* Overall score displayed as a filled SVG ring; null becomes a zero ring with em-dash. */}
       <div className="flex justify-center">
-        <ScoreCircle score={toDisplayScore(result.overall_score)} />
+        <ScoreCircle score={result.overall_score ?? 0} label={toDisplayScore(result.overall_score)} />
       </div>
 
       {/* Per-question breakdown table */}
