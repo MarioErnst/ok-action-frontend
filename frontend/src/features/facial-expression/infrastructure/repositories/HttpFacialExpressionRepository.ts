@@ -1,9 +1,8 @@
 import { apiRequest } from '../../../../api/client'
 import type { SaveSessionDto, SessionResponseDto, SessionListDto } from '../dto/FacialExpressionDtos'
 
-// Save can carry several thousand frames — a slow connection can take a while,
-// but anything past 30s indicates the backend is hung. Bound the wait so the
-// "Guardando..." spinner cannot loop forever.
+// Sessions are usually small (tens of events) but the backend may be cold-starting.
+// 30s caps the wait so the "Guardando..." spinner never loops forever.
 const SAVE_TIMEOUT_MS = 30_000
 
 // apiRequest from the shared client handles auth_token from localStorage and
