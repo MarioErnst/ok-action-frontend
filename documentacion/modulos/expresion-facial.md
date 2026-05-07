@@ -23,7 +23,7 @@ features/facial-expression/
 ├── questions.ts                     # Preguntas predefinidas (5 preguntas fijas)
 └── presentation/
     ├── hooks/
-    │   ├── useFaceDetector.ts        # Wrapper del servicio de detección; expone blendshapes suavizados y videoRef
+    │   ├── useFaceDetector.ts        # Wrapper del servicio: expone blendshapes (suavizados, para UI) + setRawFrameCallback (frames crudos, para captura)
     │   ├── useVoiceActivity.ts       # Wrapper del VAD; expone isSpeaking
     │   └── useExpressionSession.ts  # Orquestador: maneja fases, calibración, grabación y envío
     ├── components/
@@ -80,6 +80,43 @@ loading → calibration → question → recording → (siguiente pregunta o) su
 - `audio: false` en getUserMedia para evitar captura accidental de audio al iniciar la cámara.
 - `await audioCtx.resume()` en VoiceActivityDetector para desbloquearlo en iOS.
 
+## Captura de frames sin pérdida
+
+Los frames capturados por MediaPipe se entregan a `useExpressionSession` mediante un callback registrado vía `useFaceDetector.setRawFrameCallback`, no a través de un `useEffect` sobre el estado `blendshapes`.
+
+Por qué importa: si los frames se forwardearan vía `useEffect([blendshapes])`, dos updates de `setBlendshapes` que cayeran en el mismo batch de React harían que solo el último se observara y el frame intermedio se perdería. Como el scoring del backend depende del histograma de frames sobre/bajo el umbral, perder frames sesgaría el puntaje.
+
+El callback se ejecuta directamente desde el loop de detección, fuera del ciclo de render de React, así no hay batching que comprima frames.
+
+## Smoothing solo para la UI
+
+El suavizado LERP (factor 0.2) en `useFaceDetector` se aplica únicamente al estado `blendshapes` que alimenta los `ExpressionBar` visuales. Los frames que llegan al backend vía `setRawFrameCallback` son **crudos** (sin smoothing), porque el scoring espera valores tal como los entrega MediaPipe.
+
+## Robustez y limpieza de recursos
+
+### Timeout en `saveSession`
+
+`HttpFacialExpressionRepository.saveSession` usa un `AbortController` con timeout de 30 segundos. Si el backend no responde en ese plazo, la promesa se rechaza con `Error('Tiempo de espera agotado al guardar la sesión.')` y la UI pasa a fase `error` con un botón "Reintentar". Sin esto, el spinner de "Guardando resultados..." podía quedar girando indefinidamente.
+
+### Validación de baseline
+
+Después de promediar los 75 frames de calibración, se valida que cada componente del baseline sea finito y esté en `[0, 1]`. Si alguno es `NaN`, `Infinity` o está fuera de rango (por glitches puntuales de MediaPipe), la sesión pasa a fase `error` y no se envía nada al backend.
+
+### Error explícito si baseline falta
+
+`submitSession` antes terminaba silenciosamente si `baselineRef.current` era `null`, dejando la UI colgada en fase `submitting`. Ahora setea `error` y pasa a fase `error` con un mensaje claro.
+
+### Limpieza de cámara y micrófono
+
+- `FaceDetectionService.startCamera` envuelve `videoEl.play()` en try/catch y llama a `stream.getTracks().forEach(t => t.stop())` si falla, evitando que el indicador de cámara del navegador siga encendido tras un error de iOS.
+- `VoiceActivityDetector.start` envuelve toda la inicialización (getUserMedia + AudioContext + nodos) en try/catch y llama a `this.stop()` ante cualquier fallo, liberando el `AudioContext` y los tracks del micrófono.
+- `useFaceDetector` mantiene un `mountedRef` para descartar `setState` que llegue después del unmount (por promesas en vuelo de `load()` o frames tardíos).
+- `FaceDetectionService.dispose()` ya invoca `stopCamera()` internamente, así que el cleanup del `useEffect` de `useFaceDetector` libera todo en un solo paso.
+
+### Anti double-click
+
+Las transiciones de fase críticas (`startCalibration`, `startQuestion`, `finishQuestion`) leen un `phaseRef` que se mutea **inmediatamente** dentro del callback antes de hacer `setPhase`. Un segundo click en el mismo tick encuentra `phaseRef` ya cambiado y retorna sin hacer nada. Sin esto, un doble-click rápido reseteaba `questionStartTimeRef` y los frames acumulados.
+
 ## Decisiones de diseño
 
 ### MediaPipe lite model (no full model)
@@ -99,7 +136,7 @@ En `submitSession`, `setResult(sessionResult)` se llama antes de `setPhase('resu
 
 ## Integración con el backend
 
-- **POST** `/facial-expression/sessions` — cuerpo: `{ baseline, questions }`.
+- **POST** `/facial-expression/sessions` — cuerpo: `{ baseline, questions }`. Timeout de 30s del lado del cliente.
 - **GET** `/facial-expression/sessions` — lista de sesiones del usuario autenticado.
-- **GET** `/facial-expression/sessions/{id}` — detalle de una sesión.
-- Todos los puntajes retornados son enteros 0–100 (no floats 0.0–1.0).
+- **GET** `/facial-expression/sessions/{id}` — detalle de una sesión. Devuelve 404 si el UUID es inválido o no existe.
+- Los puntajes retornados son enteros `0–100` o `null` (si no se pudo calcular). `SessionResults` renderiza `null` como em-dash (`—`) para distinguir "sin datos" de "puntaje cero".
