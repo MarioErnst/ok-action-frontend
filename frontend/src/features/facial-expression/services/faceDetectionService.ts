@@ -29,12 +29,25 @@ export class FaceDetectionService {
   }
 
   async startCamera(videoEl: HTMLVideoElement): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false,
     })
-    videoEl.srcObject = this.stream
-    await videoEl.play()
+    this.stream = stream
+    try {
+      videoEl.srcObject = stream
+      await videoEl.play()
+    } catch (err) {
+      // play() can fail on iOS if the element is detached or autoplay is blocked.
+      // Tear the stream down to avoid leaking the camera indicator.
+      stream.getTracks().forEach((t) => t.stop())
+      this.stream = null
+      throw err
+    }
+  }
+
+  isDetecting(): boolean {
+    return this.animFrameId !== null
   }
 
   startDetection(videoEl: HTMLVideoElement, onFrame: BlendshapeCallback): void {
