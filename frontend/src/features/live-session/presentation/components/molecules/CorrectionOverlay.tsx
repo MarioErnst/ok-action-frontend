@@ -7,6 +7,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   pron: '/pronunciacion',
   acc: '/acentuacion',
   mul: '/muletillas',
+  precision: '/precision',
 }
 
 const REASON_MESSAGES: Record<string, string> = {
