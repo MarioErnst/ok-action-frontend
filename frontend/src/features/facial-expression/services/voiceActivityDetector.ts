@@ -12,13 +12,17 @@ export class VoiceActivityDetector {
   private intervalId: ReturnType<typeof setInterval> | null = null
   private silenceTimer: ReturnType<typeof setTimeout> | null = null
   private currentlySpeaking = false
+  private stopped = false
 
   async start(onVoiceChange: VoiceCallback): Promise<void> {
+    this.stopped = false
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true },
     })
 
     this.audioCtx = new AudioContext()
+    // iOS Safari creates AudioContext in 'suspended' state; resume() activates it.
+    await this.audioCtx.resume()
     const source = this.audioCtx.createMediaStreamSource(this.stream)
     this.analyser = this.audioCtx.createAnalyser()
     this.analyser.fftSize = 1024
@@ -45,6 +49,7 @@ export class VoiceActivityDetector {
         }
       } else if (this.currentlySpeaking && !this.silenceTimer) {
         this.silenceTimer = setTimeout(() => {
+          if (this.stopped) return
           this.currentlySpeaking = false
           this.silenceTimer = null
           onVoiceChange(false)
@@ -54,6 +59,7 @@ export class VoiceActivityDetector {
   }
 
   stop(): void {
+    this.stopped = true
     if (this.intervalId) clearInterval(this.intervalId)
     if (this.silenceTimer) clearTimeout(this.silenceTimer)
     this.stream?.getTracks().forEach((t) => t.stop())
