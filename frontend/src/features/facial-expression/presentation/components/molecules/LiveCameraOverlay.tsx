@@ -69,10 +69,16 @@ export function LiveCameraOverlay({ videoRef, isActive, setLandmarksCallback }: 
         playsInline
         className="w-full h-full object-cover scale-x-[-1]"
       />
-      {/* Canvas mirror matches the video mirror so landmarks stay aligned. */}
+      {/*
+        Canvas matches the video pixel-for-pixel:
+        - `object-cover` crops the canvas the same way as the video, so the
+          wireframe stays anchored to the face when the video aspect doesn't
+          match the container.
+        - `scale-x-[-1]` mirrors the canvas alongside the mirrored selfie video.
+      */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none scale-x-[-1]"
+        className="absolute inset-0 w-full h-full pointer-events-none object-cover scale-x-[-1]"
       />
       {!isActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-text-muted text-sm">
