@@ -1,5 +1,5 @@
 // Full module documentation: documentacion/modulos/volumen.md
-import type { LoudnessPreset } from '../../types';
+import type { LoudnessPreset } from '../../../types';
 
 interface PresetSelectorProps {
   presets: LoudnessPreset[];

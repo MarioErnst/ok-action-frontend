@@ -1,4 +1,4 @@
-import type { LoudnessBand } from '../../types';
+import type { LoudnessBand } from '../../../types';
 
 interface BandLabelProps {
   band: LoudnessBand;

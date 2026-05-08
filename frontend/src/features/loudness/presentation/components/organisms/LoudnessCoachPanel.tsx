@@ -7,7 +7,7 @@ import type {
   LoudnessConfig,
   LoudnessMetrics,
   LoudnessPreset,
-} from '../../types';
+} from '../../../types';
 
 interface LoudnessCoachPanelProps {
   band: LoudnessBand;

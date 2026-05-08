@@ -1,8 +1,8 @@
 // Full module documentation: documentacion/modulos/volumen.md
 import { useEffect, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
-import LoudnessCoachPanel from '../components/organisms/LoudnessCoachPanel';
-import PresetSelector from '../components/organisms/PresetSelector';
+import LoudnessCoachPanel from '../presentation/components/organisms/LoudnessCoachPanel';
+import PresetSelector from '../presentation/components/organisms/PresetSelector';
 import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
 import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
