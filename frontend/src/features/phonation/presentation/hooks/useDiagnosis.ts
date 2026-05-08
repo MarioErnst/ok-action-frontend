@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { VOICE_EXERCISES } from '../services/exercises';
-import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../types';
+import { VOICE_EXERCISES } from '../../services/exercises';
+import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../../types';
 
 // --- Thresholds based on scientific literature ---
 const F0_SD_PATHOLOGICAL = 15;

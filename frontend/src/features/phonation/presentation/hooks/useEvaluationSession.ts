@@ -1,9 +1,9 @@
 // Session logic for the phonation module: documentacion/modulos/fonacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toSavePhonationSessionDto } from '../infrastructure/mappers/phonationMapper';
-import { HttpPhonationRepository } from '../infrastructure/repositories/HttpPhonationRepository';
-import { VOICE_EXERCISES } from '../services/exercises';
-import type { PhonationFrame, VoiceExercise } from '../types';
+import { toSavePhonationSessionDto } from '../../infrastructure/mappers/phonationMapper';
+import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpPhonationRepository';
+import { VOICE_EXERCISES } from '../../services/exercises';
+import type { PhonationFrame, VoiceExercise } from '../../types';
 import useDiagnosis from './useDiagnosis';
 import useVoiceMonitor from './useVoiceMonitor';
 import { useFrameAccumulator } from './useFrameAccumulator';

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { VOICE_EXERCISES } from '../services/exercises';
-import type { VoiceExercise } from '../types';
+import { VOICE_EXERCISES } from '../../services/exercises';
+import type { VoiceExercise } from '../../types';
 
 export interface UseExerciseSelectionReturn {
   selectedIds: Set<string>;

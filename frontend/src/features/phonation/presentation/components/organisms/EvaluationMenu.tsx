@@ -1,6 +1,6 @@
 import { VOICE_EXERCISES } from '../../../services/exercises';
 import type { VoiceExercise } from '../../../types';
-import { useExerciseSelection } from '../../../hooks/useExerciseSelection';
+import { useExerciseSelection } from '../../hooks/useExerciseSelection';
 
 interface EvaluationMenuProps {
   onStart: (selectedExercises: VoiceExercise[]) => void;
