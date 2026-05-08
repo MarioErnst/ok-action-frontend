@@ -11,6 +11,7 @@ type Props = {
   detection: LiveDetection
   elapsedMs: number
   setLandmarksCallback: (cb: ((landmarks: LandmarkPoint[]) => void) | null) => void
+  attachStream: (video: HTMLVideoElement | null) => void
   onStop: () => void
 }
 
@@ -38,6 +39,7 @@ export function LiveDetectionView({
   detection,
   elapsedMs,
   setLandmarksCallback,
+  attachStream,
   onStop,
 }: Props) {
   const maxGestures = useResponsiveGestureCap()
@@ -63,6 +65,7 @@ export function LiveDetectionView({
             videoRef={videoRef}
             isActive={isCameraActive}
             setLandmarksCallback={setLandmarksCallback}
+            attachStream={attachStream}
           />
         </div>
         <div className="flex flex-col justify-start lg:overflow-y-auto">

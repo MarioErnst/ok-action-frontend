@@ -8,6 +8,11 @@ type Props = {
   // Wire-in for the detector's landmark stream. The molecule registers its
   // canvas-drawing callback on mount and clears it on unmount.
   setLandmarksCallback: (cb: ((landmarks: LandmarkPoint[]) => void) | null) => void
+  // Hand-off so the molecule can re-attach an already-running stream when it
+  // mounts (e.g., the calibration view unmounts and live view mounts a fresh
+  // <video> while the camera keeps running). Without this the new <video>
+  // would stay black even though the stream is alive.
+  attachStream?: (video: HTMLVideoElement | null) => void
 }
 
 /**
@@ -17,9 +22,20 @@ type Props = {
  * mirror image; the canvas is mirrored alongside so the wireframe tracks the
  * mirrored video instead of drifting to the opposite side.
  */
-export function LiveCameraOverlay({ videoRef, isActive, setLandmarksCallback }: Props) {
+export function LiveCameraOverlay({
+  videoRef,
+  isActive,
+  setLandmarksCallback,
+  attachStream,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const rendererRef = useRef<LandmarkRenderer | null>(null)
+
+  // Re-attach the running camera stream to this video element on mount.
+  // No-op when the stream isn't running yet; safe to call repeatedly.
+  useEffect(() => {
+    attachStream?.(videoRef.current)
+  }, [attachStream, videoRef])
 
   useEffect(() => {
     const canvas = canvasRef.current

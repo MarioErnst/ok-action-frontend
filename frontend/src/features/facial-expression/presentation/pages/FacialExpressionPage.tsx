@@ -37,6 +37,7 @@ export function FacialExpressionPage() {
           isCameraActive={tracking.isCameraActive}
           progress={tracking.calibrationProgress}
           setLandmarksCallback={tracking.setLandmarksCallback}
+          attachStream={tracking.attachStream}
         />
       )}
 
@@ -47,6 +48,7 @@ export function FacialExpressionPage() {
           detection={tracking.detection}
           elapsedMs={tracking.elapsedMs}
           setLandmarksCallback={tracking.setLandmarksCallback}
+          attachStream={tracking.attachStream}
           onStop={tracking.stopTracking}
         />
       )}

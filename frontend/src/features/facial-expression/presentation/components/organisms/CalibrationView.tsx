@@ -8,6 +8,7 @@ type Props = {
   // 0..1 fraction of calibration samples collected so far.
   progress: number
   setLandmarksCallback: (cb: ((landmarks: LandmarkPoint[]) => void) | null) => void
+  attachStream: (video: HTMLVideoElement | null) => void
 }
 
 /**
@@ -23,6 +24,7 @@ export function CalibrationView({
   isCameraActive,
   progress,
   setLandmarksCallback,
+  attachStream,
 }: Props) {
   const pct = Math.round(progress * 100)
 
@@ -41,6 +43,7 @@ export function CalibrationView({
             videoRef={videoRef}
             isActive={isCameraActive}
             setLandmarksCallback={setLandmarksCallback}
+            attachStream={attachStream}
           />
         </div>
       </div>
