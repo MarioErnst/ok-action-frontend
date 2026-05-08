@@ -12,6 +12,7 @@ Cada archivo describe la arquitectura, los componentes, los hooks y el flujo de 
 | Acentuacion | [modulos/acentuacion.md](modulos/acentuacion.md) | Evaluacion de acento prosodico, entonacion y ritmo via Gemini |
 | Volumen | [modulos/volumen.md](modulos/volumen.md) | Coach de volumen en tiempo real con calibracion de ruido y voz |
 | Muletillas | [modulos/muletillas.md](modulos/muletillas.md) | Deteccion de palabras de relleno en respuestas orales via Gemini |
+| Fluidez | [modulos/fluidez.md](modulos/fluidez.md) | Practica de continuidad oral con feedback en tiempo real |
 
 ## Estructura general del frontend
 

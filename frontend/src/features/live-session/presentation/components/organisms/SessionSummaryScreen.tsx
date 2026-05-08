@@ -11,6 +11,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   acc: '/acentuacion',
   mul: '/muletillas',
   precision: '/precision',
+  fluency: '/fluidez',
 }
 
 const STOP_REASON_LABELS: Record<string, string> = {
@@ -81,7 +82,9 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, onRes
         const avgDimScore = dimAvgScore(analyses, dim)
         const dimErrors = dim === 'pron' ? errors.pron : dim === 'acc' ? errors.acc : null
         const dimMuls = dim === 'mul' ? errors.mul : null
+        const fluencyData = dim === 'fluency' ? [...analyses].reverse().find((analysis) => analysis.dims.fluency)?.dims.fluency : null
         const hasErrors = dimErrors ? dimErrors.length > 0 : dimMuls ? dimMuls.length > 0 : false
+        const hasFluencyIssue = dim === 'fluency' && avgDimScore !== null && avgDimScore < 70
 
         return (
           <div key={dim} className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-5 flex flex-col gap-4 shadow-lg">
@@ -89,7 +92,9 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, onRes
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">{DIM_LABELS[dim]}</p>
                 <p className="text-sm text-text-muted mt-0.5">
-                  {hasErrors
+                  {dim === 'fluency'
+                    ? fluencyData?.classification ?? 'Sin datos de fluidez'
+                    : hasErrors
                     ? `${dimErrors?.length ?? dimMuls?.length} tipo${(dimErrors?.length ?? dimMuls?.length ?? 0) !== 1 ? 's' : ''} de error${(dimErrors?.length ?? dimMuls?.length ?? 0) !== 1 ? 'es' : ''} detectado${(dimErrors?.length ?? dimMuls?.length ?? 0) !== 1 ? 's' : ''}`
                     : 'Sin errores'}
                 </p>
@@ -105,9 +110,28 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, onRes
               {dim === 'pron' && <PronErrorList errors={errors.pron} />}
               {dim === 'acc' && <AccErrorList errors={errors.acc} />}
               {dim === 'mul' && <MulList muls={errors.mul} />}
+              {dim === 'fluency' && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-surface-alt p-3">
+                    <p className="text-lg font-bold text-text">{fluencyData?.wpm ?? 0}</p>
+                    <p className="text-xs text-text-muted">PPM</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-alt p-3">
+                    <p className="text-lg font-bold text-text">{fluencyData?.repetitions ?? 0}</p>
+                    <p className="text-xs text-text-muted">repet.</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-alt p-3">
+                    <p className="text-lg font-bold text-text">{fluencyData?.long_blocks ?? 0}</p>
+                    <p className="text-xs text-text-muted">bloq.</p>
+                  </div>
+                  {fluencyData?.note && (
+                    <p className="col-span-3 text-left text-sm leading-relaxed text-text-muted">{fluencyData.note}</p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {hasErrors && (
+            {(hasErrors || hasFluencyIssue) && (
               <button
                 onClick={() => navigate(DIM_ROUTES[dim])}
                 className="w-full py-2.5 rounded-xl border border-accent/40 text-accent text-sm font-semibold

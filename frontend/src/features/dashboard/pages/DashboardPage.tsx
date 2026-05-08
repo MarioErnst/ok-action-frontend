@@ -10,6 +10,7 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/pronunciacion': 'Practica y evalúa tu pronunciación con frases reales.',
   '/acentuacion': 'Trabaja el énfasis y la acentuación correcta.',
   '/volumen': 'Calibra y controla la intensidad de tu voz.',
+  '/fluidez': 'Reduce trabas, repeticiones y reinicios al hablar.',
 }
 
 export const DashboardPage = () => {

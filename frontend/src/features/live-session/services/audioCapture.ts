@@ -38,7 +38,9 @@ export class AudioCapture {
     this.processor.onaudioprocess = (event) => {
       const float32 = event.inputBuffer.getChannelData(0)
       const int16 = float32ToInt16(float32)
-      onChunk(int16.buffer.slice(0) as ArrayBuffer)
+      const chunk = new ArrayBuffer(int16.byteLength)
+      new Uint8Array(chunk).set(new Uint8Array(int16.buffer, int16.byteOffset, int16.byteLength))
+      onChunk(chunk)
     }
 
     this.source.connect(this.processor)
