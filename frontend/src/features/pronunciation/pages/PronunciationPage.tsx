@@ -1,7 +1,7 @@
 // Full module documentation: documentacion/modulos/pronunciacion.md
-import LevelSelectionScreen from '../components/organisms/LevelSelectionScreen'
-import PronunciationResultsScreen from '../components/organisms/PronunciationResultsScreen'
-import RecordingScreen from '../components/organisms/RecordingScreen'
+import LevelSelectionScreen from '../presentation/components/organisms/LevelSelectionScreen'
+import PronunciationResultsScreen from '../presentation/components/organisms/PronunciationResultsScreen'
+import RecordingScreen from '../presentation/components/organisms/RecordingScreen'
 import usePronunciationSession from '../hooks/usePronunciationSession'
 
 export default function PronunciationPage() {

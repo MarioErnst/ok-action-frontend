@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { PronunciationSessionResult } from '../../types'
+import type { PronunciationSessionResult } from '../../../types'
 import PhonemeFeedback from '../molecules/PhonemeFeedback'
 import PronunciationMetrics from '../molecules/PronunciationMetrics'
 

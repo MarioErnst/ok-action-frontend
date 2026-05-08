@@ -1,4 +1,4 @@
-import type { PhraseState, PronunciationLevel } from '../../types'
+import type { PhraseState, PronunciationLevel } from '../../../types'
 import PhraseCard from '../molecules/PhraseCard'
 
 interface RecordingScreenProps {

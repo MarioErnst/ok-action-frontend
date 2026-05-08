@@ -1,4 +1,4 @@
-import type { PronunciationMetrics } from '../../types'
+import type { PronunciationMetrics } from '../../../types'
 
 interface MetricRowProps {
   label: string

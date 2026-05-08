@@ -1,4 +1,4 @@
-import type { PhonemeError } from '../../types'
+import type { PhonemeError } from '../../../types'
 
 interface PhonemeFeedbackProps {
   feedback: string
