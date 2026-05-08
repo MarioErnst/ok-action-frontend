@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FaceDetectionService, type LandmarkPoint } from '../../services/faceDetectionService'
-import { classify } from '../../services/emotionClassifier'
-import type { LiveDetection } from '../../domain/FacialExpression'
+import {
+  FaceDetectionService,
+  type BlendshapeCategory,
+  type LandmarkPoint,
+} from '../../services/faceDetectionService'
+import {
+  applyBaseline,
+  categoriesToMap,
+  classifyMap,
+} from '../../services/emotionClassifier'
+import type { BlendshapeBaseline, LiveDetection } from '../../domain/FacialExpression'
 
 const NEUTRAL_DETECTION: LiveDetection = {
   emotions: { happy: 0, sad: 0, angry: 0, surprise: 0, fear: 0, disgust: 0, neutral: 1 },
@@ -14,10 +22,11 @@ const NEUTRAL_DETECTION: LiveDetection = {
 const LERP = 0.25
 
 // Direct callbacks fire synchronously from the detection loop, bypassing
-// React's render batching so consumers (session capture, canvas overlay)
-// never lose a frame.
+// React's render batching so consumers (session capture, canvas overlay,
+// calibration sampling) never lose a frame.
 type DetectionCallback = (detection: LiveDetection) => void
 type LandmarksCallback = (landmarks: LandmarkPoint[]) => void
+type RawBlendshapesCallback = (cats: BlendshapeCategory[]) => void
 
 export function useFaceDetector() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -29,10 +38,18 @@ export function useFaceDetector() {
 
   const serviceRef = useRef<FaceDetectionService | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const smoothedRef = useRef<LiveDetection>({ ...NEUTRAL_DETECTION, emotions: { ...NEUTRAL_DETECTION.emotions } })
+  const smoothedRef = useRef<LiveDetection>({
+    ...NEUTRAL_DETECTION,
+    emotions: { ...NEUTRAL_DETECTION.emotions },
+  })
   const mountedRef = useRef(true)
   const detectionCallbackRef = useRef<DetectionCallback | null>(null)
   const landmarksCallbackRef = useRef<LandmarksCallback | null>(null)
+  const rawBlendshapesCallbackRef = useRef<RawBlendshapesCallback | null>(null)
+  // The baseline is set by the orchestrator after calibration. While null,
+  // emotions are scored directly off the raw blendshapes (good enough for
+  // the calibration preview itself).
+  const baselineRef = useRef<BlendshapeBaseline | null>(null)
 
   useEffect(() => {
     mountedRef.current = true
@@ -63,6 +80,14 @@ export function useFaceDetector() {
     landmarksCallbackRef.current = cb
   }, [])
 
+  const setRawBlendshapesCallback = useCallback((cb: RawBlendshapesCallback | null) => {
+    rawBlendshapesCallbackRef.current = cb
+  }, [])
+
+  const setBaseline = useCallback((baseline: BlendshapeBaseline | null) => {
+    baselineRef.current = baseline
+  }, [])
+
   const startCamera = useCallback(async () => {
     const svc = serviceRef.current
     const video = videoRef.current
@@ -80,10 +105,19 @@ export function useFaceDetector() {
       svc.startDetection(video, ({ blendshapes, landmarks }) => {
         if (!mountedRef.current) return
 
-        const live = classify(blendshapes)
+        // Always emit the raw categories so the orchestrator can sample them
+        // during calibration without being affected by smoothing or baseline.
+        rawBlendshapesCallbackRef.current?.(blendshapes)
 
-        // Push raw detection straight to the session capture so events fire
-        // exactly when the dominant emotion changes, regardless of render timing.
+        // Apply the user's baseline (if calibrated) before classifying. This is
+        // what cancels out anatomical baselines like naturally-low brows.
+        const rawMap = categoriesToMap(blendshapes)
+        const adjusted = baselineRef.current
+          ? applyBaseline(rawMap, baselineRef.current)
+          : rawMap
+        const live = classifyMap(adjusted)
+
+        // Forward classified detection to the session capture (raw, unsmoothed).
         detectionCallbackRef.current?.(live)
         landmarksCallbackRef.current?.(landmarks)
 
@@ -110,7 +144,10 @@ export function useFaceDetector() {
     serviceRef.current?.stopCamera()
     setIsCameraActive(false)
     setDetection(NEUTRAL_DETECTION)
-    smoothedRef.current = { ...NEUTRAL_DETECTION, emotions: { ...NEUTRAL_DETECTION.emotions } }
+    smoothedRef.current = {
+      ...NEUTRAL_DETECTION,
+      emotions: { ...NEUTRAL_DETECTION.emotions },
+    }
   }, [])
 
   return {
@@ -123,5 +160,7 @@ export function useFaceDetector() {
     stopCamera,
     setDetectionCallback,
     setLandmarksCallback,
+    setRawBlendshapesCallback,
+    setBaseline,
   }
 }
