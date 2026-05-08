@@ -26,6 +26,10 @@ export class FaceDetectionService {
   private stream: MediaStream | null = null
   private animFrameId: number | null = null
   private lastFrameTime = 0
+  // The currently-mounted video element. Read fresh on every detection tick so
+  // a view transition that swaps in a new <video> doesn't strand the loop on
+  // the old (unmounted) element.
+  private currentVideo: HTMLVideoElement | null = null
 
   async load(): Promise<void> {
     const vision = await FilesetResolver.forVisionTasks(WASM_URL)
@@ -48,6 +52,7 @@ export class FaceDetectionService {
     try {
       videoEl.srcObject = stream
       await videoEl.play()
+      this.currentVideo = videoEl
     } catch (err) {
       // play() can fail on iOS if the element is detached or autoplay is blocked.
       // Tear the stream down to avoid leaking the camera indicator.
@@ -66,23 +71,28 @@ export class FaceDetectionService {
   }
 
   /**
-   * Wire the active camera stream to a (possibly new) video element. Used when
-   * the React view layer remounts the <video> mid-session — for example when
-   * switching from the calibration screen to the live screen — so the stream
-   * follows the DOM rather than getting stranded on the unmounted element.
+   * Wire the active camera stream to a (possibly new) video element and mark
+   * it as the current video for the detection loop. Called when the React
+   * view layer remounts the <video> mid-session — for example when switching
+   * from calibration to live — so both the stream and the loop follow the DOM.
    */
   async attachStream(videoEl: HTMLVideoElement): Promise<void> {
-    if (!this.stream || videoEl.srcObject === this.stream) return
-    videoEl.srcObject = this.stream
-    try {
-      await videoEl.play()
-    } catch {
-      // play() can reject on hidden tabs or blocked autoplay; the stream is
-      // still attached and will play once the element becomes visible.
+    if (!this.stream) return
+    if (videoEl.srcObject !== this.stream) {
+      videoEl.srcObject = this.stream
+      try {
+        await videoEl.play()
+      } catch {
+        // play() can reject on hidden tabs or blocked autoplay; the stream is
+        // still attached and will play once the element becomes visible.
+      }
     }
+    // Update the active video unconditionally — the previous element may have
+    // been unmounted even if its srcObject is still pointing at our stream.
+    this.currentVideo = videoEl
   }
 
-  startDetection(videoEl: HTMLVideoElement, onFrame: FrameCallback): void {
+  startDetection(onFrame: FrameCallback): void {
     if (!this.landmarker) throw new Error('Model not loaded')
 
     const detect = (now: number) => {
@@ -91,7 +101,10 @@ export class FaceDetectionService {
       if (now - this.lastFrameTime < FRAME_INTERVAL_MS) return
       this.lastFrameTime = now
 
-      if (videoEl.readyState < 2) return
+      // Read the active video on every tick, not from the closure: the
+      // element may have been swapped by attachStream after a view transition.
+      const videoEl = this.currentVideo
+      if (!videoEl || videoEl.readyState < 2) return
 
       const result = this.landmarker!.detectForVideo(videoEl, now)
       if (!result.faceBlendshapes?.length || !result.faceLandmarks?.length) return
@@ -116,6 +129,7 @@ export class FaceDetectionService {
     this.stopDetection()
     this.stream?.getTracks().forEach((t) => t.stop())
     this.stream = null
+    this.currentVideo = null
   }
 
   dispose(): void {

@@ -102,7 +102,7 @@ export function useFaceDetector() {
       setIsCameraActive(true)
       setError(null)
 
-      svc.startDetection(video, ({ blendshapes, landmarks }) => {
+      svc.startDetection(({ blendshapes, landmarks }) => {
         if (!mountedRef.current) return
 
         // Always emit the raw categories so the orchestrator can sample them
