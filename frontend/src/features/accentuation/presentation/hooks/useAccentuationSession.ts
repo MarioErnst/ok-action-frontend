@@ -1,14 +1,14 @@
 // Session logic for the accentuation module: documentacion/modulos/acentuacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toPhraseEvaluation, toSaveAccentuationSessionDto } from '../infrastructure/mappers/accentuationMapper';
-import { HttpAccentuationRepository } from '../infrastructure/repositories/HttpAccentuationRepository';
-import { ACCENTUATION_PHRASES } from '../services/phrases';
+import { toPhraseEvaluation, toSaveAccentuationSessionDto } from '../../infrastructure/mappers/accentuationMapper';
+import { HttpAccentuationRepository } from '../../infrastructure/repositories/HttpAccentuationRepository';
+import { ACCENTUATION_PHRASES } from '../../services/phrases';
 import type {
   AccentuationSessionResult,
   EvaluationMetrics,
   PhraseEvaluation,
   PhraseState,
-} from '../types';
+} from '../../types';
 import useAudioRecorder from './useAudioRecorder';
 
 export type AccentuationPhase = 'idle' | 'recording' | 'processing' | 'finished';

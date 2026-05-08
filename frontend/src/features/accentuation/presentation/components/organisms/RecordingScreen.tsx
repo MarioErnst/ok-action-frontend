@@ -1,4 +1,4 @@
-import useAccentuationSession from '../../../hooks/useAccentuationSession';
+import useAccentuationSession from '../../hooks/useAccentuationSession';
 import type { AccentuationSessionResult } from '../../../types';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
