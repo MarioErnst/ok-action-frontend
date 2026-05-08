@@ -1,4 +1,4 @@
-export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live' | 'facial'
+export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live' | 'facial' | 'lexical'
 
 type NavIconProps = {
   name: NavIconName
@@ -60,6 +60,19 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <circle cx="12" cy="12" r="9" />
       <circle cx="12" cy="12" r="5" />
       <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0} />
+    </>
+  ),
+  // Libro abierto — representa riqueza y variedad léxica
+  lexical: (
+    <>
+      <path d="M2 6 L12 8 L22 6 L22 19 L12 21 L2 19 Z" />
+      <path d="M12 8 L12 21" />
+      <path d="M5 9 L9 9.5" />
+      <path d="M5 12 L9 12.5" />
+      <path d="M5 15 L9 15.5" />
+      <path d="M15 9.5 L19 9" />
+      <path d="M15 12.5 L19 12" />
+      <path d="M15 15.5 L19 15" />
     </>
   ),
   // Cara con expresion neutra — representa evaluacion de expresion facial
