@@ -1,4 +1,4 @@
-import type { LoudnessConfig, LoudnessPreset } from '../types';
+import type { LoudnessConfig, LoudnessPreset } from '../domain/LoudnessSession';
 
 const VOICE_GUARD_DB = 10;
 

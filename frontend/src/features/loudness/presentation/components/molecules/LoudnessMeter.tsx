@@ -1,5 +1,5 @@
 import BandLabel from '../atoms/BandLabel';
-import type { LoudnessBand, LoudnessConfig } from '../../../types';
+import type { LoudnessBand, LoudnessConfig } from '../../../domain/LoudnessSession';
 
 interface LoudnessMeterProps {
   db: number;

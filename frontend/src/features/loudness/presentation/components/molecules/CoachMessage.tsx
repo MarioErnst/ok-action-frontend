@@ -1,5 +1,5 @@
 import BandLabel from '../atoms/BandLabel';
-import type { LoudnessBand } from '../../../types';
+import type { LoudnessBand } from '../../../domain/LoudnessSession';
 
 interface CoachMessageProps {
   band: LoudnessBand;

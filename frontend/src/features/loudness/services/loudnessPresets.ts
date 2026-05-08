@@ -1,4 +1,4 @@
-import type { LoudnessPreset } from '../types';
+import type { LoudnessPreset } from '../domain/LoudnessSession';
 
 export const LOUDNESS_PRESETS: LoudnessPreset[] = [
   {

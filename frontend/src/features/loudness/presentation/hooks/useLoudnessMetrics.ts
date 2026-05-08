@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AudioFrame } from '../../../../shared/types/audioTypes';
 import { classifyLoudness } from '../../services/loudnessClassifier';
-import type { LoudnessConfig, LoudnessMetrics } from '../../types';
+import type { LoudnessConfig, LoudnessMetrics } from '../../domain/LoudnessSession';
 
 function createEmptyMetrics(): LoudnessMetrics {
   return {

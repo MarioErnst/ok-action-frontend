@@ -1,4 +1,4 @@
-import type { LoudnessBand, LoudnessMetrics } from '../../../types';
+import type { LoudnessBand, LoudnessMetrics } from '../../../domain/LoudnessSession';
 import { formatDuration, formatSeconds } from '../../../services/loudnessFormatters';
 
 interface SessionMetricsProps {

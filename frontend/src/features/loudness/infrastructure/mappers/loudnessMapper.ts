@@ -1,4 +1,4 @@
-import type { LoudnessMetrics, LoudnessPreset } from '../../types';
+import type { LoudnessMetrics, LoudnessPreset } from '../../domain/LoudnessSession';
 import type { LoudnessPresetDto, SaveLoudnessSessionDto } from '../dto/LoudnessDtos';
 
 export const toSaveLoudnessSessionDto = (

@@ -2,7 +2,7 @@
 // Used exclusively by useLoudnessCoach; not part of the public API.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { classifyLoudness } from '../../services/loudnessClassifier';
-import type { LoudnessBand, LoudnessConfig } from '../../types';
+import type { LoudnessBand, LoudnessConfig } from '../../domain/LoudnessSession';
 
 const HYSTERESIS_MARGIN_DB = 2;
 const BAND_DEBOUNCE_MS = 400;

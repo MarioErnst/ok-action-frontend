@@ -10,7 +10,7 @@ import type {
   LoudnessConfig,
   LoudnessMetrics,
   LoudnessPreset,
-} from '../../types';
+} from '../../domain/LoudnessSession';
 import { useBandDebounce } from './useBandDebounce';
 import { useLoudnessMetrics } from './useLoudnessMetrics';
 import useVoiceBaseline from './useVoiceBaseline';

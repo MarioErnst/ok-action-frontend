@@ -3,7 +3,7 @@ import {
   computeEffectiveConfig,
   computeVoiceBaseline,
 } from '../services/loudnessEffectiveConfig';
-import type { LoudnessPreset } from '../types';
+import type { LoudnessPreset } from '../domain/LoudnessSession';
 
 const preset: LoudnessPreset = {
   presetId: 'test',

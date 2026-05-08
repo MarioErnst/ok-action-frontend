@@ -7,7 +7,7 @@ import useLoudnessCoach from '../hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../../services/loudnessPresets';
 import { HttpLoudnessRepository } from '../../infrastructure/repositories/HttpLoudnessRepository';
 import { toLoudnessPreset } from '../../infrastructure/mappers/loudnessMapper';
-import type { LoudnessPreset } from '../../types';
+import type { LoudnessPreset } from '../../domain/LoudnessSession';
 
 export default function LoudnessCoachPage() {
   const [selectedPreset, setSelectedPreset] = useState<LoudnessPreset | null>(null);
