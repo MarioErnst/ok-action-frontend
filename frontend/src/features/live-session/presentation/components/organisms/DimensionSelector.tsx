@@ -7,6 +7,7 @@ const DIM_DESCRIPTIONS: Record<LiveDim, string> = {
   mul: 'Palabras de relleno y repeticiones',
   precision: 'Responde preguntas con claridad y concisión',
   lex: 'Variedad de vocabulario y uso de sinónimos',
+  pause: 'Silencios intencionales y ritmo entre ideas',
 }
 
 interface Props {

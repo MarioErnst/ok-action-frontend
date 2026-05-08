@@ -12,6 +12,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   mul: '/muletillas',
   precision: '/precision',
   lex: '/versatilidad-linguistica',
+  pause: '/pausas',
 }
 
 const STOP_REASON_LABELS: Record<string, string> = {
@@ -132,7 +133,10 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, lexRe
         const avgDimScore = dimAvgScore(analyses, dim)
         const dimErrors = dim === 'pron' ? errors.pron : dim === 'acc' ? errors.acc : null
         const dimMuls = dim === 'mul' ? errors.mul : null
+        const pauseData = dim === 'pause' ? [...analyses].reverse().find((analysis) => analysis.dims.pause)?.dims.pause : null
         const hasErrors = dimErrors ? dimErrors.length > 0 : dimMuls ? dimMuls.length > 0 : false
+        const hasPauseIssue = dim === 'pause' && avgDimScore !== null && avgDimScore < 70
+        const hasPracticeRoute = dim !== 'precision'
 
         return (
           <div key={dim} className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-5 flex flex-col gap-4 shadow-lg">
@@ -140,7 +144,9 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, lexRe
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-accent">{DIM_LABELS[dim]}</p>
                 <p className="text-sm text-text-muted mt-0.5">
-                  {hasErrors
+                  {dim === 'pause'
+                    ? pauseData?.classification ?? 'Sin datos de pausas'
+                    : hasErrors
                     ? `${dimErrors?.length ?? dimMuls?.length} tipo${(dimErrors?.length ?? dimMuls?.length ?? 0) !== 1 ? 's' : ''} de error${(dimErrors?.length ?? dimMuls?.length ?? 0) !== 1 ? 'es' : ''} detectado${(dimErrors?.length ?? dimMuls?.length ?? 0) !== 1 ? 's' : ''}`
                     : 'Sin errores'}
                 </p>
@@ -156,9 +162,26 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, lexRe
               {dim === 'pron' && <PronErrorList errors={errors.pron} />}
               {dim === 'acc' && <AccErrorList errors={errors.acc} />}
               {dim === 'mul' && <MulList muls={errors.mul} />}
+              {dim === 'pause' && (
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="rounded-xl bg-surface-alt p-3">
+                    <p className="text-lg font-bold text-text">{pauseData?.total_pauses ?? 0}</p>
+                    <p className="text-xs text-text-muted">pausas</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-alt p-3">
+                    <p className="text-lg font-bold text-text">
+                      {pauseData?.silence_ratio ? Math.round(pauseData.silence_ratio * 100) : 0}%
+                    </p>
+                    <p className="text-xs text-text-muted">silencio</p>
+                  </div>
+                  {pauseData?.note && (
+                    <p className="col-span-2 text-sm text-text-muted text-left leading-relaxed">{pauseData.note}</p>
+                  )}
+                </div>
+              )}
             </div>
 
-            {hasErrors && (
+            {(hasErrors || hasPauseIssue) && hasPracticeRoute && (
               <button
                 onClick={() => navigate(DIM_ROUTES[dim])}
                 className="w-full py-2.5 rounded-xl border border-accent/40 text-accent text-sm font-semibold

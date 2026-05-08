@@ -9,6 +9,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   mul: '/muletillas',
   precision: '/precision',
   lex: '/versatilidad-linguistica',
+  pause: '/pausas',
 }
 
 const REASON_MESSAGES: Record<string, string> = {

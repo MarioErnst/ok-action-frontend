@@ -1,4 +1,15 @@
-export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live' | 'facial' | 'lexical'
+export type NavIconName =
+  | 'dashboard'
+  | 'phonation'
+  | 'pronunciation'
+  | 'accentuation'
+  | 'loudness'
+  | 'pauses'
+  | 'muletillas'
+  | 'precision'
+  | 'live'
+  | 'facial'
+  | 'lexical'
 
 type NavIconProps = {
   name: NavIconName
@@ -43,6 +54,13 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <path d="M11 5L6 9H2v6h4l5 4V5z" />
       <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </>
+  ),
+  pauses: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 8v8" />
+      <path d="M14 8v8" />
     </>
   ),
   // Burbuja de dialogo con puntos — representa palabras de relleno en el habla

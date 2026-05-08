@@ -1,4 +1,4 @@
-export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex'
+export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex' | 'pause'
 
 // Result of the linguistic-versatility analysis the backend runs once at
 // session close when 'lex' was selected. Arrives as a single message
@@ -41,6 +41,12 @@ export interface DimResult {
   sc: number
   err?: PronError[] | AccError[]
   det?: MulDetected[]
+  total_pauses?: number
+  avg_pause_ms?: number
+  longest_pause_ms?: number
+  silence_ratio?: number
+  classification?: string
+  note?: string
 }
 
 export interface AnalysisResult {

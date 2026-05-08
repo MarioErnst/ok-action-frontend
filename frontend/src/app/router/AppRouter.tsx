@@ -12,6 +12,7 @@ import { PrecisionPage } from '../../features/precision/presentation/pages/Preci
 import LiveSessionPage from '../../features/live-session/presentation/pages/LiveSessionPage'
 import { FacialExpressionPage } from '../../features/facial-expression'
 import { LinguisticVersatilityPage } from '../../features/linguistic-versatility/presentation/pages/LinguisticVersatilityPage'
+import { PauseEvaluationPage } from '../../features/pauses'
 
 export const AppRouter = () => (
   <Routes>
@@ -24,6 +25,7 @@ export const AppRouter = () => (
         <Route path="/pronunciacion" element={<PronunciationPage />} />
         <Route path="/acentuacion" element={<AccentuationPage />} />
         <Route path="/volumen" element={<LoudnessCoachPage />} />
+        <Route path="/pausas" element={<PauseEvaluationPage />} />
         <Route path="/muletillas" element={<MuletillasPage />} />
         <Route path="/precision" element={<PrecisionPage />} />
         <Route path="/sesion-libre" element={<LiveSessionPage />} />
