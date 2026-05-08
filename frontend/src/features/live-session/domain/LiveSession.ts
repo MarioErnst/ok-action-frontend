@@ -1,4 +1,4 @@
-export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex' | 'pause'
+export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex' | 'pause' | 'fluency'
 
 // Result of the linguistic-versatility analysis the backend runs once at
 // session close when 'lex' was selected. Arrives as a single message
@@ -46,6 +46,11 @@ export interface DimResult {
   longest_pause_ms?: number
   silence_ratio?: number
   classification?: string
+  wpm?: number
+  repetitions?: number
+  restarts?: number
+  long_blocks?: number
+  pace_feedback?: string
   note?: string
 }
 

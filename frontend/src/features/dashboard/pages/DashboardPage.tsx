@@ -14,6 +14,7 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/muletillas': 'Identifica palabras de relleno que pueden debilitar tu mensaje.',
   '/precision': 'Evalua si tu respuesta mantiene claridad, foco y coherencia.',
   '/sesion-libre': 'Practica una respuesta completa con feedback integrado.',
+  '/fluidez': 'Reduce trabas, repeticiones y reinicios al hablar.',
 }
 
 export const DashboardPage = () => {

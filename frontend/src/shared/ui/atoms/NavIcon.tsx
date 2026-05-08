@@ -10,6 +10,7 @@ export type NavIconName =
   | 'live'
   | 'facial'
   | 'lexical'
+  | 'fluency'
 
 type NavIconProps = {
   name: NavIconName
@@ -100,6 +101,13 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <circle cx="9" cy="10" r="1" fill="currentColor" strokeWidth={0} />
       <circle cx="15" cy="10" r="1" fill="currentColor" strokeWidth={0} />
       <path d="M9 16 Q12 14 15 16" />
+    </>
+  ),
+  fluency: (
+    <>
+      <path d="M4 14c2.5-5 5.5-5 8 0s5.5 5 8 0" />
+      <path d="M4 9c2.5-5 5.5-5 8 0s5.5 5 8 0" />
+      <path d="M8 20h8" />
     </>
   ),
   // Microfono — representa sesion de habla en vivo

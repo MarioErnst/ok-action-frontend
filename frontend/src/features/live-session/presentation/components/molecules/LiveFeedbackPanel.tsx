@@ -35,13 +35,18 @@ export function LiveFeedbackPanel({ analysis, selectedDims, elapsedSeconds }: Pr
           const dimData = analysis.dims[dim]
           if (!dimData) return null
           const errorCount = (dimData.err?.length ?? 0) + (dimData.det?.length ?? 0)
-          const pauseLabel = dim === 'pause' ? dimData.classification : null
+          const detail =
+            dim === 'fluency'
+              ? `${dimData.classification ?? 'Sin clasificar'}${dimData.wpm ? ` · ${dimData.wpm} PPM` : ''}`
+              : dim === 'pause'
+                ? dimData.classification ?? null
+                : null
           return (
             <div key={dim} className="flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-text">{DIM_LABELS[dim]}</span>
-                {pauseLabel ? (
-                  <span className="text-xs text-text-muted">{pauseLabel}</span>
+                {detail ? (
+                  <span className="text-xs text-text-muted">{detail}</span>
                 ) : errorCount > 0 && (
                   <span className="text-xs text-danger">
                     {errorCount} error{errorCount !== 1 ? 'es' : ''} detectado{errorCount !== 1 ? 's' : ''}

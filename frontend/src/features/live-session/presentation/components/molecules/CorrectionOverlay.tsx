@@ -10,6 +10,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   precision: '/precision',
   lex: '/versatilidad-linguistica',
   pause: '/pausas',
+  fluency: '/fluidez',
 }
 
 const REASON_MESSAGES: Record<string, string> = {

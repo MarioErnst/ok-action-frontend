@@ -8,4 +8,5 @@ export const DIM_LABELS: Record<LiveDim, string> = {
   precision: 'Precisión',
   lex: 'Versatilidad',
   pause: 'Pausas',
+  fluency: 'Fluidez',
 }

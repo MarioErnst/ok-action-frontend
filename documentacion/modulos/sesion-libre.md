@@ -4,7 +4,7 @@
 
 El modulo de Sesion Libre permite al usuario realizar una sesion de habla en tiempo real con
 retroalimentacion continua del backend. El usuario elige las dimensiones de evaluacion (pronunciacion,
-acentuacion, etc.), inicia la grabacion, y recibe analisis periodicos mientras habla. Si el backend
+acentuacion, muletillas, fluidez y precision), inicia la grabacion, y recibe analisis periodicos mientras habla. Si el backend
 detecta un error relevante, interrumpe la sesion con una correccion especifica. La sesion termina
 por iniciativa del usuario, por correccion del backend, o por timeout.
 
@@ -80,6 +80,8 @@ Mensajes del servidor reconocidos:
 | `error`         | detiene captura, fase → idle                              |
 
 El cliente puede enviar `{ type: 'end' }` al servidor para finalizar la sesion voluntariamente.
+
+La dimension `fluency` muestra clasificacion, palabras por minuto, repeticiones, bloqueos y una nota accionable. Si baja del umbral, la correccion puede navegar a `/fluidez`.
 
 ## 6. Captura de audio: AudioCapture con Web Audio API
 

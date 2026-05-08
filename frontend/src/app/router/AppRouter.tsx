@@ -13,6 +13,7 @@ import LiveSessionPage from '../../features/live-session/presentation/pages/Live
 import { FacialExpressionPage } from '../../features/facial-expression'
 import { LinguisticVersatilityPage } from '../../features/linguistic-versatility/presentation/pages/LinguisticVersatilityPage'
 import { PauseEvaluationPage } from '../../features/pauses'
+import { FluencyPage } from '../../features/fluency'
 
 export const AppRouter = () => (
   <Routes>
@@ -31,6 +32,7 @@ export const AppRouter = () => (
         <Route path="/sesion-libre" element={<LiveSessionPage />} />
         <Route path="/expresion-facial" element={<FacialExpressionPage />} />
         <Route path="/versatilidad-linguistica" element={<LinguisticVersatilityPage />} />
+        <Route path="/fluidez" element={<FluencyPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>
