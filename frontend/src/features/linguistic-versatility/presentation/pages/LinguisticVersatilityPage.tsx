@@ -1,176 +1,96 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useGuidedVersatilitySession } from '../hooks/useGuidedVersatilitySession'
-import { useFreeVersatilitySession } from '../hooks/useFreeVersatilitySession'
-import { ModeSelector } from '../components/organisms/ModeSelector'
 import { GuidedSessionView } from '../components/organisms/GuidedSessionView'
-import { FreeSessionView } from '../components/organisms/FreeSessionView'
 import { SessionResultsView } from '../components/organisms/SessionResultsView'
-import { FeedbackPanel } from '../components/molecules/FeedbackPanel'
 import type { RichnessLevel } from '../../domain/LinguisticVersatility'
 
-type Mode = 'guided' | 'free' | null
-
 /**
- * Top-level page for linguistic versatility.
+ * Top-level page for linguistic versatility (guided mode only).
  *
- * Three top-level states orchestrated locally:
- *   - mode === null         → ModeSelector (initial choice)
- *   - mode === 'guided'     → guided flow driven by useGuidedVersatilitySession
- *   - mode === 'free'       → free flow driven by useFreeVersatilitySession
+ * The free-form ("habla libre") variant of this analysis lives inside the
+ * Live Session module as the `lex` dimension — the user finds it there
+ * alongside pronunciation, accentuation and the rest. This page keeps the
+ * focused 3-question flow.
  *
- * Each mode owns its hook so leaving and re-entering the page resets the
- * micro-state cleanly. h-[100dvh] keeps the layout stable on iOS Safari.
+ * Status-driven router around `useGuidedVersatilitySession`:
+ *   - loading     → spinner
+ *   - review      → GuidedSessionView (current question, recorder, feedback)
+ *   - recording / uploading → handled by GuidedSessionView's button states
+ *   - finalizing  → spinner
+ *   - results     → SessionResultsView with overall score and per-round detail
+ *   - error       → message + retry
  */
 export function LinguisticVersatilityPage() {
   const navigate = useNavigate()
-  const [mode, setMode] = useState<Mode>(null)
-
-  return (
-    <div className="h-[100dvh] w-full bg-background overflow-hidden flex flex-col">
-      {mode === null && <ModeSelector onSelect={setMode} />}
-      {mode === 'guided' && <GuidedFlow onExit={() => setMode(null)} navigate={navigate} />}
-      {mode === 'free' && <FreeFlow onExit={() => setMode(null)} navigate={navigate} />}
-    </div>
-  )
-}
-
-/* ----------------------------- Guided flow ----------------------------- */
-
-function GuidedFlow({
-  onExit,
-  navigate,
-}: {
-  onExit: () => void
-  navigate: ReturnType<typeof useNavigate>
-}) {
   const tracking = useGuidedVersatilitySession()
 
-  // Auto-start the session on first mount: the user already chose "guided"
-  // from the selector, so making them tap a second "Iniciar" feels redundant.
-  // Inside an effect to avoid a setState-during-render warning.
+  // Auto-start the session on first mount: there's no longer a mode selector
+  // gating it, so deferring the first call to a click would be redundant.
   useEffect(() => {
     if (tracking.status === 'idle') tracking.start()
-    // tracking.start identity is stable (useCallback in the hook); we
-    // intentionally exclude `tracking` from deps to avoid re-firing on every
-    // tracking-state update. Status check inside the effect is the gate.
+    // tracking.start identity is stable; we intentionally exclude `tracking`
+    // from deps so this effect runs once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  if (tracking.status === 'idle' || tracking.status === 'loading') {
-    return <CenteredLoader text="Cargando preguntas…" />
-  }
-
-  if (tracking.status === 'finalizing') {
-    return <CenteredLoader text="Calculando resultados…" />
-  }
-
-  if (tracking.status === 'error') {
-    return (
-      <ErrorScreen
-        message={tracking.error ?? 'Ocurrió un error.'}
-        onRetry={() => {
-          tracking.reset()
-          onExit()
-        }}
-      />
-    )
-  }
-
-  if (tracking.status === 'results' && tracking.finalResult) {
-    return (
-      <SessionResultsView
-        overallScore={tracking.finalResult.overall_score}
-        averageRichness={averageRichness(tracking.finalResult.rounds.map((r) => r.vocabulary_richness))}
-        rounds={tracking.finalResult.rounds}
-        onRestart={() => {
-          tracking.reset()
-          tracking.start()
-        }}
-        onExit={() => {
-          tracking.reset()
-          navigate('/dashboard')
-        }}
-      />
-    )
-  }
-
-  if (!tracking.currentQuestion) {
-    return <CenteredLoader text="Cargando preguntas…" />
-  }
-
   return (
-    <GuidedSessionView
-      status={tracking.status}
-      question={tracking.currentQuestion}
-      index={tracking.currentIndex}
-      total={tracking.questions.length}
-      isLastQuestion={tracking.isLastQuestion}
-      lastResult={tracking.lastResult}
-      onStartRecording={tracking.startRecording}
-      onStopAndUpload={tracking.stopAndUpload}
-      onNext={tracking.next}
-    />
-  )
-}
+    <div className="h-[100dvh] w-full bg-background overflow-hidden flex flex-col">
+      {(tracking.status === 'idle' || tracking.status === 'loading') && (
+        <CenteredLoader text="Cargando preguntas…" />
+      )}
 
-/* ------------------------------ Free flow ------------------------------ */
+      {tracking.status === 'finalizing' && (
+        <CenteredLoader text="Calculando resultados…" />
+      )}
 
-function FreeFlow({
-  onExit,
-  navigate,
-}: {
-  onExit: () => void
-  navigate: ReturnType<typeof useNavigate>
-}) {
-  const tracking = useFreeVersatilitySession()
-
-  if (tracking.status === 'error') {
-    return (
-      <ErrorScreen
-        message={tracking.error ?? 'Ocurrió un error.'}
-        onRetry={() => {
-          tracking.reset()
-          onExit()
-        }}
-      />
-    )
-  }
-
-  if (tracking.status === 'results' && tracking.result) {
-    const r = tracking.result
-    return (
-      <div className="flex flex-col gap-6 w-full max-w-2xl mx-auto px-4 py-8 overflow-y-auto h-full">
-        <FeedbackPanel
-          versatilityScore={r.versatility_score}
-          vocabularyRichness={r.vocabulary_richness}
-          feedback={r.feedback}
-          audioIntelligible={r.audio_intelligible}
+      {tracking.status === 'error' && (
+        <ErrorScreen
+          message={tracking.error ?? 'Ocurrió un error.'}
+          onRetry={() => {
+            tracking.reset()
+            navigate('/dashboard')
+          }}
         />
+      )}
+
+      {tracking.status === 'results' && tracking.finalResult && (
         <SessionResultsView
-          overallScore={r.versatility_score}
-          averageRichness={r.vocabulary_richness}
-          rounds={[]}
-          onRestart={() => tracking.reset()}
+          overallScore={tracking.finalResult.overall_score}
+          averageRichness={modalRichness(
+            tracking.finalResult.rounds.map((r) => r.vocabulary_richness),
+          )}
+          rounds={tracking.finalResult.rounds}
+          onRestart={() => {
+            tracking.reset()
+            tracking.start()
+          }}
           onExit={() => {
             tracking.reset()
             navigate('/dashboard')
           }}
         />
-      </div>
-    )
-  }
+      )}
 
-  return (
-    <FreeSessionView
-      status={tracking.status}
-      onStartRecording={tracking.startRecording}
-      onStopAndUpload={tracking.stopAndUpload}
-    />
+      {(tracking.status === 'review' ||
+        tracking.status === 'recording' ||
+        tracking.status === 'uploading') &&
+        tracking.currentQuestion && (
+          <GuidedSessionView
+            status={tracking.status}
+            question={tracking.currentQuestion}
+            index={tracking.currentIndex}
+            total={tracking.questions.length}
+            isLastQuestion={tracking.isLastQuestion}
+            lastResult={tracking.lastResult}
+            onStartRecording={tracking.startRecording}
+            onStopAndUpload={tracking.stopAndUpload}
+            onNext={tracking.next}
+          />
+        )}
+    </div>
   )
 }
-
-/* ----------------------------- Sub-screens ----------------------------- */
 
 function CenteredLoader({ text }: { text: string }) {
   return (
@@ -201,7 +121,7 @@ function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => voi
  * on a tie so users err on the optimistic side. Returns null if no
  * intelligible round exists.
  */
-function averageRichness(values: Array<RichnessLevel | null>): RichnessLevel | null {
+function modalRichness(values: Array<RichnessLevel | null>): RichnessLevel | null {
   const filtered = values.filter((v): v is RichnessLevel => v != null)
   if (filtered.length === 0) return null
   const counts: Record<number, number> = {}
@@ -210,7 +130,6 @@ function averageRichness(values: Array<RichnessLevel | null>): RichnessLevel | n
   let bestCount = 0
   for (const [level, count] of Object.entries(counts)) {
     const lvl = Number(level) as RichnessLevel
-    // Tie-break on the higher tier so the result feels generous when feedback is mixed.
     if (count > bestCount || (count === bestCount && lvl > bestLevel)) {
       bestCount = count
       bestLevel = lvl
