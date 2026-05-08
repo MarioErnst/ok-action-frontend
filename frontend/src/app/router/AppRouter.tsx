@@ -11,6 +11,7 @@ import MuletillasPage from '../../features/muletillas/presentation/pages/Muletil
 import { PrecisionPage } from '../../features/precision/presentation/pages/PrecisionPage'
 import LiveSessionPage from '../../features/live-session/presentation/pages/LiveSessionPage'
 import { FacialExpressionPage } from '../../features/facial-expression'
+import { LinguisticVersatilityPage } from '../../features/linguistic-versatility/presentation/pages/LinguisticVersatilityPage'
 
 export const AppRouter = () => (
   <Routes>
@@ -27,6 +28,7 @@ export const AppRouter = () => (
         <Route path="/precision" element={<PrecisionPage />} />
         <Route path="/sesion-libre" element={<LiveSessionPage />} />
         <Route path="/expresion-facial" element={<FacialExpressionPage />} />
+        <Route path="/versatilidad-linguistica" element={<LinguisticVersatilityPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>
