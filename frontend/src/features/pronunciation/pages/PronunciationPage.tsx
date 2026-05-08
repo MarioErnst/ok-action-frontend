@@ -2,7 +2,7 @@
 import LevelSelectionScreen from '../presentation/components/organisms/LevelSelectionScreen'
 import PronunciationResultsScreen from '../presentation/components/organisms/PronunciationResultsScreen'
 import RecordingScreen from '../presentation/components/organisms/RecordingScreen'
-import usePronunciationSession from '../hooks/usePronunciationSession'
+import usePronunciationSession from '../presentation/hooks/usePronunciationSession'
 
 export default function PronunciationPage() {
   const {

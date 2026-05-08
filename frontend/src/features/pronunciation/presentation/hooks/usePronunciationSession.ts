@@ -1,15 +1,15 @@
 // Session logic for the pronunciation module: documentacion/modulos/pronunciacion.md
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toPhrasePronunciation, averagePronunciationMetrics, toSavePronunciationSessionDto } from '../infrastructure/mappers/pronunciationMapper';
-import { HttpPronunciationRepository } from '../infrastructure/repositories/HttpPronunciationRepository';
-import { getPhrasesByLevel } from '../services/phrases';
+import { toPhrasePronunciation, averagePronunciationMetrics, toSavePronunciationSessionDto } from '../../infrastructure/mappers/pronunciationMapper';
+import { HttpPronunciationRepository } from '../../infrastructure/repositories/HttpPronunciationRepository';
+import { getPhrasesByLevel } from '../../services/phrases';
 import type {
   PhrasePronunciation,
   PhraseState,
   PronunciationLevel,
   PronunciationSessionResult,
-} from '../types';
-import useAudioRecorder from '../../../shared/hooks/useAudioRecorder';
+} from '../../types';
+import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder';
 
 export type PronunciationPhase = 'idle' | 'recording' | 'processing' | 'finished';
 
