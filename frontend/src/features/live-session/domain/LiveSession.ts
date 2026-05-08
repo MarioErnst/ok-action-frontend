@@ -1,4 +1,14 @@
-export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision'
+export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex'
+
+// Result of the linguistic-versatility analysis the backend runs once at
+// session close when 'lex' was selected. Arrives as a single message
+// `{type: "lex_result", data: LexResult}` strictly before `session_ended`.
+export interface LexResult {
+  versatility_score: number
+  vocabulary_richness: 1 | 2 | 3
+  feedback: string
+  audio_intelligible: boolean
+}
 
 export interface QARoundResult {
   relevance: number

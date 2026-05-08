@@ -6,4 +6,5 @@ export const DIM_LABELS: Record<LiveDim, string> = {
   acc: 'Acentuación',
   mul: 'Muletillas',
   precision: 'Precisión',
+  lex: 'Versatilidad',
 }

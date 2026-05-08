@@ -15,6 +15,7 @@ export default function LiveSessionPage() {
     noiseLevel,
     qaQuestion,
     qaLastResult,
+    lexResult,
     toggleDim,
     startSession,
     endSession,
@@ -39,6 +40,7 @@ export default function LiveSessionPage() {
         analyses={analyses}
         selectedDims={selectedDims}
         stopReason={correction?.reason ?? stopReason}
+        lexResult={lexResult}
         onReset={resetSession}
       />
     )

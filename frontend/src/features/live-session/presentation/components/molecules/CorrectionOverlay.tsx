@@ -8,6 +8,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   acc: '/acentuacion',
   mul: '/muletillas',
   precision: '/precision',
+  lex: '/versatilidad-linguistica',
 }
 
 const REASON_MESSAGES: Record<string, string> = {
