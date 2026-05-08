@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AudioFrame } from '../../../shared/types/audioTypes';
-import { computeVoiceBaseline } from '../services/loudnessEffectiveConfig';
+import type { AudioFrame } from '../../../../shared/types/audioTypes';
+import { computeVoiceBaseline } from '../../services/loudnessEffectiveConfig';
 
 const BASELINE_DURATION_MS = 10_000;
 const BASELINE_FALLBACK_OFFSET_DB = 20;

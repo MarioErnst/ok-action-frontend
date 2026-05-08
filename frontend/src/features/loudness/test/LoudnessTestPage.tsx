@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
 import LoudnessCoachPanel from '../presentation/components/organisms/LoudnessCoachPanel';
-import useLoudnessCoach from '../hooks/useLoudnessCoach';
+import useLoudnessCoach from '../presentation/hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
 
 export default function LoudnessTestPage() {

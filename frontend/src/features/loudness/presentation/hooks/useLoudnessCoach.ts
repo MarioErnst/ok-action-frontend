@@ -1,16 +1,16 @@
 // Session logic for the loudness module: documentacion/modulos/volumen.md
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import type { VoiceMonitor } from '../../../shared/types/audioTypes';
-import { toSaveLoudnessSessionDto } from '../infrastructure/mappers/loudnessMapper';
-import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
-import { computeEffectiveConfig } from '../services/loudnessEffectiveConfig';
+import type { VoiceMonitor } from '../../../../shared/types/audioTypes';
+import { toSaveLoudnessSessionDto } from '../../infrastructure/mappers/loudnessMapper';
+import { HttpLoudnessRepository } from '../../infrastructure/repositories/HttpLoudnessRepository';
+import { computeEffectiveConfig } from '../../services/loudnessEffectiveConfig';
 import type {
   CalibrationPhase,
   LoudnessBand,
   LoudnessConfig,
   LoudnessMetrics,
   LoudnessPreset,
-} from '../types';
+} from '../../types';
 import { useBandDebounce } from './useBandDebounce';
 import { useLoudnessMetrics } from './useLoudnessMetrics';
 import useVoiceBaseline from './useVoiceBaseline';

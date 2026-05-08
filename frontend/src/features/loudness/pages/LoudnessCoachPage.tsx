@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation/index';
 import LoudnessCoachPanel from '../presentation/components/organisms/LoudnessCoachPanel';
 import PresetSelector from '../presentation/components/organisms/PresetSelector';
-import useLoudnessCoach from '../hooks/useLoudnessCoach';
+import useLoudnessCoach from '../presentation/hooks/useLoudnessCoach';
 import { LOUDNESS_PRESETS } from '../services/loudnessPresets';
 import { HttpLoudnessRepository } from '../infrastructure/repositories/HttpLoudnessRepository';
 import { toLoudnessPreset } from '../infrastructure/mappers/loudnessMapper';

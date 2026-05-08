@@ -1,9 +1,9 @@
 // Accumulates per-frame loudness metrics during an active session.
 // Used exclusively by useLoudnessCoach; not part of the public API.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AudioFrame } from '../../../shared/types/audioTypes';
-import { classifyLoudness } from '../services/loudnessClassifier';
-import type { LoudnessConfig, LoudnessMetrics } from '../types';
+import type { AudioFrame } from '../../../../shared/types/audioTypes';
+import { classifyLoudness } from '../../services/loudnessClassifier';
+import type { LoudnessConfig, LoudnessMetrics } from '../../types';
 
 function createEmptyMetrics(): LoudnessMetrics {
   return {
