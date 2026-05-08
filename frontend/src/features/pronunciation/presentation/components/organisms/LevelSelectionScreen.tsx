@@ -1,4 +1,4 @@
-import type { PronunciationLevel } from '../../../types'
+import type { PronunciationLevel } from '../../../domain/PronunciationSession'
 
 interface LevelCardProps {
   level: PronunciationLevel

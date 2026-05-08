@@ -1,4 +1,4 @@
-import type { PhonemeError, PhrasePronunciation, PronunciationMetrics, PronunciationSessionResult } from '../../types'
+import type { PhonemeError, PhrasePronunciation, PronunciationMetrics, PronunciationSessionResult } from '../../domain/PronunciationSession'
 import type { PhonemeErrorDto, PhrasePronunciationDto, SavePhrasePronunciationDto, SavePronunciationSessionDto } from '../dto/PronunciationDtos'
 
 function toMetrics(dto: PhrasePronunciationDto): PronunciationMetrics {

@@ -8,7 +8,7 @@ import type {
   PhraseState,
   PronunciationLevel,
   PronunciationSessionResult,
-} from '../../types';
+} from '../../domain/PronunciationSession';
 import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder';
 
 export type PronunciationPhase = 'idle' | 'recording' | 'processing' | 'finished';

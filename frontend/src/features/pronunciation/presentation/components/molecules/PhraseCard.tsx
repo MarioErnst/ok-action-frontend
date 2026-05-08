@@ -1,4 +1,4 @@
-import type { PhraseState } from '../../../types'
+import type { PhraseState } from '../../../domain/PronunciationSession'
 
 interface PhraseCardProps {
   phraseState: PhraseState
