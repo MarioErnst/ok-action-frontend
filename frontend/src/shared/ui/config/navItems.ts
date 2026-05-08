@@ -20,4 +20,5 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/expresion-facial', icon: 'facial', label: 'Expresión Facial' },
   { to: '/versatilidad-linguistica', icon: 'lexical', label: 'Versatilidad' },
   { to: '/fluidez', icon: 'fluency', label: 'Fluidez' },
+  { to: '/consistencia', icon: 'consistency', label: 'Consistencia' },
 ]

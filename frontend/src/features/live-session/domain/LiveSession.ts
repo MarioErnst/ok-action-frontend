@@ -1,4 +1,4 @@
-export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex' | 'pause' | 'fluency'
+export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'lex' | 'pause' | 'fluency' | 'consistency'
 
 // Result of the linguistic-versatility analysis the backend runs once at
 // session close when 'lex' was selected. Arrives as a single message
@@ -37,10 +37,16 @@ export interface MulDetected {
   ctx: string
 }
 
+export interface ConsistencyDetected {
+  area: string
+  severity: string
+  note: string
+}
+
 export interface DimResult {
   sc: number
   err?: PronError[] | AccError[]
-  det?: MulDetected[]
+  det?: MulDetected[] | ConsistencyDetected[]
   total_pauses?: number
   avg_pause_ms?: number
   longest_pause_ms?: number
@@ -51,6 +57,12 @@ export interface DimResult {
   restarts?: number
   long_blocks?: number
   pace_feedback?: string
+  rhythm?: number
+  volume?: number
+  clarity?: number
+  focus?: number
+  confidence?: number
+  structure?: number
   note?: string
 }
 
@@ -63,7 +75,7 @@ export interface AnalysisResult {
 export interface CorrectionEvent {
   dim: LiveDim | null
   reason: 'low_score' | 'error_threshold' | 'time_limit' | 'user_ended'
-  errors: PronError[] | AccError[] | MulDetected[]
+  errors: PronError[] | AccError[] | MulDetected[] | ConsistencyDetected[]
 }
 
 export type LiveSessionPhase =

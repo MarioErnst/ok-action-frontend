@@ -15,6 +15,7 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/precision': 'Evalua si tu respuesta mantiene claridad, foco y coherencia.',
   '/sesion-libre': 'Practica una respuesta completa con feedback integrado.',
   '/fluidez': 'Reduce trabas, repeticiones y reinicios al hablar.',
+  '/consistencia': 'Evalua si mantienes ritmo, claridad, foco y seguridad.',
 }
 
 export const DashboardPage = () => {

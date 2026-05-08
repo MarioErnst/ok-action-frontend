@@ -14,6 +14,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   lex: '/versatilidad-linguistica',
   pause: '/pausas',
   fluency: '/fluidez',
+  consistency: '/consistencia',
 }
 
 const STOP_REASON_LABELS: Record<string, string> = {
@@ -52,7 +53,8 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, lexRe
   const totalErrorCount =
     errors.pron.reduce((s, e) => s + e.count, 0) +
     errors.acc.reduce((s, e) => s + e.count, 0) +
-    errors.mul.reduce((s, e) => s + e.totalCount, 0)
+    errors.mul.reduce((s, e) => s + e.totalCount, 0) +
+    errors.consistency.reduce((s, e) => s + e.count, 0)
 
   return (
     <div className="flex flex-col gap-8 p-6 pb-28 w-full max-w-md mx-auto animate-fade-in">
@@ -125,6 +127,78 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, lexRe
                              hover:bg-accent/10 active:scale-95 transition-all duration-200"
                 >
                   Practicar {DIM_LABELS.lex}
+                </button>
+              )}
+            </div>
+          )
+        }
+
+        if (dim === 'consistency') {
+          const avgDimScore = dimAvgScore(analyses, dim)
+          const consistencyEvents = errors.consistency
+          const latestConsistency = [...analyses]
+            .reverse()
+            .map((analysis) => analysis.dims.consistency)
+            .find(Boolean)
+          const hasEvents = consistencyEvents.length > 0
+
+          return (
+            <div key="consistency" className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-5 flex flex-col gap-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-accent">{DIM_LABELS.consistency}</p>
+                  <p className="text-sm text-text-muted mt-0.5">
+                    {latestConsistency?.classification ?? (hasEvents ? 'Variaciones detectadas' : 'Sin variaciones relevantes')}
+                  </p>
+                </div>
+                {avgDimScore !== null && (
+                  <span className={`text-2xl font-extrabold ${scoreColor(avgDimScore)}`}>
+                    {avgDimScore}
+                  </span>
+                )}
+              </div>
+
+              {latestConsistency?.note && (
+                <p className="text-sm text-text leading-relaxed border-t border-border/40 pt-4">
+                  {latestConsistency.note}
+                </p>
+              )}
+
+              {latestConsistency && (
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-xl bg-surface-alt/70 p-2">
+                    <p className="text-sm font-bold text-text">{Math.round(latestConsistency.rhythm ?? 0)}</p>
+                    <p className="text-[10px] text-text-muted">Ritmo</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-alt/70 p-2">
+                    <p className="text-sm font-bold text-text">{Math.round(latestConsistency.clarity ?? 0)}</p>
+                    <p className="text-[10px] text-text-muted">Claridad</p>
+                  </div>
+                  <div className="rounded-xl bg-surface-alt/70 p-2">
+                    <p className="text-sm font-bold text-text">{Math.round(latestConsistency.focus ?? 0)}</p>
+                    <p className="text-[10px] text-text-muted">Foco</p>
+                  </div>
+                </div>
+              )}
+
+              {hasEvents && (
+                <div className="border-t border-border/40 pt-4 flex flex-col gap-2">
+                  {consistencyEvents.slice(0, 3).map((event) => (
+                    <div key={`${event.area}-${event.severity}`} className="rounded-xl bg-danger/10 border border-danger/20 p-3">
+                      <p className="text-sm font-bold text-danger">{event.area} ({event.severity})</p>
+                      <p className="mt-1 text-xs text-text-muted">{event.notes[0]}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(hasEvents || (avgDimScore !== null && avgDimScore < 70)) && (
+                <button
+                  onClick={() => navigate(DIM_ROUTES.consistency)}
+                  className="w-full py-2.5 rounded-xl border border-accent/40 text-accent text-sm font-semibold
+                             hover:bg-accent/10 active:scale-95 transition-all duration-200"
+                >
+                  Practicar {DIM_LABELS.consistency}
                 </button>
               )}
             </div>

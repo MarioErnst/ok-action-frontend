@@ -9,6 +9,7 @@ const DIM_DESCRIPTIONS: Record<LiveDim, string> = {
   lex: 'Variedad de vocabulario y uso de sinónimos',
   pause: 'Silencios intencionales y ritmo entre ideas',
   fluency: 'Continuidad, ritmo y trabas al hablar',
+  consistency: 'Estabilidad de ritmo, claridad y foco',
 }
 
 interface Props {

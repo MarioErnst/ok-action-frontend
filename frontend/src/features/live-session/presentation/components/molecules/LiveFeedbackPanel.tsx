@@ -40,7 +40,9 @@ export function LiveFeedbackPanel({ analysis, selectedDims, elapsedSeconds }: Pr
               ? `${dimData.classification ?? 'Sin clasificar'}${dimData.wpm ? ` · ${dimData.wpm} PPM` : ''}`
               : dim === 'pause'
                 ? dimData.classification ?? null
-                : null
+                : dim === 'consistency'
+                  ? dimData.classification ?? dimData.note ?? null
+                  : null
           return (
             <div key={dim} className="flex items-center justify-between">
               <div className="flex flex-col">

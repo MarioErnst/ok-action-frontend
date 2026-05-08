@@ -13,6 +13,7 @@ Cada archivo describe la arquitectura, los componentes, los hooks y el flujo de 
 | Volumen | [modulos/volumen.md](modulos/volumen.md) | Coach de volumen en tiempo real con calibracion de ruido y voz |
 | Muletillas | [modulos/muletillas.md](modulos/muletillas.md) | Deteccion de palabras de relleno en respuestas orales via Gemini |
 | Fluidez | [modulos/fluidez.md](modulos/fluidez.md) | Practica de continuidad oral con feedback en tiempo real |
+| Consistencia | [modulos/consistencia.md](modulos/consistencia.md) | Evaluacion de estabilidad entre inicio, desarrollo y cierre |
 
 ## Estructura general del frontend
 
