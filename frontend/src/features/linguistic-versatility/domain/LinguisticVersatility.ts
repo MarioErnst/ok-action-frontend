@@ -52,14 +52,6 @@ export interface EvaluateRoundResponse {
   total_rounds: number
 }
 
-export interface FreeSessionResponse {
-  session_id: string
-  versatility_score: number | null
-  vocabulary_richness: RichnessLevel | null
-  feedback: string | null
-  audio_intelligible: boolean
-}
-
 export interface SessionListItem {
   id: string
   mode: SessionMode
@@ -68,7 +60,7 @@ export interface SessionListItem {
   created_at: string
 }
 
-// State machines drive the page-level views in both modes.
+// State machine for the guided flow.
 export type GuidedStatus =
   | 'idle'
   | 'loading'
@@ -76,12 +68,5 @@ export type GuidedStatus =
   | 'uploading'
   | 'review'
   | 'finalizing'
-  | 'results'
-  | 'error'
-
-export type FreeStatus =
-  | 'idle'
-  | 'recording'
-  | 'uploading'
   | 'results'
   | 'error'
