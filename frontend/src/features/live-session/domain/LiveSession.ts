@@ -1,4 +1,4 @@
-export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision'
+export type LiveDim = 'pron' | 'acc' | 'mul' | 'precision' | 'pause'
 
 export interface QARoundResult {
   relevance: number
@@ -31,6 +31,12 @@ export interface DimResult {
   sc: number
   err?: PronError[] | AccError[]
   det?: MulDetected[]
+  total_pauses?: number
+  avg_pause_ms?: number
+  longest_pause_ms?: number
+  silence_ratio?: number
+  classification?: string
+  note?: string
 }
 
 export interface AnalysisResult {
