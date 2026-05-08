@@ -190,6 +190,7 @@ export function useEmotionTracking() {
     isCameraActive: detector.isCameraActive,
     cameraError: detector.error,
     videoRef: detector.videoRef,
+    attachStream: detector.attachStream,
     setLandmarksCallback: detector.setLandmarksCallback,
 
     startTracking,

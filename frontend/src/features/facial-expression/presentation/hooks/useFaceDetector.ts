@@ -150,6 +150,14 @@ export function useFaceDetector() {
     }
   }, [])
 
+  // Re-attach the active camera stream to a video element. Called by overlay
+  // components when they mount, so a fresh <video> created during a view
+  // transition picks up the running stream instead of staying black.
+  const attachStream = useCallback((video: HTMLVideoElement | null) => {
+    if (!video) return
+    serviceRef.current?.attachStream(video)
+  }, [])
+
   return {
     isLoaded,
     isCameraActive,
@@ -158,6 +166,7 @@ export function useFaceDetector() {
     videoRef,
     startCamera,
     stopCamera,
+    attachStream,
     setDetectionCallback,
     setLandmarksCallback,
     setRawBlendshapesCallback,
