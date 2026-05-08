@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useEmotionTracking } from '../hooks/useEmotionTracking'
+import { CalibrationView } from '../components/organisms/CalibrationView'
 import { LiveDetectionView } from '../components/organisms/LiveDetectionView'
 import { SessionResultsView } from '../components/organisms/SessionResultsView'
 
@@ -27,6 +28,15 @@ export function FacialExpressionPage() {
           isLoaded={tracking.isLoaded}
           loadError={tracking.cameraError}
           onStart={tracking.startTracking}
+        />
+      )}
+
+      {tracking.status === 'calibrating' && (
+        <CalibrationView
+          videoRef={tracking.videoRef}
+          isCameraActive={tracking.isCameraActive}
+          progress={tracking.calibrationProgress}
+          setLandmarksCallback={tracking.setLandmarksCallback}
         />
       )}
 
