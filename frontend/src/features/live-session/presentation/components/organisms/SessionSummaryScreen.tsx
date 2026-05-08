@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import type { AnalysisResult, LiveDim } from '../../../domain/LiveSession'
+import type { AnalysisResult, LexResult, LiveDim } from '../../../domain/LiveSession'
 import { DIM_LABELS } from '../../../domain/liveDimLabels'
 import { aggregateErrors, dimAvgScore, scoreColor, scoreBorderGlow } from '../../utils/sessionSummaryHelpers'
 import { PronErrorList } from '../molecules/PronErrorList'
@@ -11,6 +11,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   acc: '/acentuacion',
   mul: '/muletillas',
   precision: '/precision',
+  lex: '/versatilidad-linguistica',
 }
 
 const STOP_REASON_LABELS: Record<string, string> = {
@@ -24,10 +25,19 @@ interface Props {
   analyses: AnalysisResult[]
   selectedDims: LiveDim[]
   stopReason: string | null
+  // Result of the end-of-session versatility analysis when 'lex' was selected.
+  // Null when lex wasn't requested or the backend call failed.
+  lexResult: LexResult | null
   onReset: () => void
 }
 
-export function SessionSummaryScreen({ analyses, selectedDims, stopReason, onReset }: Props) {
+const RICHNESS_LABELS: Record<1 | 2 | 3, string> = {
+  1: 'Vocabulario básico',
+  2: 'Vocabulario intermedio',
+  3: 'Vocabulario avanzado',
+}
+
+export function SessionSummaryScreen({ analyses, selectedDims, stopReason, lexResult, onReset }: Props) {
   const navigate = useNavigate()
 
   const avgScore = analyses.length
@@ -78,6 +88,47 @@ export function SessionSummaryScreen({ analyses, selectedDims, stopReason, onRes
 
       {/* Per-dimension breakdown */}
       {selectedDims.map((dim) => {
+        // Versatility ('lex') is a one-shot analysis at session close, not a
+        // cyclic one — render its own panel using lexResult instead of the
+        // per-cycle aggregations the other dims rely on.
+        if (dim === 'lex') {
+          return (
+            <div key="lex" className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-5 flex flex-col gap-4 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-accent">{DIM_LABELS.lex}</p>
+                  <p className="text-sm text-text-muted mt-0.5">
+                    {lexResult && lexResult.audio_intelligible
+                      ? RICHNESS_LABELS[lexResult.vocabulary_richness]
+                      : lexResult
+                        ? 'Audio no claro'
+                        : 'Análisis no disponible'}
+                  </p>
+                </div>
+                {lexResult && lexResult.audio_intelligible && (
+                  <span className={`text-2xl font-extrabold ${scoreColor(lexResult.versatility_score)}`}>
+                    {lexResult.versatility_score}
+                  </span>
+                )}
+              </div>
+              {lexResult && lexResult.audio_intelligible && (
+                <p className="text-sm text-text leading-relaxed border-t border-border/40 pt-4">
+                  {lexResult.feedback}
+                </p>
+              )}
+              {lexResult && lexResult.audio_intelligible && (
+                <button
+                  onClick={() => navigate(DIM_ROUTES.lex)}
+                  className="w-full py-2.5 rounded-xl border border-accent/40 text-accent text-sm font-semibold
+                             hover:bg-accent/10 active:scale-95 transition-all duration-200"
+                >
+                  Practicar {DIM_LABELS.lex}
+                </button>
+              )}
+            </div>
+          )
+        }
+
         const avgDimScore = dimAvgScore(analyses, dim)
         const dimErrors = dim === 'pron' ? errors.pron : dim === 'acc' ? errors.acc : null
         const dimMuls = dim === 'mul' ? errors.mul : null
