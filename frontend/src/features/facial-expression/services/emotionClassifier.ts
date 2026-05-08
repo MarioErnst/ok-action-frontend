@@ -18,69 +18,73 @@ const avg2 = (b: BlendshapeMap, leftKey: string, rightKey: string): number =>
 // Clamp value to [0, 1] so heuristic combinations never push above 1.
 const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
 
-// Threshold the strongest non-neutral emotion must exceed to win the dominant
-// slot. 0.35 leaves enough margin that a relaxed face with naturally low brows
-// or stubble (which can elevate mouthPress/browDown baselines) reads as neutral.
-const NEUTRAL_DOMINANCE_THRESHOLD = 0.35
-
-// Margin the dominant emotion must have over the runner-up to "win" cleanly.
-// Below this the face reads as neutral, which prevents the badge from flickering
-// between two close-scoring emotions on borderline expressions.
-const DOMINANT_MIN_MARGIN = 0.08
-
 // Threshold above which a gesture is considered "active" enough to display.
 export const GESTURE_ACTIVE_THRESHOLD = 0.25
 
-// Emotion score formulas — derived from FACS Action Units (Ekman).
+// Per-emotion minimum score required to win the dominant slot.
 //
-// For emotions whose FACS recipe explicitly requires multiple co-active AUs
-// (anger = AU4 + AU7 + AU23; disgust = AU9 + AU10) we use Math.min on the
-// component blendshapes instead of summing them. Summing yields false
-// positives when only one component is naturally elevated (e.g. resting low
-// brows trigger "anger" by themselves). Min requires both components to fire.
-// The multiplier (~1.4–1.6) renormalizes the combined score back into 0..1.
+// Why per-emotion: each blendshape combo has a different baseline noise floor
+// in a relaxed face. Anger sits high because most people have slightly lowered
+// brows at rest; smile sits near zero. A single global threshold cannot
+// satisfy both without either over-detecting anger or under-detecting smiles.
 //
-// Sources: FACS literature, vision-sync reference implementation.
-//   - happy (AU6+AU12):       mouthSmile + cheekSquint  (sum is fine: a polite
-//                                                        smile without cheek
-//                                                        squint should still register)
-//   - sad (AU1+AU15+AU17):    mouthFrown + browInnerUp  (rare false positives at rest)
-//   - angry (AU4+AU7+AU23):   min(browDown, mouthPress) (co-activation required)
-//   - surprise (AU1+2+5+26):  jawOpen + browInnerUp + eyeWide
-//   - fear (AU1+2+20):        jawOpen + browInnerUp + mouthStretch (scaled down)
-//   - disgust (AU9+AU10):     min(noseSneer, mouthUpperUp) (co-activation required)
+// These values are calibrated against vision-sync's reference behavior and
+// adjusted so that a relaxed face reads as neutral, while a deliberately
+// expressed emotion crosses its threshold.
+const EMOTION_THRESHOLD: Record<Exclude<EmotionId, 'neutral'>, number> = {
+  happy: 0.30,
+  sad: 0.30,
+  angry: 0.45,    // brows-only baseline often hits 0.30, so push past it
+  surprise: 0.25,
+  fear: 0.20,     // formula is already scaled by 0.8
+  disgust: 0.40,  // amplified by *2, real disgust still scores 0.5+
+}
+
+// Emotion score formulas — derived from FACS Action Units (Ekman) and tuned
+// against vision-sync's reference implementation.
+//
+//   - happy (AU6+AU12):     direct mouthSmile (cheekSquint is unreliable)
+//   - sad (AU15+AU17):      mouthFrown + mouthRollLower, amplified
+//   - angry (AU4+AU23):     average of browDown and mouthPress
+//   - surprise (AU1+2+26):  jawOpen + browInnerUp average
+//   - fear (AU1+2+20):      jawOpen + browInnerUp + mouthStretch, scaled
+//   - disgust (AU9+AU10):   noseSneer + mouthUpperUp, amplified
+//
+// Both vision-sync and this file use simple sums/averages rather than
+// Math.min, because in practice MediaPipe doesn't co-activate all FACS
+// components even on clear expressions. Per-emotion thresholds compensate
+// for the false positives that come with summing.
 function scoreEmotions(b: BlendshapeMap): EmotionScores {
-  const happy = clamp01(
-    avg2(b, 'mouthSmileLeft', 'mouthSmileRight') +
-      avg2(b, 'cheekSquintLeft', 'cheekSquintRight') * 0.5
-  )
+  const happy = clamp01(avg2(b, 'mouthSmileLeft', 'mouthSmileRight'))
 
   const sad = clamp01(
-    avg2(b, 'mouthFrownLeft', 'mouthFrownRight') + get(b, 'browInnerUp') * 0.4
+    (avg2(b, 'mouthFrownLeft', 'mouthFrownRight') + get(b, 'mouthRollLower')) * 2.5
   )
 
-  const browDown = avg2(b, 'browDownLeft', 'browDownRight')
-  const mouthPress = avg2(b, 'mouthPressLeft', 'mouthPressRight')
-  const angry = clamp01(Math.min(browDown, mouthPress) * 1.6)
-
-  const surprise = clamp01(
-    (get(b, 'jawOpen') + get(b, 'browInnerUp')) / 2 +
-      avg2(b, 'eyeWideLeft', 'eyeWideRight') * 0.5
+  const angry = clamp01(
+    (avg2(b, 'browDownLeft', 'browDownRight') +
+      avg2(b, 'mouthPressLeft', 'mouthPressRight')) /
+      2
   )
+
+  const surprise = clamp01((get(b, 'jawOpen') + get(b, 'browInnerUp')) / 2)
 
   const fear = clamp01(
     ((get(b, 'jawOpen') +
       get(b, 'browInnerUp') +
       avg2(b, 'mouthStretchLeft', 'mouthStretchRight')) /
       3) *
-      0.6
+      0.8
   )
 
-  const noseSneer = avg2(b, 'noseSneerLeft', 'noseSneerRight')
-  const mouthUpperUp = avg2(b, 'mouthUpperUpLeft', 'mouthUpperUpRight')
-  const disgust = clamp01(Math.min(noseSneer, mouthUpperUp) * 1.6)
+  const disgust = clamp01(
+    (avg2(b, 'noseSneerLeft', 'noseSneerRight') +
+      avg2(b, 'mouthUpperUpLeft', 'mouthUpperUpRight')) *
+      2
+  )
 
-  // Neutral is computed as 1 minus the strongest non-neutral score.
+  // Neutral is computed as 1 minus the strongest non-neutral score, so the
+  // HUD bar shrinks as any real expression takes over.
   const maxOther = Math.max(happy, sad, angry, surprise, fear, disgust)
   const neutral = clamp01(1 - maxOther)
 
@@ -88,7 +92,6 @@ function scoreEmotions(b: BlendshapeMap): EmotionScores {
 }
 
 // Mapping from our gesture id to the blendshape keys that activate it.
-// Some gestures combine left/right, some are direct.
 const GESTURE_FORMULAS: Record<GestureId, (b: BlendshapeMap) => number> = {
   mouthSmile: (b) => avg2(b, 'mouthSmileLeft', 'mouthSmileRight'),
   mouthFrown: (b) => avg2(b, 'mouthFrownLeft', 'mouthFrownRight'),
@@ -123,22 +126,28 @@ function scoreGestures(b: BlendshapeMap): GestureScores {
   return out
 }
 
+/**
+ * Pick the dominant emotion using per-emotion thresholds. Returns 'neutral'
+ * only when no candidate clears its own threshold — this keeps anger from
+ * winning on relaxed-but-low brows while still letting clear smiles win at
+ * a much lower score.
+ */
 function pickDominant(emotions: EmotionScores): EmotionId {
-  // Sort non-neutral emotions by score descending so we can compare the top
-  // two and apply a margin requirement.
-  const ranked = (Object.entries(emotions) as [EmotionId, number][])
-    .filter(([id]) => id !== 'neutral')
-    .sort((a, b) => b[1] - a[1])
-
-  const [topId, topScore] = ranked[0]
-  const secondScore = ranked[1]?.[1] ?? 0
-
-  // Two guards both fall back to neutral:
-  //   1) the top score is too weak to be confident in (relaxed face)
-  //   2) the top and runner-up are too close to call (ambiguous expression)
-  if (topScore < NEUTRAL_DOMINANCE_THRESHOLD) return 'neutral'
-  if (topScore - secondScore < DOMINANT_MIN_MARGIN) return 'neutral'
-  return topId
+  let bestId: EmotionId = 'neutral'
+  // We rank by "headroom over threshold" instead of raw score so an emotion
+  // that just barely clears a high bar (anger ≥ 0.45) doesn't beat one that
+  // crushes a lower bar (surprise = 0.7 over a 0.25 threshold).
+  let bestHeadroom = 0
+  for (const [id, score] of Object.entries(emotions) as [EmotionId, number][]) {
+    if (id === 'neutral') continue
+    const threshold = EMOTION_THRESHOLD[id as Exclude<EmotionId, 'neutral'>]
+    const headroom = score - threshold
+    if (headroom > 0 && headroom > bestHeadroom) {
+      bestHeadroom = headroom
+      bestId = id as EmotionId
+    }
+  }
+  return bestId
 }
 
 /**
