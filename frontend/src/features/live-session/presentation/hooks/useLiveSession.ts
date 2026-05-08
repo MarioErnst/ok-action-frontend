@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AnalysisResult, CorrectionEvent, LiveDim, LiveSessionPhase, QARoundResult } from '../../domain/LiveSession'
+import type { AnalysisResult, CorrectionEvent, LexResult, LiveDim, LiveSessionPhase, QARoundResult } from '../../domain/LiveSession'
 import { AudioCapture } from '../../services/audioCapture'
 
 const WS_BASE_URL =
@@ -33,6 +33,9 @@ export interface LiveSessionControls {
   noiseLevel: 'low' | 'medium' | 'high'
   qaQuestion: QAQuestion | null
   qaLastResult: QARoundResult | null
+  // Versatility analysis result. Populated only when 'lex' is selected and
+  // arrives once at session close, before the terminal `session_ended` event.
+  lexResult: LexResult | null
   toggleDim: (dim: LiveDim) => void
   startSession: () => Promise<void>
   endSession: () => void
@@ -51,6 +54,7 @@ export function useLiveSession(): LiveSessionControls {
   const [noiseLevel, setNoiseLevel] = useState<'low' | 'medium' | 'high'>('low')
   const [qaQuestion, setQaQuestion] = useState<QAQuestion | null>(null)
   const [qaLastResult, setQaLastResult] = useState<QARoundResult | null>(null)
+  const [lexResult, setLexResult] = useState<LexResult | null>(null)
 
   const wsRef = useRef<WebSocket | null>(null)
   const captureRef = useRef<AudioCapture | null>(null)
@@ -168,6 +172,12 @@ export function useLiveSession(): LiveSessionControls {
         setPhase('qa_complete')
       }
 
+      if (msg.type === 'lex_result') {
+        // Backend guarantees this arrives strictly before `session_ended`,
+        // so the summary screen always has the lex data ready when it mounts.
+        setLexResult(msg.data as LexResult)
+      }
+
       if (msg.type === 'session_ended') {
         captureRef.current?.stop()
         if (timerRef.current) clearInterval(timerRef.current)
@@ -223,6 +233,7 @@ export function useLiveSession(): LiveSessionControls {
     setNoiseLevel('low')
     setQaQuestion(null)
     setQaLastResult(null)
+    setLexResult(null)
   }, [])
 
   return {
@@ -236,6 +247,7 @@ export function useLiveSession(): LiveSessionControls {
     noiseLevel,
     qaQuestion,
     qaLastResult,
+    lexResult,
     toggleDim,
     startSession,
     endSession,
