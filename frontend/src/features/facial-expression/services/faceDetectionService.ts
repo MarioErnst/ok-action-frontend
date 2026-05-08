@@ -61,6 +61,27 @@ export class FaceDetectionService {
     return this.animFrameId !== null
   }
 
+  getStream(): MediaStream | null {
+    return this.stream
+  }
+
+  /**
+   * Wire the active camera stream to a (possibly new) video element. Used when
+   * the React view layer remounts the <video> mid-session — for example when
+   * switching from the calibration screen to the live screen — so the stream
+   * follows the DOM rather than getting stranded on the unmounted element.
+   */
+  async attachStream(videoEl: HTMLVideoElement): Promise<void> {
+    if (!this.stream || videoEl.srcObject === this.stream) return
+    videoEl.srcObject = this.stream
+    try {
+      await videoEl.play()
+    } catch {
+      // play() can reject on hidden tabs or blocked autoplay; the stream is
+      // still attached and will play once the element becomes visible.
+    }
+  }
+
   startDetection(videoEl: HTMLVideoElement, onFrame: FrameCallback): void {
     if (!this.landmarker) throw new Error('Model not loaded')
 
