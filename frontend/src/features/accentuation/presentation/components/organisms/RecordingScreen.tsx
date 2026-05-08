@@ -1,5 +1,5 @@
-import useAccentuationSession from '../../hooks/useAccentuationSession';
-import type { AccentuationSessionResult } from '../../types';
+import useAccentuationSession from '../../../hooks/useAccentuationSession';
+import type { AccentuationSessionResult } from '../../../types';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
 import PhraseCard from '../molecules/PhraseCard';

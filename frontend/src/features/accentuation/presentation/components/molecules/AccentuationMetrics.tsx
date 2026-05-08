@@ -1,4 +1,4 @@
-import type { EvaluationMetrics } from '../../types';
+import type { EvaluationMetrics } from '../../../types';
 
 interface AccentuationMetricsProps {
   metrics: EvaluationMetrics;
