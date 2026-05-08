@@ -1,7 +1,7 @@
 // Accumulates phonation frames per exercise during a recording session.
 // Used exclusively by useEvaluationSession; not part of the public API.
 import { useEffect, useRef, useState } from 'react';
-import type { PhonationFrame, VoiceExercise } from '../../types';
+import type { PhonationFrame, VoiceExercise } from '../../domain/PhonationSession';
 import type { SessionPhase } from './useEvaluationSession';
 
 interface UseFrameAccumulatorResult {

@@ -1,4 +1,4 @@
-import type { PhonationFrame } from '../../phonation/types';
+import type { PhonationFrame } from '../../phonation/domain/PhonationSession';
 import type { PauseClassification, PauseInterval, PauseMetrics } from '../types';
 
 export interface PauseAnalysisConfig {

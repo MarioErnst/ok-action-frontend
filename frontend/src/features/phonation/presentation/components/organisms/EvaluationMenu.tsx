@@ -1,5 +1,5 @@
 import { VOICE_EXERCISES } from '../../../services/exercises';
-import type { VoiceExercise } from '../../../types';
+import type { VoiceExercise } from '../../../domain/PhonationSession';
 import { useExerciseSelection } from '../../hooks/useExerciseSelection';
 
 interface EvaluationMenuProps {

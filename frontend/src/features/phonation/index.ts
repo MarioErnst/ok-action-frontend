@@ -5,4 +5,4 @@ export { default as EvaluationPage } from './presentation/pages/EvaluationPage';
 export { EvaluationMenu } from './presentation/components/organisms/EvaluationMenu';
 export { EvaluationScreen } from './presentation/components/organisms/EvaluationScreen';
 export { ExerciseCard } from './presentation/components/molecules/ExerciseCard';
-export type { PhonationFrame, VoiceExercise } from './types';
+export type { PhonationFrame, VoiceExercise } from './domain/PhonationSession';

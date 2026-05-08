@@ -1,4 +1,4 @@
-import type { SessionResult } from '../../types';
+import type { SessionResult } from '../../domain/PhonationSession';
 import type { SavePhonationSessionDto } from '../dto/PhonationDtos';
 
 const getExerciseType = (exerciseId: string): string => {

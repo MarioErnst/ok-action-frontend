@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { PhonationFrame } from '../../../types';
+import type { PhonationFrame } from '../../../domain/PhonationSession';
 import PhonationButton from '../atoms/PhonationButton';
 import SmallText from '../atoms/SmallText';
 import DbMeter from '../molecules/DbMeter';

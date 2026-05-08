@@ -1,4 +1,4 @@
-import type { AudioFrame } from '../../shared/types/audioTypes';
+import type { AudioFrame } from '../../../shared/types/audioTypes';
 
 // PhonationFrame is an alias for the shared AudioFrame type.
 // The shared type is the source of truth; this alias keeps phonation internals unchanged.

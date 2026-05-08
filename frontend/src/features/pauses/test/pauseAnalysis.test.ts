@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analyzePauseFrames, classifyPauseMetrics } from '../services/pauseAnalysis';
-import type { PhonationFrame } from '../../phonation/types';
+import type { PhonationFrame } from '../../phonation/domain/PhonationSession';
 
 const NOISE_FLOOR = -60;
 

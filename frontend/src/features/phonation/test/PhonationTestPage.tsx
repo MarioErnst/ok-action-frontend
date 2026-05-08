@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PhonationDisplay, useVoiceMonitor } from '../index';
-import type { PhonationFrame } from '../types';
+import type { PhonationFrame } from '../domain/PhonationSession';
 
 export default function PhonationTestPage() {
   const { hz, db, isListening, isCalibrating, frames, start, stop } = useVoiceMonitor();

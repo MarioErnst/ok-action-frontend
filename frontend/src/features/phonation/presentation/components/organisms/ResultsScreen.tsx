@@ -1,5 +1,5 @@
 import { VOICE_EXERCISES } from '../../../services/exercises';
-import type { SessionResult } from '../../../types';
+import type { SessionResult } from '../../../domain/PhonationSession';
 
 interface ResultsScreenProps {
   result: SessionResult | null;

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { SessionResult, VoiceExercise } from '../../../types';
+import type { SessionResult, VoiceExercise } from '../../../domain/PhonationSession';
 import useEvaluationSession from '../../hooks/useEvaluationSession';
 import { ExercisePrompt } from '../molecules/ExercisePrompt';
 import { LiveFeedback } from '../molecules/LiveFeedback';

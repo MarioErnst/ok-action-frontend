@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useVoiceMonitor } from '../../phonation';
-import type { PhonationFrame } from '../../phonation/types';
+import type { PhonationFrame } from '../../phonation/domain/PhonationSession';
 import { analyzePauseFrames, DEFAULT_PAUSE_ANALYSIS_CONFIG } from '../services/pauseAnalysis';
 import type { PauseDetectionPhase, PauseDetectionResult } from '../types';
 

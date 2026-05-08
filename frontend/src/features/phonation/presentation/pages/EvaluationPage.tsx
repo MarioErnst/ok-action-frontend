@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { EvaluationMenu } from '../components/organisms/EvaluationMenu';
 import { EvaluationScreen } from '../components/organisms/EvaluationScreen';
 import { ResultsScreen } from '../components/organisms/ResultsScreen';
-import type { SessionResult, VoiceExercise } from '../../types';
+import type { SessionResult, VoiceExercise } from '../../domain/PhonationSession';
 
 type EvaluationView = 'menu' | 'evaluating' | 'results';
 

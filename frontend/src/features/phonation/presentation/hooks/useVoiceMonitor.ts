@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PhonationFrame } from '../../types';
+import type { PhonationFrame } from '../../domain/PhonationSession';
 
 const DEFAULT_DB = -100;
 const MAX_FRAMES = 100;

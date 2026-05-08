@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toSavePhonationSessionDto } from '../../infrastructure/mappers/phonationMapper';
 import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpPhonationRepository';
 import { VOICE_EXERCISES } from '../../services/exercises';
-import type { PhonationFrame, VoiceExercise } from '../../types';
+import type { PhonationFrame, VoiceExercise } from '../../domain/PhonationSession';
 import useDiagnosis from './useDiagnosis';
 import useVoiceMonitor from './useVoiceMonitor';
 import { useFrameAccumulator } from './useFrameAccumulator';
