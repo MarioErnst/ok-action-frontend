@@ -1,6 +1,5 @@
 import type {
   EvaluateRoundResponse,
-  FreeSessionResponse,
   SessionDetail,
   SessionListItem,
   StartSessionResponse,
@@ -116,9 +115,5 @@ export const HttpLinguisticVersatilityRepository = {
 
   async getHistory(): Promise<SessionListItem[]> {
     return jsonRequest<SessionListItem[]>(`${PREFIX}/history`, { method: 'GET' })
-  },
-
-  async submitFreeSession(audio: Blob): Promise<FreeSessionResponse> {
-    return uploadAudio<FreeSessionResponse>(`${PREFIX}/free`, audio)
   },
 }
