@@ -1,4 +1,5 @@
 import type {
+  BlendshapeBaseline,
   EmotionId,
   EmotionScores,
   GestureId,
@@ -19,52 +20,75 @@ const avg2 = (b: BlendshapeMap, leftKey: string, rightKey: string): number =>
 const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
 
 // Threshold above which a gesture is considered "active" enough to display.
-export const GESTURE_ACTIVE_THRESHOLD = 0.25
+// After baseline subtraction this measures *change from rest*, so a low value
+// (0.18) is enough to flag a real movement while filtering noise.
+export const GESTURE_ACTIVE_THRESHOLD = 0.18
 
 // Per-emotion minimum score required to win the dominant slot.
 //
-// Why per-emotion: each blendshape combo has a different baseline noise floor
-// in a relaxed face. Anger sits high because most people have slightly lowered
-// brows at rest; smile sits near zero. A single global threshold cannot
-// satisfy both without either over-detecting anger or under-detecting smiles.
-//
-// These values are calibrated against vision-sync's reference behavior and
-// adjusted so that a relaxed face reads as neutral, while a deliberately
-// expressed emotion crosses its threshold.
+// These thresholds operate on *baseline-adjusted* values (deltas above the
+// user's neutral face). They're calibrated to be low enough that real
+// expressions register, while still requiring deliberate movement.
 const EMOTION_THRESHOLD: Record<Exclude<EmotionId, 'neutral'>, number> = {
-  happy: 0.30,
-  sad: 0.30,
-  angry: 0.45,    // brows-only baseline often hits 0.30, so push past it
-  surprise: 0.25,
-  fear: 0.20,     // formula is already scaled by 0.8
-  disgust: 0.40,  // amplified by *2, real disgust still scores 0.5+
+  happy: 0.20,
+  sad: 0.20,
+  angry: 0.18,    // OR-of components — single-channel anger needs a real change
+  surprise: 0.20,
+  fear: 0.15,
+  disgust: 0.25,
+}
+
+/**
+ * Convert MediaPipe's category list into a flat name -> score map.
+ * Pulled out so the calibration step can accumulate the same shape that
+ * classify() consumes, without repeating the array scan in two places.
+ */
+export function categoriesToMap(
+  categories: Array<{ categoryName: string; score: number }>,
+): BlendshapeMap {
+  const map: BlendshapeMap = {}
+  for (const cat of categories) map[cat.categoryName] = cat.score
+  return map
+}
+
+/**
+ * Subtract the user's neutral-face baseline from each blendshape, clamped to 0.
+ * The result represents how much each muscle has activated *above its resting
+ * value* for this user — independent of anatomical baselines.
+ */
+export function applyBaseline(
+  map: BlendshapeMap,
+  baseline: BlendshapeBaseline,
+): BlendshapeMap {
+  const out: BlendshapeMap = {}
+  for (const [key, value] of Object.entries(map)) {
+    const base = baseline[key] ?? 0
+    out[key] = Math.max(0, value - base)
+  }
+  return out
 }
 
 // Emotion score formulas — derived from FACS Action Units (Ekman) and tuned
-// against vision-sync's reference implementation.
+// against vision-sync's reference implementation, then adjusted to operate on
+// baseline-subtracted deltas.
 //
-//   - happy (AU6+AU12):     direct mouthSmile (cheekSquint is unreliable)
-//   - sad (AU15+AU17):      mouthFrown + mouthRollLower, amplified
-//   - angry (AU4+AU23):     average of browDown and mouthPress
-//   - surprise (AU1+2+26):  jawOpen + browInnerUp average
-//   - fear (AU1+2+20):      jawOpen + browInnerUp + mouthStretch, scaled
-//   - disgust (AU9+AU10):   noseSneer + mouthUpperUp, amplified
-//
-// Both vision-sync and this file use simple sums/averages rather than
-// Math.min, because in practice MediaPipe doesn't co-activate all FACS
-// components even on clear expressions. Per-emotion thresholds compensate
-// for the false positives that come with summing.
+// Anger uses Math.max instead of an average because real-world expressions of
+// anger split between two patterns: brow-lowering ("frowning") without lip
+// pressure, and lip-pressing without much brow movement. Using max lets either
+// pattern fire anger; baseline subtraction prevents resting low-brows from
+// triggering it falsely.
 function scoreEmotions(b: BlendshapeMap): EmotionScores {
   const happy = clamp01(avg2(b, 'mouthSmileLeft', 'mouthSmileRight'))
 
   const sad = clamp01(
-    (avg2(b, 'mouthFrownLeft', 'mouthFrownRight') + get(b, 'mouthRollLower')) * 2.5
+    (avg2(b, 'mouthFrownLeft', 'mouthFrownRight') + get(b, 'mouthRollLower')) * 2.5,
   )
 
   const angry = clamp01(
-    (avg2(b, 'browDownLeft', 'browDownRight') +
-      avg2(b, 'mouthPressLeft', 'mouthPressRight')) /
-      2
+    Math.max(
+      avg2(b, 'browDownLeft', 'browDownRight'),
+      avg2(b, 'mouthPressLeft', 'mouthPressRight'),
+    ),
   )
 
   const surprise = clamp01((get(b, 'jawOpen') + get(b, 'browInnerUp')) / 2)
@@ -74,13 +98,13 @@ function scoreEmotions(b: BlendshapeMap): EmotionScores {
       get(b, 'browInnerUp') +
       avg2(b, 'mouthStretchLeft', 'mouthStretchRight')) /
       3) *
-      0.8
+      0.8,
   )
 
   const disgust = clamp01(
     (avg2(b, 'noseSneerLeft', 'noseSneerRight') +
       avg2(b, 'mouthUpperUpLeft', 'mouthUpperUpRight')) *
-      2
+      2,
   )
 
   // Neutral is computed as 1 minus the strongest non-neutral score, so the
@@ -128,15 +152,14 @@ function scoreGestures(b: BlendshapeMap): GestureScores {
 
 /**
  * Pick the dominant emotion using per-emotion thresholds. Returns 'neutral'
- * only when no candidate clears its own threshold — this keeps anger from
- * winning on relaxed-but-low brows while still letting clear smiles win at
- * a much lower score.
+ * only when no candidate clears its own threshold.
+ *
+ * Ranking is by *headroom over threshold*, not raw score, so an emotion that
+ * crushes a low bar (surprise = 0.7 over 0.20) beats one that just barely
+ * clears a high bar (anger = 0.20 over 0.18).
  */
 function pickDominant(emotions: EmotionScores): EmotionId {
   let bestId: EmotionId = 'neutral'
-  // We rank by "headroom over threshold" instead of raw score so an emotion
-  // that just barely clears a high bar (anger ≥ 0.45) doesn't beat one that
-  // crushes a lower bar (surprise = 0.7 over a 0.25 threshold).
   let bestHeadroom = 0
   for (const [id, score] of Object.entries(emotions) as [EmotionId, number][]) {
     if (id === 'neutral') continue
@@ -151,17 +174,29 @@ function pickDominant(emotions: EmotionScores): EmotionId {
 }
 
 /**
- * Convert a flat array of MediaPipe blendshape categories into our domain types.
- * Categories arrive as { categoryName: string; score: number }[].
+ * Convert a MediaPipe blendshape category list (optionally baseline-adjusted
+ * via `applyBaseline` ahead of time) into our domain `LiveDetection`.
+ *
+ * The function accepts an already-mapped object so callers can apply baseline
+ * subtraction once and reuse the result for both classify() and any HUD
+ * rendering, avoiding double-processing.
  */
-export function classify(
-  categories: Array<{ categoryName: string; score: number }>
-): LiveDetection {
-  const map: BlendshapeMap = {}
-  for (const cat of categories) map[cat.categoryName] = cat.score
-
+export function classifyMap(map: BlendshapeMap): LiveDetection {
   const emotions = scoreEmotions(map)
   const gestures = scoreGestures(map)
   const dominantEmotion = pickDominant(emotions)
   return { emotions, gestures, dominantEmotion }
+}
+
+/**
+ * Convenience entry point that converts categories and classifies in one go.
+ * If a baseline is supplied, it is subtracted from each blendshape first.
+ */
+export function classify(
+  categories: Array<{ categoryName: string; score: number }>,
+  baseline?: BlendshapeBaseline,
+): LiveDetection {
+  const raw = categoriesToMap(categories)
+  const adjusted = baseline ? applyBaseline(raw, baseline) : raw
+  return classifyMap(adjusted)
 }
