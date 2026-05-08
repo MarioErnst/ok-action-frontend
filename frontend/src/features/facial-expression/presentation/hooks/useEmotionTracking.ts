@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFaceDetector } from './useFaceDetector'
 import { HttpFacialExpressionRepository } from '../../infrastructure/repositories/HttpFacialExpressionRepository'
+import type { BlendshapeCategory } from '../../services/faceDetectionService'
 import type {
+  BlendshapeBaseline,
   EmotionEvent,
   EmotionId,
   GestureScores,
@@ -10,26 +12,32 @@ import type {
   TrackingStatus,
 } from '../../domain/FacialExpression'
 
+// Calibration: capture roughly 3 seconds of neutral face at ~15fps. We sample
+// from the raw detection callback (which fires once per detected frame), so
+// frame count is the natural progress unit instead of wall time.
+const CALIBRATION_SAMPLES = 45
+
 /**
  * Orchestrates the emotion-tracking session lifecycle:
- *   idle -> live -> saving -> results
+ *   idle → calibrating → live → saving → results
  *
- * The hook holds session state (start time, accumulated events) in refs so the
- * detection callback can write events at the exact instant the dominant
- * emotion changes, without waiting for a render. Status transitions are guarded
- * by a ref so a double-click on Iniciar/Detener can never run twice.
+ * The hook owns the per-session refs (start time, accumulated events,
+ * baseline). Status transitions are guarded by a ref so a synchronous
+ * double-click on Iniciar/Detener can never run a handler twice.
  */
 export function useEmotionTracking() {
   const detector = useFaceDetector()
   const [status, setStatus] = useState<TrackingStatus>('idle')
   const [result, setResult] = useState<SessionResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [calibrationProgress, setCalibrationProgress] = useState(0)
 
   // Session-scoped state held in refs so the detection callback (synchronous,
   // outside the render cycle) can update it without re-rendering on every frame.
   const startTimeRef = useRef<number>(0)
   const eventsRef = useRef<EmotionEvent[]>([])
   const lastEmotionRef = useRef<EmotionId | null>(null)
+  const calibrationSamplesRef = useRef<BlendshapeCategory[][]>([])
 
   // Mirror of `status` so callbacks can guard against re-entry without
   // depending on the latest closure (refs update synchronously, state doesn't).
@@ -38,7 +46,6 @@ export function useEmotionTracking() {
 
   const onDetection = useCallback((live: LiveDetection) => {
     if (statusRef.current !== 'live') return
-    // Only record an event when the dominant emotion actually changes.
     if (live.dominantEmotion === lastEmotionRef.current) return
 
     const t_ms = Math.max(0, Date.now() - startTimeRef.current)
@@ -58,29 +65,70 @@ export function useEmotionTracking() {
     lastEmotionRef.current = live.dominantEmotion
   }, [])
 
-  // Wire the detection callback once: identity is stable thanks to its empty deps.
+  // Sample raw blendshapes during calibration. When we have enough samples,
+  // average them into a baseline, hand it to the detector, and switch to live.
+  const onRawBlendshapes = useCallback(
+    (cats: BlendshapeCategory[]) => {
+      if (statusRef.current !== 'calibrating') return
+
+      calibrationSamplesRef.current.push(cats)
+      const collected = calibrationSamplesRef.current.length
+      setCalibrationProgress(Math.min(1, collected / CALIBRATION_SAMPLES))
+
+      if (collected >= CALIBRATION_SAMPLES) {
+        const baseline = averageBaseline(calibrationSamplesRef.current)
+        detector.setBaseline(baseline)
+        calibrationSamplesRef.current = []
+
+        // Move into the live phase. Reset event buffer and start the clock.
+        statusRef.current = 'live'
+        eventsRef.current = []
+        lastEmotionRef.current = null
+        startTimeRef.current = Date.now()
+        setStatus('live')
+      }
+    },
+    [detector],
+  )
+
+  // Wire detection callbacks once. Identities are stable thanks to empty deps.
   useEffect(() => {
     detector.setDetectionCallback(onDetection)
-    return () => detector.setDetectionCallback(null)
-  }, [detector.setDetectionCallback, onDetection])
+    detector.setRawBlendshapesCallback(onRawBlendshapes)
+    return () => {
+      detector.setDetectionCallback(null)
+      detector.setRawBlendshapesCallback(null)
+    }
+  }, [
+    detector.setDetectionCallback,
+    detector.setRawBlendshapesCallback,
+    onDetection,
+    onRawBlendshapes,
+  ])
 
   // Start the camera as soon as the model finishes loading and the user has
-  // requested live tracking.
+  // requested tracking (during either calibration or live).
   useEffect(() => {
-    if (status === 'live' && detector.isLoaded && !detector.isCameraActive) {
+    if (
+      (status === 'calibrating' || status === 'live') &&
+      detector.isLoaded &&
+      !detector.isCameraActive
+    ) {
       detector.startCamera()
     }
   }, [status, detector.isLoaded, detector.isCameraActive, detector])
 
   const startTracking = useCallback(() => {
     if (statusRef.current !== 'idle') return
-    statusRef.current = 'live'
+    statusRef.current = 'calibrating'
+    calibrationSamplesRef.current = []
     eventsRef.current = []
     lastEmotionRef.current = null
-    startTimeRef.current = Date.now()
+    detector.setBaseline(null)
+    setCalibrationProgress(0)
     setError(null)
-    setStatus('live')
-  }, [])
+    setStatus('calibrating')
+  }, [detector])
 
   const stopTracking = useCallback(async () => {
     if (statusRef.current !== 'live') return
@@ -111,14 +159,16 @@ export function useEmotionTracking() {
   const reset = useCallback(() => {
     statusRef.current = 'idle'
     eventsRef.current = []
+    calibrationSamplesRef.current = []
     lastEmotionRef.current = null
+    detector.setBaseline(null)
     setResult(null)
     setError(null)
+    setCalibrationProgress(0)
     setStatus('idle')
-  }, [])
+  }, [detector])
 
-  // Live duration in milliseconds, ticking once per second for the on-screen
-  // chronometer. Updates only while live to avoid a stray timer in idle.
+  // Live duration in milliseconds, ticking 4x/sec for the on-screen chronometer.
   const [elapsedMs, setElapsedMs] = useState(0)
   useEffect(() => {
     if (status !== 'live') return
@@ -133,6 +183,7 @@ export function useEmotionTracking() {
     error,
     result,
     elapsedMs,
+    calibrationProgress,
 
     detection: detector.detection,
     isLoaded: detector.isLoaded,
@@ -145,4 +196,24 @@ export function useEmotionTracking() {
     stopTracking,
     reset,
   }
+}
+
+/**
+ * Average each blendshape across the calibration samples to produce a baseline.
+ * Missing categories in a sample are treated as 0 so the average stays stable
+ * even if MediaPipe occasionally drops a category.
+ */
+function averageBaseline(samples: BlendshapeCategory[][]): BlendshapeBaseline {
+  if (samples.length === 0) return {}
+  const sums: Record<string, number> = {}
+  for (const sample of samples) {
+    for (const cat of sample) {
+      sums[cat.categoryName] = (sums[cat.categoryName] ?? 0) + cat.score
+    }
+  }
+  const baseline: BlendshapeBaseline = {}
+  for (const [key, total] of Object.entries(sums)) {
+    baseline[key] = total / samples.length
+  }
+  return baseline
 }
