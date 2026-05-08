@@ -70,4 +70,9 @@ export interface SessionListItem {
   created_at: string
 }
 
-export type TrackingStatus = 'idle' | 'live' | 'saving' | 'results' | 'error'
+export type TrackingStatus = 'idle' | 'calibrating' | 'live' | 'saving' | 'results' | 'error'
+
+// Per-blendshape baseline values captured while the user holds a neutral face.
+// Subtracting these from live frames cancels out anatomical baselines (low brows,
+// resting lip pressure, etc.) so each user's deltas read against their own zero.
+export type BlendshapeBaseline = Record<string, number>
