@@ -42,6 +42,10 @@ type LiveSessionPhase = 'idle' | 'connecting' | 'recording' | 'correction' | 'en
 - **correction**: el backend envio un mensaje `correction`. La captura se detiene. `CorrectionOverlay` se muestra sobre `LiveFeedbackPanel`.
 - **ended**: el backend envio `session_ended` o el usuario presiono finalizar. La sesion termina.
 
+### Dimension `lex` (versatilidad linguistica)
+
+A diferencia de `pron`, `acc` y `mul` (analizadas cada 5 s) y `precision` (Q&A guiado), la dimension `lex` se evalua **al cierre de la sesion** sobre el audio acumulado completo. El backend envia un mensaje `lex_result` justo antes de `session_ended`. El hook `useLiveSession` lo expone como `lexResult: LexResult | null` y `SessionSummaryScreen` renderiza un panel especifico con el puntaje, el nivel de riqueza (basico/intermedio/avanzado) y el feedback de Gemini. No aparece en el panel en vivo durante la grabacion porque no hay datos parciales.
+
 ### Transiciones
 
 ```
