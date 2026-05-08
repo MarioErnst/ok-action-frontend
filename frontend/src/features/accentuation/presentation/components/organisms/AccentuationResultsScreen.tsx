@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AccentuationSessionResult, PhraseEvaluation } from '../../../types';
+import type { AccentuationSessionResult, PhraseEvaluation } from '../../../domain/AccentuationSession';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
 

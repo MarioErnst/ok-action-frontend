@@ -1,4 +1,4 @@
-import type { PhraseEvaluation, AccentuationSessionResult, SpecificError } from '../../types';
+import type { PhraseEvaluation, AccentuationSessionResult, SpecificError } from '../../domain/AccentuationSession';
 import type {
   PhraseEvaluationDto,
   SaveAccentuationSessionDto,

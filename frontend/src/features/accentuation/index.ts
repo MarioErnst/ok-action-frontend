@@ -1,2 +1,2 @@
 export { default as AccentuationPage } from './presentation/pages/AccentuationPage';
-export type { AccentuationPhrase, AccentuationSessionResult, PhraseEvaluation } from './types';
+export type { AccentuationPhrase, AccentuationSessionResult, PhraseEvaluation } from './domain/AccentuationSession';

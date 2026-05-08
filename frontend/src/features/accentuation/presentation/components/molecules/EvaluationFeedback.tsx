@@ -1,4 +1,4 @@
-import type { PhraseEvaluation } from '../../../types';
+import type { PhraseEvaluation } from '../../../domain/AccentuationSession';
 
 interface EvaluationFeedbackProps {
   evaluation: PhraseEvaluation;

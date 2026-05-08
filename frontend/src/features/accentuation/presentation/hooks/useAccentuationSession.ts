@@ -8,7 +8,7 @@ import type {
   EvaluationMetrics,
   PhraseEvaluation,
   PhraseState,
-} from '../../types';
+} from '../../domain/AccentuationSession';
 import useAudioRecorder from './useAudioRecorder';
 
 export type AccentuationPhase = 'idle' | 'recording' | 'processing' | 'finished';

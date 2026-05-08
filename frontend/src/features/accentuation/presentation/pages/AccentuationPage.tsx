@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import AccentuationResultsScreen from '../components/organisms/AccentuationResultsScreen';
 import RecordingScreen from '../components/organisms/RecordingScreen';
-import type { AccentuationSessionResult } from '../../types';
+import type { AccentuationSessionResult } from '../../domain/AccentuationSession';
 
 type AccentuationView = 'recording' | 'results';
 
