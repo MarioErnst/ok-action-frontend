@@ -2,7 +2,11 @@
 
 ## Qué hace
 
-Evalúa qué tan variado es el vocabulario del usuario al hablar. Le da un puntaje 0-100, un nivel de riqueza léxica (básico / intermedio / avanzado) y un feedback textual concreto. Dos modos de uso conviven en la misma feature: **guiado** (3 preguntas predefinidas) y **libre** (un solo audio sobre lo que quiera).
+Evalúa qué tan variado es el vocabulario del usuario al hablar. Le da un puntaje 0-100, un nivel de riqueza léxica (básico / intermedio / avanzado) y un feedback textual concreto.
+
+Esta feature ofrece únicamente el **modo guiado** (3 preguntas predefinidas, una respuesta por pregunta).
+
+> **Modo libre**: para hablar libremente y recibir una evaluación de versatilidad sobre todo el discurso, usar la **Sesión Libre** (`/sesion-libre`) y seleccionar la dimensión "Versatilidad" en el selector de dimensiones. La evaluación se entrega al final de la sesión libre junto con las otras dimensiones elegidas.
 
 ## Ruta
 
