@@ -1,8 +1,8 @@
 // Full module documentation: documentacion/modulos/acentuacion.md
 import { useState } from 'react';
-import AccentuationResultsScreen from '../presentation/components/organisms/AccentuationResultsScreen';
-import RecordingScreen from '../presentation/components/organisms/RecordingScreen';
-import type { AccentuationSessionResult } from '../types';
+import AccentuationResultsScreen from '../components/organisms/AccentuationResultsScreen';
+import RecordingScreen from '../components/organisms/RecordingScreen';
+import type { AccentuationSessionResult } from '../../types';
 
 type AccentuationView = 'recording' | 'results';
 
