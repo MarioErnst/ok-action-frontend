@@ -1,4 +1,4 @@
-import type { VoiceExercise } from '../../types';
+import type { VoiceExercise } from '../../../types';
 
 interface ExerciseCardProps {
   exercise: VoiceExercise;

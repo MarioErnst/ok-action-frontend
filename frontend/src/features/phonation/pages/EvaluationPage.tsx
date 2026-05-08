@@ -1,8 +1,8 @@
 // Full module documentation: documentacion/modulos/fonacion.md
 import { useState } from 'react';
-import { EvaluationMenu } from '../components/organisms/EvaluationMenu';
-import { EvaluationScreen } from '../components/organisms/EvaluationScreen';
-import { ResultsScreen } from '../components/organisms/ResultsScreen';
+import { EvaluationMenu } from '../presentation/components/organisms/EvaluationMenu';
+import { EvaluationScreen } from '../presentation/components/organisms/EvaluationScreen';
+import { ResultsScreen } from '../presentation/components/organisms/ResultsScreen';
 import type { SessionResult, VoiceExercise } from '../types';
 
 type EvaluationView = 'menu' | 'evaluating' | 'results';
