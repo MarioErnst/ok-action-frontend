@@ -1,4 +1,4 @@
-import type { AccError, AnalysisResult, LiveDim, MulDetected, PronError } from '../../domain/LiveSession'
+import type { AccError, AnalysisResult, ConsistencyDetected, LiveDim, MulDetected, PronError } from '../../domain/LiveSession'
 
 export interface AggregatedPronError {
   ph: string
@@ -20,6 +20,13 @@ export interface AggregatedMul {
   contexts: string[]
 }
 
+export interface AggregatedConsistencyEvent {
+  area: string
+  severity: string
+  count: number
+  notes: string[]
+}
+
 export function scoreColor(score: number): string {
   if (score >= 70) return 'text-success'
   if (score >= 40) return 'text-warning'
@@ -35,10 +42,11 @@ export function scoreBorderGlow(score: number): { border: string; glow: React.CS
 export function aggregateErrors(
   analyses: AnalysisResult[],
   dims: LiveDim[],
-): { pron: AggregatedPronError[]; acc: AggregatedAccError[]; mul: AggregatedMul[] } {
+): { pron: AggregatedPronError[]; acc: AggregatedAccError[]; mul: AggregatedMul[]; consistency: AggregatedConsistencyEvent[] } {
   const pronMap = new Map<string, AggregatedPronError>()
   const accMap = new Map<string, AggregatedAccError>()
   const mulMap = new Map<string, AggregatedMul>()
+  const consistencyMap = new Map<string, AggregatedConsistencyEvent>()
 
   for (const analysis of analyses) {
     if (dims.includes('pron')) {
@@ -66,12 +74,22 @@ export function aggregateErrors(
         mulMap.set(d.w, existing)
       }
     }
+    if (dims.includes('consistency')) {
+      for (const d of (analysis.dims.consistency?.det ?? []) as ConsistencyDetected[]) {
+        const key = `${d.area}__${d.severity}`
+        const existing = consistencyMap.get(key) ?? { area: d.area, severity: d.severity, count: 0, notes: [] }
+        existing.count++
+        if (d.note && !existing.notes.includes(d.note)) existing.notes.push(d.note)
+        consistencyMap.set(key, existing)
+      }
+    }
   }
 
   return {
     pron: [...pronMap.values()].sort((a, b) => b.count - a.count),
     acc: [...accMap.values()].sort((a, b) => b.count - a.count),
     mul: [...mulMap.values()].sort((a, b) => b.totalCount - a.totalCount),
+    consistency: [...consistencyMap.values()].sort((a, b) => b.count - a.count),
   }
 }
 

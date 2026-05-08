@@ -12,6 +12,7 @@ import { PrecisionPage } from '../../features/precision/presentation/pages/Preci
 import LiveSessionPage from '../../features/live-session/presentation/pages/LiveSessionPage'
 import { FacialExpressionPage } from '../../features/facial-expression'
 import { LinguisticVersatilityPage } from '../../features/linguistic-versatility/presentation/pages/LinguisticVersatilityPage'
+import { ConsistencyPage } from '../../features/consistency'
 
 export const AppRouter = () => (
   <Routes>
@@ -29,6 +30,7 @@ export const AppRouter = () => (
         <Route path="/sesion-libre" element={<LiveSessionPage />} />
         <Route path="/expresion-facial" element={<FacialExpressionPage />} />
         <Route path="/versatilidad-linguistica" element={<LinguisticVersatilityPage />} />
+        <Route path="/consistencia" element={<ConsistencyPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>

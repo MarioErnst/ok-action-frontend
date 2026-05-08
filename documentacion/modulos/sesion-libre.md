@@ -46,6 +46,10 @@ type LiveSessionPhase = 'idle' | 'connecting' | 'recording' | 'correction' | 'en
 
 A diferencia de `pron`, `acc` y `mul` (analizadas cada 5 s) y `precision` (Q&A guiado), la dimension `lex` se evalua **al cierre de la sesion** sobre el audio acumulado completo. El backend envia un mensaje `lex_result` justo antes de `session_ended`. El hook `useLiveSession` lo expone como `lexResult: LexResult | null` y `SessionSummaryScreen` renderiza un panel especifico con el puntaje, el nivel de riqueza (basico/intermedio/avanzado) y el feedback de Gemini. No aparece en el panel en vivo durante la grabacion porque no hay datos parciales.
 
+### Dimension `consistency` (consistencia)
+
+La dimension `consistency` se evalua junto con los ciclos de analisis en vivo. El backend devuelve `dims.consistency` con score, clasificacion, submetricas de estabilidad y eventos de variacion. `LiveFeedbackPanel` muestra la clasificacion actual y `SessionSummaryScreen` consolida los eventos para sugerir practicar `/consistencia`.
+
 ### Transiciones
 
 ```

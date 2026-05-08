@@ -9,6 +9,7 @@ const DIM_ROUTES: Record<LiveDim, string> = {
   mul: '/muletillas',
   precision: '/precision',
   lex: '/versatilidad-linguistica',
+  consistency: '/consistencia',
 }
 
 const REASON_MESSAGES: Record<string, string> = {
@@ -51,6 +52,8 @@ export function CorrectionOverlay({ correction, onContinue }: Props) {
                     ? `/${(error as { ph: string }).ph}/ en "${(error as { w: string }).w}" — ${(error as { fix: string }).fix}`
                     : 'exp' in error
                     ? `"${(error as { w: string }).w}": esperado ${(error as { exp: string }).exp}, detectado ${(error as { act: string }).act}`
+                    : 'area' in error
+                    ? `${(error as { area: string }).area}: ${(error as { note: string }).note}`
                     : `"${(error as { w: string }).w}" × ${(error as { n: number }).n}`
                 return (
                   <li key={i} className="text-sm text-danger flex items-start gap-2">
