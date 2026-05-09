@@ -22,12 +22,28 @@ El icono usado es `consistency`.
 ```text
 src/features/consistency/
   domain/ConsistencySession.ts
-  presentation/components/ConsistencyFeedbackPanel.tsx
+  presentation/components/
+    atoms/
+      ConsistencyMetricCard.tsx
+      ConsistencyScoreBadge.tsx
+    molecules/
+      ConsistencyActivityStatus.tsx
+      ConsistencyInsightList.tsx
+      ConsistencyPromptCard.tsx
+      ConsistencyTimelineList.tsx
+      ConsistencyVolatilityList.tsx
+    organisms/
+      ConsistencyFeedbackPanel.tsx
+      ConsistencyResultCard.tsx
   presentation/hooks/useConsistencySession.ts
   presentation/pages/ConsistencyPage.tsx
   services/questions.ts
   index.ts
 ```
+
+La presentacion usa Atomic Design pragmatico: atomos para score y metricas,
+moleculas para bloques reutilizables de prompt, estado, timeline e insights,
+y organismos para el panel de feedback y la tarjeta de resultado.
 
 ## 4. Hook principal
 
@@ -89,6 +105,16 @@ Muestra:
 - timeline por tramo;
 - cambios bruscos detectados;
 - fortalezas y areas de mejora.
+
+### Componentes atomicos
+
+- `ConsistencyMetricCard`: tarjeta pequena para cada metrica.
+- `ConsistencyScoreBadge`: score visual reutilizado en feedback y resultado.
+- `ConsistencyPromptCard`: consigna y acciones iniciales.
+- `ConsistencyActivityStatus`: conexion, grabacion y analisis.
+- `ConsistencyTimelineList`: estabilidad por inicio, desarrollo y cierre.
+- `ConsistencyVolatilityList`: cambios bruscos detectados.
+- `ConsistencyResultCard`: resumen final y accion para repetir.
 
 ## 7. Integracion con Sesion Libre
 

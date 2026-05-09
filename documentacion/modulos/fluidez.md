@@ -15,12 +15,27 @@ La página está disponible en `/fluidez` y aparece en la navegación como "Flui
 ```text
 src/features/fluency/
   domain/FluencySession.ts
-  presentation/components/FluencyFeedbackPanel.tsx
+  presentation/components/
+    atoms/
+      FluencyMetricCard.tsx
+      FluencyScoreBadge.tsx
+    molecules/
+      FluencyActivityStatus.tsx
+      FluencyInsightList.tsx
+      FluencyPromptCard.tsx
+      FluencyStuckEventsList.tsx
+    organisms/
+      FluencyFeedbackPanel.tsx
+      FluencyResultCard.tsx
   presentation/hooks/useFluencySession.ts
   presentation/pages/FluencyPage.tsx
   services/questions.ts
   index.ts
 ```
+
+La UI sigue Atomic Design pragmatico: los atomos renderizan piezas visuales pequenas
+como tarjetas de metrica y score; las moleculas agrupan prompt, estado de grabacion
+e insights; los organismos componen el panel de feedback y el resultado final.
 
 ## 4. Hook principal
 

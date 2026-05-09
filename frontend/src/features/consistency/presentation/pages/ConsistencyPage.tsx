@@ -1,11 +1,8 @@
-import { ConsistencyFeedbackPanel } from '../components/ConsistencyFeedbackPanel'
+import { ConsistencyActivityStatus } from '../components/molecules/ConsistencyActivityStatus'
+import { ConsistencyPromptCard } from '../components/molecules/ConsistencyPromptCard'
+import { ConsistencyFeedbackPanel } from '../components/organisms/ConsistencyFeedbackPanel'
+import { ConsistencyResultCard } from '../components/organisms/ConsistencyResultCard'
 import { useConsistencySession } from '../hooks/useConsistencySession'
-
-function formatTime(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = String(totalSeconds % 60).padStart(2, '0')
-  return `${minutes}:${seconds}`
-}
 
 export default function ConsistencyPage() {
   const {
@@ -37,55 +34,19 @@ export default function ConsistencyPage() {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-border/50 bg-surface/60 p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Consigna</p>
-        <p className="mt-2 text-lg font-semibold leading-relaxed text-text">{promptText}</p>
-
-        {phase === 'idle' && (
-          <div className="mt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={nextPrompt}
-              className="flex-1 rounded-xl border border-border/60 bg-surface-alt/50 px-4 py-3 text-sm font-bold text-text-muted transition-colors hover:text-text"
-            >
-              Cambiar consigna
-            </button>
-            <button
-              type="button"
-              onClick={startSession}
-              className="flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-extrabold text-bg transition-transform active:scale-95"
-            >
-              Comenzar
-            </button>
-          </div>
-        )}
-      </section>
+      <ConsistencyPromptCard
+        promptText={promptText}
+        phase={phase}
+        onNextPrompt={nextPrompt}
+        onStartSession={startSession}
+      />
 
       {(isConnecting || isRecording || isAnalyzing) && (
-        <section className="flex flex-col items-center gap-4">
-          {isRecording ? (
-            <div className="relative flex h-16 w-16 items-center justify-center">
-              <div className="absolute h-16 w-16 rounded-full bg-danger/20 opacity-75 animate-ping" />
-              <div className="h-10 w-10 rounded-full bg-danger shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
-            </div>
-          ) : (
-            <div className="h-16 w-16 rounded-full border-4 border-border border-t-accent animate-spin" />
-          )}
-          <p className="text-sm font-semibold text-text-muted">
-            {isConnecting && 'Conectando...'}
-            {isRecording && `Escuchando ${formatTime(elapsedSeconds)}`}
-            {isAnalyzing && 'Analizando intento...'}
-          </p>
-          {isRecording && (
-            <button
-              type="button"
-              onClick={endSession}
-              className="w-full rounded-xl border border-border/60 bg-surface-alt/50 px-4 py-3 text-sm font-bold text-text-muted transition-colors hover:border-danger/50 hover:text-danger"
-            >
-              Terminar intento
-            </button>
-          )}
-        </section>
+        <ConsistencyActivityStatus
+          phase={isConnecting ? 'connecting' : isRecording ? 'recording' : 'analyzing'}
+          elapsedSeconds={elapsedSeconds}
+          onEndSession={endSession}
+        />
       )}
 
       {error && (
@@ -97,21 +58,7 @@ export default function ConsistencyPage() {
       <ConsistencyFeedbackPanel analysis={analysis} warningReason={warningReason} />
 
       {isEnded && (
-        <section className="flex flex-col gap-4 rounded-2xl border border-border/50 bg-surface/60 p-5 text-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Resultado</p>
-            <p className="mt-1 text-2xl font-black text-text">
-              {finalScore !== null ? Math.round(finalScore) : '--'}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={resetSession}
-            className="rounded-xl bg-accent px-4 py-3 text-sm font-extrabold text-bg transition-transform active:scale-95"
-          >
-            Repetir intento
-          </button>
-        </section>
+        <ConsistencyResultCard finalScore={finalScore} onResetSession={resetSession} />
       )}
     </main>
   )
