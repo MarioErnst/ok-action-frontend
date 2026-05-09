@@ -1,11 +1,8 @@
-import { FluencyFeedbackPanel } from '../components/FluencyFeedbackPanel'
+import { FluencyActivityStatus } from '../components/molecules/FluencyActivityStatus'
+import { FluencyPromptCard } from '../components/molecules/FluencyPromptCard'
+import { FluencyFeedbackPanel } from '../components/organisms/FluencyFeedbackPanel'
+import { FluencyResultCard } from '../components/organisms/FluencyResultCard'
 import { useFluencySession } from '../hooks/useFluencySession'
-
-function formatTime(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = String(totalSeconds % 60).padStart(2, '0')
-  return `${minutes}:${seconds}`
-}
 
 export default function FluencyPage() {
   const {
@@ -37,51 +34,19 @@ export default function FluencyPage() {
         </p>
       </section>
 
-      <section className="rounded-2xl border border-border/50 bg-surface/60 p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Consigna</p>
-        <p className="mt-2 text-lg font-semibold leading-relaxed text-text">{promptText}</p>
-
-        {phase === 'idle' && (
-          <div className="mt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={nextPrompt}
-              className="flex-1 rounded-xl border border-border/60 bg-surface-alt/50 px-4 py-3 text-sm font-bold text-text-muted transition-colors hover:text-text"
-            >
-              Cambiar pregunta
-            </button>
-            <button
-              type="button"
-              onClick={startSession}
-              className="flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-extrabold text-bg transition-transform active:scale-95"
-            >
-              Comenzar
-            </button>
-          </div>
-        )}
-      </section>
+      <FluencyPromptCard
+        promptText={promptText}
+        phase={phase}
+        onNextPrompt={nextPrompt}
+        onStartSession={startSession}
+      />
 
       {(isConnecting || isRecording) && (
-        <section className="flex flex-col items-center gap-4">
-          {isConnecting ? (
-            <div className="h-16 w-16 rounded-full border-4 border-border border-t-accent animate-spin" />
-          ) : (
-            <div className="relative flex h-16 w-16 items-center justify-center">
-              <div className="absolute h-16 w-16 rounded-full bg-danger/20 opacity-75 animate-ping" />
-              <div className="h-10 w-10 rounded-full bg-danger shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
-            </div>
-          )}
-          <p className="text-sm font-semibold text-text-muted">
-            {isConnecting ? 'Conectando...' : `Escuchando ${formatTime(elapsedSeconds)}`}
-          </p>
-          <button
-            type="button"
-            onClick={endSession}
-            className="w-full rounded-xl border border-border/60 bg-surface-alt/50 px-4 py-3 text-sm font-bold text-text-muted transition-colors hover:border-danger/50 hover:text-danger"
-          >
-            Terminar intento
-          </button>
-        </section>
+        <FluencyActivityStatus
+          phase={isConnecting ? 'connecting' : 'recording'}
+          elapsedSeconds={elapsedSeconds}
+          onEndSession={endSession}
+        />
       )}
 
       {error && (
@@ -93,24 +58,11 @@ export default function FluencyPage() {
       <FluencyFeedbackPanel analysis={latestAnalysis} warningReason={warningReason} />
 
       {isEnded && (
-        <section className="flex flex-col gap-4 rounded-2xl border border-border/50 bg-surface/60 p-5 text-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-widest text-text-muted">Resultado</p>
-            <p className="mt-1 text-2xl font-black text-text">
-              {averageScore !== null ? Math.round(averageScore) : '--'}
-            </p>
-            <p className="text-sm text-text-muted">
-              {analyses.length} evaluaciones durante el intento
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={resetSession}
-            className="rounded-xl bg-accent px-4 py-3 text-sm font-extrabold text-bg transition-transform active:scale-95"
-          >
-            Repetir intento
-          </button>
-        </section>
+        <FluencyResultCard
+          averageScore={averageScore}
+          analysisCount={analyses.length}
+          onResetSession={resetSession}
+        />
       )}
     </main>
   )
