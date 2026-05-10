@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFaceDetector } from './useFaceDetector'
 import { HttpFacialExpressionRepository } from '../../infrastructure/repositories/HttpFacialExpressionRepository'
+import { toSaveSessionDto } from '../../infrastructure/mappers/facialExpressionMapper'
 import type { BlendshapeCategory } from '../../services/faceDetectionService'
 import type {
   BlendshapeBaseline,
@@ -141,10 +142,9 @@ export function useEmotionTracking() {
     detector.stopCamera()
 
     try {
-      const saved = await HttpFacialExpressionRepository.saveSession({
-        duration_ms,
-        events,
-      })
+      const saved = await HttpFacialExpressionRepository.saveSession(
+        toSaveSessionDto(duration_ms, events),
+      )
       statusRef.current = 'results'
       setResult(saved)
       setStatus('results')
