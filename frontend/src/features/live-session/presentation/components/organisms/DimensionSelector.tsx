@@ -1,0 +1,105 @@
+import {
+  LIVE_MODULE_DESCRIPTIONS,
+  LIVE_MODULE_LABELS,
+} from '../../../domain/liveDimLabels'
+import { LIVE_MODULES, type LiveModule } from '../../../domain/LiveSession'
+
+interface Props {
+  selected: LiveModule[]
+  onToggle: (module: LiveModule) => void
+  onStart: () => void
+  isStartDisabled: boolean
+}
+
+// Initial phase of the live session. The user picks a non-empty subset
+// of the four composable modules; "Comenzar" is enabled only when at
+// least one is selected. Visual style mirrors the previous live UI so
+// returning users land on familiar layout, colors and motion.
+export function DimensionSelector({
+  selected,
+  onToggle,
+  onStart,
+  isStartDisabled,
+}: Props) {
+  return (
+    <div className="flex flex-col items-center gap-8 p-6 w-full max-w-md mx-auto animate-fade-in">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">
+          Sesión libre
+        </p>
+        <h1 className="text-3xl font-extrabold text-text">¿Qué entrenamos hoy?</h1>
+        <p className="text-sm text-text-muted leading-relaxed">
+          Habla con naturalidad. Evaluamos los módulos que selecciones sobre el mismo audio.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 w-full">
+        {LIVE_MODULES.map((module) => {
+          const isActive = selected.includes(module)
+          return (
+            <button
+              key={module}
+              onClick={() => onToggle(module)}
+              type="button"
+              className={`
+                flex items-center gap-4 w-full p-4 rounded-2xl border text-left transition-all duration-200 min-h-[44px]
+                ${
+                  isActive
+                    ? 'border-accent bg-accent/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                    : 'border-border/50 bg-surface/60 hover:border-border hover:bg-surface'
+                }
+              `}
+            >
+              <div
+                className={`
+                  w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all
+                  ${isActive ? 'bg-accent border-accent' : 'border-border'}
+                `}
+              >
+                {isActive && (
+                  <svg
+                    className="w-3 h-3 text-text-on-accent"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={3}
+                    viewBox="0 0 12 12"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M2 6l3 3 5-5"
+                    />
+                  </svg>
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span
+                  className={`font-semibold text-sm ${
+                    isActive ? 'text-accent' : 'text-text'
+                  }`}
+                >
+                  {LIVE_MODULE_LABELS[module]}
+                </span>
+                <span className="text-xs text-text-muted">
+                  {LIVE_MODULE_DESCRIPTIONS[module]}
+                </span>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      <button
+        onClick={onStart}
+        disabled={isStartDisabled}
+        type="button"
+        className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-accent to-accent-hover
+                   py-4 font-extrabold text-text-on-accent shadow-[0_0_20px_rgba(245,158,11,0.3)]
+                   transition-all duration-300 active:scale-95 hover:shadow-[0_0_30px_rgba(245,158,11,0.5)]
+                   disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed min-h-[44px]"
+      >
+        Comenzar sesión libre
+      </button>
+    </div>
+  )
+}
