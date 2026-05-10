@@ -1,0 +1,99 @@
+import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
+import type { LiveModule, LiveSessionPhase } from '../../../domain/LiveSession'
+
+// Maximum session duration in seconds; the progress bar fills to 100% at
+// this point and the parent hook auto-stops. Five minutes mirrors the
+// previous live UI cap.
+const MAX_SESSION_SECONDS = 300
+
+interface Props {
+  phase: Extract<LiveSessionPhase, 'recording' | 'evaluating'>
+  selectedModules: LiveModule[]
+  elapsedSeconds: number
+  onEnd: () => void
+}
+
+// Free-speech recording screen. No real-time feedback panel because the
+// new backend produces a single Gemini call at close, not streaming
+// analysis. The visible state is intentionally minimal: a countdown,
+// the list of modules being measured, and the end-session button.
+export function LiveRecordingScreen({
+  phase,
+  selectedModules,
+  elapsedSeconds,
+  onEnd,
+}: Props) {
+  const progressPercent = Math.min(
+    (elapsedSeconds / MAX_SESSION_SECONDS) * 100,
+    100,
+  )
+  const remainingSeconds = Math.max(0, MAX_SESSION_SECONDS - elapsedSeconds)
+  const mins = Math.floor(remainingSeconds / 60)
+  const secs = String(remainingSeconds % 60).padStart(2, '0')
+  const isEvaluating = phase === 'evaluating'
+
+  return (
+    <div className="flex flex-col items-center gap-6 p-4 w-full max-w-md mx-auto min-h-[100dvh] pt-8 pb-28 lg:pb-6 animate-fade-in">
+      <div className="w-full">
+        <div className="flex justify-between text-xs text-text-muted mb-1.5">
+          <span className="font-bold uppercase tracking-widest text-accent">
+            Sesión libre
+          </span>
+          <span className="font-mono">
+            {mins}:{secs} restantes
+          </span>
+        </div>
+        <div className="h-1.5 w-full rounded-full bg-surface-alt overflow-hidden">
+          <div
+            className="h-full rounded-full bg-accent transition-all duration-1000"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-3 py-4">
+        {isEvaluating ? (
+          <div className="w-16 h-16 rounded-full border-4 border-border border-t-accent animate-spin" />
+        ) : (
+          <div className="relative flex items-center justify-center w-16 h-16">
+            <div className="absolute w-16 h-16 rounded-full bg-danger/20 animate-ping opacity-75" />
+            <div className="w-10 h-10 rounded-full bg-danger shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
+          </div>
+        )}
+        <p className="text-sm font-medium text-text-muted">
+          {isEvaluating ? 'Evaluando audio...' : 'Escuchando...'}
+        </p>
+      </div>
+
+      <div className="w-full rounded-2xl border border-border/40 bg-surface/40 backdrop-blur-sm p-5 flex flex-col gap-3">
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">
+          Estamos midiendo
+        </p>
+        <ul className="flex flex-wrap gap-2">
+          {selectedModules.map((module) => (
+            <li
+              key={module}
+              className="px-3 py-1.5 rounded-full bg-accent/10 border border-accent/30 text-xs font-semibold text-accent"
+            >
+              {LIVE_MODULE_LABELS[module]}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-text-muted leading-relaxed">
+          La retroalimentación detallada aparecerá cuando termines la sesión.
+        </p>
+      </div>
+
+      <button
+        onClick={onEnd}
+        disabled={isEvaluating}
+        type="button"
+        className="w-full py-4 rounded-2xl border border-border/60 bg-surface-alt/50 text-text-muted
+                   font-medium hover:border-danger/50 hover:text-danger active:scale-95 transition-all duration-200
+                   disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+      >
+        {isEvaluating ? 'Procesando…' : 'Terminar sesión'}
+      </button>
+    </div>
+  )
+}
