@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { WS_BASE_URL } from '../../../../api/client'
-import { AudioCapture } from '../../../live-session/services/audioCapture'
+import { AudioCapture } from '../../../../shared/services/audioCapture'
 import type {
   ConsistencyAnalysis,
   ConsistencyPhase,
