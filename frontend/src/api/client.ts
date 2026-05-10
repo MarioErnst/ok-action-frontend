@@ -52,14 +52,25 @@ export const apiRequest = async <TResponse, TBody = unknown>(
     ? { Authorization: `Bearer ${token}` }
     : {};
 
+  // FormData bodies skip JSON serialization so the browser can set
+  // Content-Type with the multipart boundary. Used by the live
+  // audio-evaluation endpoint to upload the recorded blob.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+  const baseHeaders: Record<string, string> = isFormData ? {} : defaultHeaders;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
-      ...defaultHeaders,
+      ...baseHeaders,
       ...authHeaders,
       ...headers,
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: isFormData
+      ? (body as unknown as FormData)
+      : body
+        ? JSON.stringify(body)
+        : undefined,
     signal,
   });
 
