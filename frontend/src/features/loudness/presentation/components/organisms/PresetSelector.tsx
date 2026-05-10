@@ -43,7 +43,7 @@ export default function PresetSelector({ presets, onSelect }: PresetSelectorProp
                 <div className="mt-5 inline-flex items-center gap-2 bg-surface-alt/50 px-3 py-2 rounded-xl border border-white/5 w-fit">
                   <span className="w-2 h-2 rounded-full bg-accent animate-pulse-glow shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
                   <p className="m-0 text-xs font-bold uppercase tracking-wider text-text-muted">
-                    {preset.tooLowOffsetDb > 0 ? '+' : ''}{preset.tooLowOffsetDb} / +{preset.optimalOffsetDb} dB
+                    {preset.lowOffsetDb > 0 ? '+' : ''}{preset.lowOffsetDb} / +{preset.optimalOffsetDb} dB
                   </p>
                 </div>
               </div>
