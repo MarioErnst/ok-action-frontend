@@ -21,7 +21,7 @@ export const AppSidebar = ({ user, onLogout }: AppSidebarProps) => (
     <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent mx-4 my-2 opacity-50 shrink-0" />
     
     <nav className="flex-1 py-4 flex flex-col gap-2 overflow-y-auto overflow-x-hidden px-3 custom-scrollbar">
-      {NAV_ITEMS.map(item => (
+      {NAV_ITEMS.filter(item => item.to !== '/perfil').map(item => (
         <NavItem
           key={item.to}
           to={item.to}

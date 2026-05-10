@@ -21,4 +21,5 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/versatilidad-linguistica', icon: 'lexical', label: 'Versatilidad' },
   { to: '/fluidez', icon: 'fluency', label: 'Fluidez' },
   { to: '/consistencia', icon: 'consistency', label: 'Consistencia' },
+  { to: '/perfil', icon: 'user', label: 'Perfil' },
 ]

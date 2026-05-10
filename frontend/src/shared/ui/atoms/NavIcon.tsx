@@ -12,6 +12,7 @@ export type NavIconName =
   | 'lexical'
   | 'fluency'
   | 'consistency'
+  | 'user'
 
 type NavIconProps = {
   name: NavIconName
@@ -128,6 +129,12 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="23" />
       <line x1="8" y1="23" x2="16" y2="23" />
+    </>
+  ),
+  user: (
+    <>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </>
   ),
 }
