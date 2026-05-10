@@ -1,3 +1,5 @@
+import type { ComposedEvaluation, LiveModule } from '../../domain/LiveSession'
+
 // DTOs for the uniform-schema live backend. Live is now an HTTP
 // composition lifecycle (start / finalize / abandon / list / get) over
 // a sessions(module='live') row plus a 1:1 live_metrics row created
@@ -60,4 +62,24 @@ export interface LiveSessionListItemDto {
   status: SessionStatusDto
   children_count: number
   stop_reason: StopReasonDto | null
+}
+
+// Output of POST /live/sessions/{id}/audio-evaluation. children mirrors
+// the freshly created session rows (one per requested module) and
+// evaluation is the raw Gemini response so the summary screen can render
+// per-module feedback without extra GETs.
+export interface ComposedAudioEvaluationResponseDto {
+  audio_intelligible: boolean
+  children: LiveChildOutputDto[]
+  evaluation: ComposedEvaluation
+}
+
+// Multipart payload for audio-evaluation. modules is sent as repeated
+// form fields (modules=muletillas&modules=consistency...) which FastAPI
+// parses as list[str] natively.
+export interface ComposedAudioEvaluationRequestDto {
+  audio: Blob
+  modules: LiveModule[]
+  startedAt: string
+  promptText?: string
 }

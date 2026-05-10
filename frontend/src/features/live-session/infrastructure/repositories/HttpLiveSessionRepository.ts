@@ -1,6 +1,8 @@
 import { apiRequest } from '../../../../api/client'
 import type {
   AbandonRequestDto,
+  ComposedAudioEvaluationRequestDto,
+  ComposedAudioEvaluationResponseDto,
   FinalizeSessionResponseDto,
   LiveSessionDetailDto,
   LiveSessionListItemDto,
@@ -40,5 +42,31 @@ export const HttpLiveSessionRepository = {
 
   async getSession(sessionId: string): Promise<LiveSessionDetailDto> {
     return apiRequest<LiveSessionDetailDto>(`/live/sessions/${sessionId}`)
+  },
+
+  // Multipart upload for the composed Gemini call. modules is sent as
+  // repeated form fields (modules=muletillas&modules=consistency...) so
+  // FastAPI parses it as list[str] natively. The audio filename is
+  // synthetic — backend reads the bytes and the content_type, and the
+  // name only matters for browser DevTools.
+  async evaluateAudio(
+    sessionId: string,
+    request: ComposedAudioEvaluationRequestDto,
+  ): Promise<ComposedAudioEvaluationResponseDto> {
+    const form = new FormData()
+    const filename = `live-${sessionId}.${request.audio.type.includes('mp4') ? 'mp4' : 'webm'}`
+    form.append('audio', request.audio, filename)
+    form.append('started_at', request.startedAt)
+    if (request.promptText) {
+      form.append('prompt_text', request.promptText)
+    }
+    for (const module of request.modules) {
+      form.append('modules', module)
+    }
+
+    return apiRequest<ComposedAudioEvaluationResponseDto, FormData>(
+      `/live/sessions/${sessionId}/audio-evaluation`,
+      { method: 'POST', body: form },
+    )
   },
 }
