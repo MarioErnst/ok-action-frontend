@@ -1,36 +1,43 @@
-export interface PauseIntervalDto {
-  start_ms: number;
-  end_ms: number;
-  duration_ms: number;
-}
+// DTOs for the uniform-schema pauses backend. The pauses[] array, the
+// classification label and the prompt text are not persisted anymore;
+// the frontend keeps them locally for the UI but does not send them.
+
+export type SessionStatusDto = 'active' | 'completed' | 'aborted';
 
 export interface PauseMetricsDto {
-  total_pauses: number;
-  total_pause_duration_ms: number;
-  average_pause_ms: number;
+  pauses_count: number;
+  total_pause_ms: number;
   longest_pause_ms: number;
-  silence_ratio: number;
-  classification: string;
-  pauses: PauseIntervalDto[];
+  silence_pct: number;
 }
 
 export interface SavePauseSessionDto {
-  prompt_text: string;
-  duration_ms: number;
-  pause_metrics: PauseMetricsDto;
+  started_at: string;
+  ended_at: string;
+  score: number;
+  metrics: PauseMetricsDto;
+  parent_id?: string | null;
 }
 
-export interface PauseSessionDto extends SavePauseSessionDto {
+export interface PauseSessionDto {
   id: string;
+  user_id: string;
+  started_at: string;
+  ended_at: string;
+  duration_ms: number;
+  score: number;
+  status: SessionStatusDto;
   created_at: string;
+  metrics: PauseMetricsDto;
 }
 
 export interface PauseSessionListItemDto {
   id: string;
-  prompt_text: string;
+  started_at: string;
+  ended_at: string;
   duration_ms: number;
-  total_pauses: number;
-  silence_ratio: number;
-  classification: string;
-  created_at: string;
+  score: number;
+  status: SessionStatusDto;
+  pauses_count: number;
+  silence_pct: number;
 }
