@@ -2,147 +2,182 @@
 
 ## 1. Descripcion funcional
 
-El modulo de Sesion Libre permite al usuario realizar una sesion de habla en tiempo real con
-retroalimentacion continua del backend. El usuario elige las dimensiones de evaluacion (pronunciacion,
-acentuacion, muletillas, fluidez y precision), inicia la grabacion, y recibe analisis periodicos mientras habla. Si el backend
-detecta un error relevante, interrumpe la sesion con una correccion especifica. La sesion termina
-por iniciativa del usuario, por correccion del backend, o por timeout.
+La Sesion Libre permite al usuario hablar de forma espontanea durante hasta cinco minutos
+y obtener al final una evaluacion compuesta de hasta cuatro modulos sobre el mismo audio.
+El usuario elige los modulos a evaluar antes de empezar; durante la grabacion no se muestra
+retroalimentacion en tiempo real (el backend hace una unica llamada a Gemini al cierre); al
+terminar, la pantalla de resumen muestra el desglose por modulo y el puntaje agregado.
+
+Los cuatro modulos disponibles en Sesion Libre son: muletillas, acentuacion, pronunciacion
+y consistencia. Los demas modulos del producto (fonacion, volumen, pausas, expresion facial,
+precision, versatilidad linguistica, fluidez) siguen disponibles solo como modulos
+independientes en sus propias paginas.
 
 ## 2. Navegacion
 
-La pagina esta disponible en `/sesion-libre`. Aparece en la barra de navegacion lateral bajo el
+Pagina disponible en `/sesion-libre`. Aparece en la barra de navegacion lateral bajo el
 nombre "Sesion Libre" con el icono de microfono (`live`).
 
 ## 3. Jerarquia de componentes
 
 ```
 LiveSessionPage
-  ├── DimensionSelector        (fase 'idle')
-  │     └── DimensionToggle    (molecula: boton de seleccion de dimension)
-  └── LiveRecordingScreen      (fases 'connecting' | 'recording' | 'correction' | 'ended')
-        ├── LiveFeedbackPanel  (panel de metricas en tiempo real)
-        └── CorrectionOverlay  (superposicion de correccion)
+  ├── DimensionSelector       (fase 'selection')
+  ├── LiveRecordingScreen     (fases 'recording' y 'evaluating')
+  └── SessionSummaryScreen    (fase 'summary')
 ```
 
-`LiveSessionPage` actua como orquestador: segun la fase de la sesion, renderiza
-`DimensionSelector` o `LiveRecordingScreen`. No contiene logica propia; toda la logica
-vive en el hook `useLiveSession`.
+`LiveSessionPage` no tiene estado propio: lee la fase desde `useLiveSession` y elige cual
+organismo renderizar. Los tres organismos viven en
+`presentation/components/organisms/`. La pantalla de error es una rama in-line del Page,
+no un organismo separado, porque consiste solo en un titulo y dos botones.
 
 ## 4. Hook principal: useLiveSession
 
 ### Maquina de estados (fases)
 
 ```typescript
-type LiveSessionPhase = 'idle' | 'connecting' | 'recording' | 'correction' | 'ended'
+type LiveSessionPhase = 'selection' | 'recording' | 'evaluating' | 'summary' | 'error'
 ```
 
-- **idle**: estado inicial. El usuario selecciona dimensiones. `DimensionSelector` se muestra.
-- **connecting**: se abre la conexion WebSocket y se envia el mensaje `start`. Se espera `ready`.
-- **recording**: el backend confirmo con `ready`. La captura de audio comienza. `LiveRecordingScreen` se muestra.
-- **correction**: el backend envio un mensaje `correction`. La captura se detiene. `CorrectionOverlay` se muestra sobre `LiveFeedbackPanel`.
-- **ended**: el backend envio `session_ended` o el usuario presiono finalizar. La sesion termina.
-
-### Dimension `lex` (versatilidad linguistica)
-
-A diferencia de `pron`, `acc` y `mul` (analizadas cada 5 s) y `precision` (Q&A guiado), la dimension `lex` se evalua **al cierre de la sesion** sobre el audio acumulado completo. El backend envia un mensaje `lex_result` justo antes de `session_ended`. El hook `useLiveSession` lo expone como `lexResult: LexResult | null` y `SessionSummaryScreen` renderiza un panel especifico con el puntaje, el nivel de riqueza (basico/intermedio/avanzado) y el feedback de Gemini. No aparece en el panel en vivo durante la grabacion porque no hay datos parciales.
-
-### Dimension `consistency` (consistencia)
-
-La dimension `consistency` se evalua junto con los ciclos de analisis en vivo. El backend devuelve `dims.consistency` con score, clasificacion, submetricas de estabilidad y eventos de variacion. `LiveFeedbackPanel` muestra la clasificacion actual y `SessionSummaryScreen` consolida los eventos para sugerir practicar `/consistencia`.
+- **selection**: estado inicial. El usuario marca/desmarca modulos. `DimensionSelector` se
+  muestra. `Comenzar` queda deshabilitado mientras la lista este vacia.
+- **recording**: tras `start()`, se abrio la sesion live (`POST /live/sessions`) y comenzo
+  la captura con `useAudioRecorder`. Un `setInterval` de un segundo incrementa
+  `elapsedSeconds`; al alcanzar `MAX_SESSION_SECONDS = 300` se dispara `stop()`
+  automaticamente.
+- **evaluating**: tras `stop()` (manual o auto), se detuvo la captura y se subio el blob
+  a `POST /live/sessions/:id/audio-evaluation`. Mientras la respuesta no llega, la UI
+  muestra un spinner.
+- **summary**: con la respuesta del endpoint y el `finalize` posterior, se renderiza
+  `SessionSummaryScreen` con `evaluation` y `liveScore`.
+- **error**: cualquier fallo (microfono denegado, Gemini sin respuesta, red caida, etc.)
+  termina aca con un mensaje. El usuario puede reintentar (`reset()` vuelve a
+  selection) o ir al dashboard.
 
 ### Transiciones
 
 ```
-idle → connecting   (startSession)
-connecting → recording  (ws.onmessage: type === 'ready')
-recording → correction  (ws.onmessage: type === 'correction')
-recording → ended       (ws.onmessage: type === 'session_ended' | endSession)
-correction → idle       (resetSession)
-ended → idle            (resetSession)
-connecting → idle       (ws.onerror | ws.onmessage: type === 'error')
+selection → recording        (start() exitoso)
+recording → evaluating       (stop() manual o por time limit)
+evaluating → summary         (audio-evaluation + finalize OK)
+evaluating → error           (audio-evaluation o finalize fallaron)
+recording → error            (stopRecording fallo)
+selection → error            (no hay modulos seleccionados o startSession fallo)
+summary → selection          (reset())
+error → selection            (reset())
 ```
 
-## 5. Conexion WebSocket
+### Refs
 
-La URL del WebSocket se resuelve en este orden de prioridad:
+- `sessionIdRef`: id devuelto por el backend en `POST /live/sessions`. Vive fuera del
+  estado React porque `stop()` lo necesita sin causar re-renders cuando lo escribe.
+- `startedAtRef`: timestamp del backend al abrir la sesion. Se manda como `started_at` en
+  el form de audio-evaluation. El backend lo reusa como `started_at` de cada hijo creado.
+- `timerRef`: handle del `setInterval` de elapsedSeconds. Se limpia en `stop()`, `reset()`
+  y al desmontar.
+- `isStoppingRef`: guard contra doble-entrada en `stop()` (puede dispararse simultaneamente
+  por click manual y por time limit).
 
-1. `globalThis.__APP_WS_URL__` (inyeccion en tiempo de ejecucion para entornos cloud)
-2. `import.meta.env.VITE_WS_URL` (variable de entorno de Vite)
-3. `ws://<host-actual>/api` (fallback para desarrollo local)
+### Limpieza al desmontar
 
-Al conectar, el cliente envia `{ type: 'start', dims: selectedDims }` en el evento `onopen`.
-El servidor responde con `{ type: 'ready' }` cuando esta preparado para recibir audio.
+El `useEffect` de cleanup hace tres cosas:
 
-Mensajes del servidor reconocidos:
+1. `clearTimer()`: cancela el contador.
+2. `recorder.releaseResources()`: detiene microfono y libera el `MediaStream`.
+3. Si la fase era `recording` o `evaluating`, llama `abandonSession` con
+   `stop_reason='user_stop'` en best-effort. La llamada es fire-and-forget porque la
+   fase de cleanup es sincrona y `fetch` no se puede await dentro. En la practica el
+   navegador suele completar la llamada; si el usuario cierra la pestana abruptamente,
+   la fila live puede quedar `active` en BD. Limitacion conocida, no bug.
 
-| type            | accion en el cliente                                      |
-|-----------------|-----------------------------------------------------------|
-| `ready`         | inicia `AudioCapture` y el temporizador de sesion         |
-| `analysis`      | actualiza `latestAnalysis` y acumula en `analyses`        |
-| `correction`    | detiene captura, guarda `CorrectionEvent`, fase → correction |
-| `session_ended` | detiene captura, guarda `stopReason`, fase → ended        |
-| `error`         | detiene captura, fase → idle                              |
+## 5. Captura de audio: useAudioRecorder compartido
 
-El cliente puede enviar `{ type: 'end' }` al servidor para finalizar la sesion voluntariamente.
+El hook `useAudioRecorder` vive en `frontend/src/shared/hooks/`. Es el mismo que usan
+muletillas y los modulos individuales que graban audio.
 
-La dimension `fluency` muestra clasificacion, palabras por minuto, repeticiones, bloqueos y una nota accionable. Si baja del umbral, la correccion puede navegar a `/fluidez`.
+Detecta el MIME type soportado en orden: `audio/webm;codecs=opus`, `audio/webm`,
+`audio/mp4`. Esto resuelve la diferencia entre Chrome/Android (webm/opus) y iOS Safari
+(mp4). El blob resultante se envia tal cual al backend; el endpoint
+`audio-evaluation` lee `content_type` y lo pasa a Gemini sin transcoding.
 
-## 6. Captura de audio: AudioCapture con Web Audio API
+A diferencia del live viejo (que usaba Web Audio API + ScriptProcessorNode + PCM
+streaming), aqui usamos `MediaRecorder` porque:
 
-La clase `AudioCapture` usa la Web Audio API (`AudioContext` + `ScriptProcessorNode`) en lugar
-de `MediaRecorder` por los siguientes motivos:
+- No hay streaming: solo necesitamos un blob al final, y `MediaRecorder` lo entrega
+  cerrado y listo para mandar.
+- El backend ya no espera PCM crudo — Gemini acepta tanto webm como mp4 nativamente.
+- Es codigo menos exotico y se comparte con los modulos individuales.
 
-- `MediaRecorder` produce contenedores de audio (WebM/Opus) con cabeceras de formato variable
-  que complican el parsing en el backend a medida que llegan fragmentos.
-- La Web Audio API permite acceder directamente a los samples PCM de 32 bits en punto flotante
-  tal como salen del microfono, sin codec ni empaquetamiento.
-- El backend de Gemini Live espera PCM crudo (`audio/pcm`), lo que hace que la transmision
-  directa de floats sea mas eficiente y predecible.
-- `ScriptProcessorNode` opera con buffers de tamano fijo (4096 samples por defecto), lo que
-  produce chunks de tamano uniforme y facilita el control de flujo en el WebSocket.
+## 6. Repositorio HTTP
 
-El audio se convierte de Float32 a Int16 antes de enviarse por el WebSocket para reducir el
-ancho de banda a la mitad manteniendo la precision suficiente para el reconocimiento de voz.
+`HttpLiveSessionRepository` encapsula los cinco endpoints del lifecycle live mas el de
+audio-evaluation. Todos pasan por `apiRequest` desde `src/api/client.ts`, incluido el
+multipart: `apiRequest` detecta `body instanceof FormData` y deja que el navegador
+ponga el `Content-Type` con el boundary correcto (eso es lo unico nuevo del cliente).
+
+Metodos principales (ver `infrastructure/repositories/HttpLiveSessionRepository.ts`):
+
+| Metodo | Endpoint | Uso desde el hook |
+|--------|----------|-------------------|
+| `startSession()` | `POST /live/sessions` | al comenzar la sesion. |
+| `evaluateAudio(id, req)` | `POST /live/sessions/:id/audio-evaluation` | al cerrar la grabacion. |
+| `finalizeSession(id)` | `POST /live/sessions/:id/finalize` | tras audio-evaluation, agrega score. |
+| `abandonSession(id, reason)` | `PATCH /live/sessions/:id/abandon` | en cleanup, error o microfono denegado. |
+| `listSessions()` | `GET /live/sessions` | (no se usa todavia desde la pagina; queda disponible para historial). |
+| `getSession(id)` | `GET /live/sessions/:id` | (idem). |
 
 ## 7. Comportamiento responsive
 
-- En movil (< md): `CorrectionOverlay` aparece como un panel deslizable desde la parte
-  inferior de la pantalla (bottom sheet). Ocupa el ancho completo de la pantalla.
-- En tablet y escritorio (>= md): `CorrectionOverlay` aparece centrado sobre el contenido
-  como un dialogo modal con ancho maximo controlado.
-- `DimensionSelector` y `LiveFeedbackPanel` usan grillas de Tailwind que se adaptan al
-  numero de columnas segun el ancho disponible.
+- `DimensionSelector` y `LiveRecordingScreen` usan `max-w-md mx-auto` para que el ancho se
+  contenga en pantallas grandes y se adapte fluido en mobile.
+- `SessionSummaryScreen` usa `max-w-2xl` y rejillas `grid-cols-2 sm:grid-cols-4` para los
+  sub-scores: en mobile se apilan en dos columnas, en tablet/desktop en cuatro.
+- Botones primarios usan touch targets `min-h-[44px]` segun la regla del CLAUDE.md
+  multiplataforma.
+- La altura de pantalla completa usa `100dvh`, no `100vh`, porque la barra de Safari en
+  iOS rompe `100vh`.
 
-## 8. Integracion con el resto del sistema
+## 8. Decisiones de diseno
 
-- El modulo es independiente de los demas modulos de evaluacion (fonacion, pronunciacion, etc.).
-  No comparte estado ni repositorios con ellos.
-- El token de autenticacion se lee de `localStorage` bajo la clave `auth_token`, consistente
-  con el cliente HTTP del resto de la aplicacion (`api/client.ts`).
-- La ruta `/sesion-libre` esta protegida por `ProtectedRoute` al igual que las demas rutas
-  de la aplicacion. Si el usuario no esta autenticado, se redirige a `/auth`.
-- El icono `live` fue agregado al componente `NavIcon` como una entrada en el objeto `PATHS`
-  con la misma estructura SVG que los demas iconos. El tipo `NavIconName` fue extendido para
-  incluir `'live'` antes de actualizar `navItems.ts`, garantizando que TypeScript valide
-  la consistencia del sistema de navegacion.
+### No hay feedback en tiempo real
 
-## 9. Decisiones de diseno
+El backend nuevo hace una unica llamada a Gemini al cierre de la grabacion. La UI lo
+explicita con el texto "La retroalimentacion detallada aparecera cuando termines la
+sesion" en `LiveRecordingScreen`. Mostrar un panel vacio o falso analisis en vivo seria
+peor experiencia que ser explicito.
 
-### Por que la pagina delega todo al hook
+### Cuatro modulos, no ocho
 
-`LiveSessionPage` no tiene estado propio. Toda la logica de ciclo de vida (WebSocket, AudioCapture,
-temporizador) vive en `useLiveSession`. Esto permite testear la logica de sesion sin necesidad
-de montar el arbol de componentes completo.
+Los demas modulos del producto requieren modos de input incompatibles con el habla libre
+(precision/versatilidad piden rondas de Q&A, fluidez y consistencia comparten el WS PCM
+historico, y fonacion/volumen/pausas/expresion-facial corren con calculos del cliente
+sobre seniales DSP o video). Para no degradar la calidad de evaluacion, la sesion libre
+solo cubre los cuatro modulos cuya evaluacion sirve sobre habla libre con un solo audio
+y un solo prompt compuesto.
 
-### Por que no hay capa de repositorio HTTP
+### El score agregado lo da `finalize`
 
-La sesion libre usa WebSocket, no HTTP. No hay un `HttpLiveSessionRepository` porque el protocolo
-de comunicacion es distinto al de los otros modulos. La logica de WebSocket vive directamente en
-el hook porque es parte del ciclo de vida de la sesion, no una operacion de datos desacoplada.
+`finalize_live_session` en backend promedia los hijos completos. El frontend no recalcula
+el promedio por su cuenta para evitar discrepancias con la BD si las formulas cambian. El
+unico calculo client-side es para los `mainScore` de los cards (acentuacion y pronunciacion
+hacen `round(avg(sub_scores))` para igualar lo que el backend persistio).
 
-### Por que se acumulan analisis en un array
+### Page sin estado, hook con todo
 
-El hook mantiene tanto `latestAnalysis` (el ultimo resultado) como `analyses` (todos los resultados
-acumulados). `LiveFeedbackPanel` usa `latestAnalysis` para mostrar metricas en tiempo real.
-`analyses` esta disponible para un posible resumen al finalizar la sesion sin necesidad de
-hacer una llamada adicional al backend.
+El page solo selecciona organismo segun fase. Asi se puede testear la maquina de estados
+del hook sin montar el arbol completo, y se puede agregar tracking/analytics envolviendo
+las callbacks del hook en un punto unico.
+
+## 9. Pendientes en el roadmap
+
+- **Historial de sesiones live**: hoy `listSessions` y `getSession` estan en el repo pero
+  ninguna pantalla los consume. La pantalla de historial es trabajo separado.
+- **Auto-stop por bajo desempeno**: feature mencionada en la conversacion original. No
+  esta en el MVP — Gemini no devuelve scores en streaming, asi que cualquier auto-stop
+  por desempeno tendria que reformularse (por ejemplo, abortar tras N segundos de
+  silencio detectado client-side).
+- **Resume de live abandonada**: si el usuario cierra la pestana en medio de una sesion,
+  la fila queda `active` en BD. Una pantalla de "tenes una sesion sin terminar" cubriria
+  ese caso, pero requiere endpoint nuevo (`GET /live/sessions/active`) y un flujo de
+  resume del lado cliente. No esta en el MVP.
