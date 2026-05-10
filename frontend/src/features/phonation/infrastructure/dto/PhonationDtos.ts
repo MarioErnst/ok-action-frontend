@@ -1,39 +1,55 @@
-export interface ExerciseResultDto {
-  id: string;
-  exercise_id: string;
-  exercise_type: string;
+// DTOs that match the uniform-schema phonation backend exactly. The internal
+// PhonationSession domain has more granular concepts (5 exercise ids across
+// sustained/phrase/glissando types); the mapper aggregates that into the two
+// types Postgres' exercise_type_enum allows.
+
+export type ExerciseTypeDto = 'holding' | 'gliding';
+
+export type SessionStatusDto = 'active' | 'completed' | 'aborted';
+
+export interface PhonationExerciseDto {
+  exercise_type: ExerciseTypeDto;
   avg_hz: number;
-  stability: number;
-  breaks: number;
-  in_range: boolean;
+  stability_score: number;
+  breaks_count: number;
+  in_range_pct: number;
+}
+
+export interface PhonationMetricsDto {
+  avg_hz: number;
+  stability_score: number;
+  breaks_count: number;
+  exercises_count: number;
+}
+
+export interface SavePhonationSessionDto {
+  started_at: string;
+  ended_at: string;
+  score: number;
+  metrics: PhonationMetricsDto;
+  exercises: PhonationExerciseDto[];
+  parent_id?: string | null;
 }
 
 export interface PhonationSessionDto {
   id: string;
-  overall_score: number;
-  avg_hz: number;
-  observations: string[];
+  user_id: string;
+  started_at: string;
+  ended_at: string;
+  duration_ms: number;
+  score: number;
+  status: SessionStatusDto;
   created_at: string;
-  exercises: ExerciseResultDto[];
+  metrics: PhonationMetricsDto;
+  exercises: PhonationExerciseDto[];
 }
 
 export interface PhonationSessionListItemDto {
   id: string;
-  overall_score: number;
+  started_at: string;
+  ended_at: string;
+  duration_ms: number;
+  score: number;
+  status: SessionStatusDto;
   avg_hz: number;
-  created_at: string;
-}
-
-export interface SavePhonationSessionDto {
-  overall_score: number;
-  avg_hz: number;
-  observations: string[];
-  exercises: {
-    exercise_id: string;
-    exercise_type: string;
-    avg_hz: number;
-    stability: number;
-    breaks: number;
-    in_range: boolean;
-  }[];
 }

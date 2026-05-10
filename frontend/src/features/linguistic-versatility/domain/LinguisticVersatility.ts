@@ -1,63 +1,65 @@
-// 1=básico, 2=intermedio, 3=avanzado. Numeric on the wire to keep the
-// backend allow-list and the frontend types in lockstep.
-export type RichnessLevel = 1 | 2 | 3
+// Vocabulary richness moved from the legacy 1/2/3 categorical to a 0-100
+// integer that matches the backend's SMALLINT column. The Gemini prompt
+// returns it on the same scale; the UI buckets display labels by range
+// instead of by enum value.
+export type RichnessScore = number
 
 export type SessionMode = 'guided' | 'free'
 
-export type SessionStatus = 'active' | 'completed' | 'abandoned'
+export type SessionStatus = 'active' | 'completed' | 'aborted'
 
 export interface VersatilityQuestion {
   id: string
   text: string
   category: string
-  difficulty_level: string
+  difficulty: string
 }
 
 export interface RoundResult {
-  id: string
-  question_id: string | null
-  question_text: string | null
-  versatility_score: number | null
-  vocabulary_richness: RichnessLevel | null
+  // Composite identity from the backend's PK (session_id, round_index).
+  roundIndex: number
+  promptId: string | null
+  questionText: string | null
+  versatilityScore: number | null
+  vocabularyRichness: RichnessScore | null
   feedback: string | null
-  audio_intelligible: boolean
-  created_at: string
+  audioIntelligible: boolean
 }
 
 export interface SessionDetail {
   id: string
   mode: SessionMode
-  total_rounds: number
-  completed_rounds: number
-  overall_score: number | null
+  totalRounds: number
+  completedRounds: number
+  overallScore: number | null
+  vocabularyRichnessAvg: RichnessScore | null
   status: SessionStatus
-  created_at: string
-  completed_at: string | null
+  createdAt: string
+  completedAt: string | null
   rounds: RoundResult[]
 }
 
 export interface StartSessionResponse {
-  session_id: string
-  total_rounds: number
+  sessionId: string
+  totalRounds: number
   questions: VersatilityQuestion[]
 }
 
 export interface EvaluateRoundResponse {
-  round_id: string
-  audio_intelligible: boolean
-  versatility_score: number | null
-  vocabulary_richness: RichnessLevel | null
+  roundIndex: number
+  promptId: string | null
+  audioIntelligible: boolean
+  versatilityScore: number | null
+  vocabularyRichness: RichnessScore | null
   feedback: string | null
-  completed_rounds: number
-  total_rounds: number
 }
 
 export interface SessionListItem {
   id: string
   mode: SessionMode
-  overall_score: number | null
+  overallScore: number | null
   status: SessionStatus
-  created_at: string
+  createdAt: string
 }
 
 // State machine for the guided flow.

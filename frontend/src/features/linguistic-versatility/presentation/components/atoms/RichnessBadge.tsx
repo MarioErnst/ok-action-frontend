@@ -1,21 +1,22 @@
-import type { RichnessLevel } from '../../../domain/LinguisticVersatility'
+import type { RichnessScore } from '../../../domain/LinguisticVersatility'
 
-const LABELS: Record<RichnessLevel, string> = {
-  1: 'Básico',
-  2: 'Intermedio',
-  3: 'Avanzado',
+// Vocabulary richness is now a 0-100 score; the badge buckets it into
+// the same three named tiers the legacy 1/2/3 enum used so the UI
+// experience does not change.
+function bucketLabel(score: number): string {
+  if (score < 34) return 'Básico'
+  if (score < 67) return 'Intermedio'
+  return 'Avanzado'
 }
 
-// Color tokens chosen from the existing design system so the badge matches
-// the rest of the app (no new palette introduced).
-const COLORS: Record<RichnessLevel, string> = {
-  1: 'bg-text-muted/20 text-text-muted border-text-muted/40',
-  2: 'bg-sky-500/15 text-sky-300 border-sky-500/40',
-  3: 'bg-accent/15 text-accent border-accent/40',
+function bucketColor(score: number): string {
+  if (score < 34) return 'bg-text-muted/20 text-text-muted border-text-muted/40'
+  if (score < 67) return 'bg-sky-500/15 text-sky-300 border-sky-500/40'
+  return 'bg-accent/15 text-accent border-accent/40'
 }
 
 type Props = {
-  level: RichnessLevel | null
+  level: RichnessScore | null
   size?: 'sm' | 'md'
 }
 
@@ -30,9 +31,9 @@ export function RichnessBadge({ level, size = 'md' }: Props) {
   }
   return (
     <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-xs uppercase tracking-widest border ${COLORS[level]} ${size === 'sm' ? 'text-[10px] py-0.5' : ''}`}
+      className={`inline-flex items-center px-3 py-1 rounded-full text-xs uppercase tracking-widest border ${bucketColor(level)} ${size === 'sm' ? 'text-[10px] py-0.5' : ''}`}
     >
-      {LABELS[level]}
+      {bucketLabel(level)}
     </span>
   )
 }

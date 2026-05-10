@@ -1,5 +1,5 @@
 import type {
-  RichnessLevel,
+  RichnessScore,
   RoundResult,
 } from '../../../domain/LinguisticVersatility'
 import { ScoreRing } from '../atoms/ScoreRing'
@@ -9,7 +9,7 @@ type Props = {
   overallScore: number | null
   // Average richness across all intelligible rounds, or the single richness
   // for free mode. Null when no rounds were intelligible.
-  averageRichness: RichnessLevel | null
+  averageRichness: RichnessScore | null
   // Per-round detail; empty for free mode (the page renders the single
   // FeedbackPanel separately).
   rounds: RoundResult[]
@@ -49,7 +49,7 @@ export function SessionResultsView({
           <ul className="flex flex-col gap-3">
             {rounds.map((r, i) => (
               <li
-                key={r.id}
+                key={r.roundIndex}
                 className="rounded-2xl bg-surface/80 backdrop-blur-md border border-border/60 p-4 flex flex-col gap-2"
               >
                 <div className="flex items-baseline justify-between gap-2">
@@ -58,13 +58,13 @@ export function SessionResultsView({
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-extrabold text-text tabular-nums">
-                      {r.versatility_score ?? '—'}
+                      {r.versatilityScore ?? '—'}
                     </span>
-                    <RichnessBadge level={r.vocabulary_richness} size="sm" />
+                    <RichnessBadge level={r.vocabularyRichness} size="sm" />
                   </div>
                 </div>
-                {r.question_text && (
-                  <p className="text-sm text-text-muted line-clamp-2">{r.question_text}</p>
+                {r.questionText && (
+                  <p className="text-sm text-text-muted line-clamp-2">{r.questionText}</p>
                 )}
                 {r.feedback && <p className="text-sm text-text leading-relaxed">{r.feedback}</p>}
               </li>

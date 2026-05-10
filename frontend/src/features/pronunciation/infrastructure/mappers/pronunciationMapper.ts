@@ -1,14 +1,30 @@
-import type { PhonemeError, PhrasePronunciation, PronunciationMetrics, PronunciationSessionResult } from '../../domain/PronunciationSession'
-import type { PhonemeErrorDto, PhrasePronunciationDto, SavePhrasePronunciationDto, SavePronunciationSessionDto } from '../dto/PronunciationDtos'
+import type {
+  PhonemeError,
+  PhrasePronunciation,
+  PronunciationMetrics,
+  PronunciationSessionResult,
+} from '../../domain/PronunciationSession';
+import type {
+  PhonemeErrorDto,
+  PhraseEvaluationDto,
+  SavePronunciationSessionDto,
+} from '../dto/PronunciationDtos';
 
-function toMetrics(dto: PhrasePronunciationDto): PronunciationMetrics {
+const clampPct = (value: number): number => {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+};
+
+const APPROX_MS_PER_PHRASE = 60_000;
+
+function toMetrics(dto: PhraseEvaluationDto): PronunciationMetrics {
   return {
     overallScore: dto.overall_score,
     vowelScore: dto.vowel_score,
     consonantScore: dto.consonant_score,
     fluencyScore: dto.fluency_score,
     intelligibilityScore: dto.intelligibility_score,
-  }
+  };
 }
 
 function toPhonemeError(dto: PhonemeErrorDto): PhonemeError {
@@ -17,21 +33,23 @@ function toPhonemeError(dto: PhonemeErrorDto): PhonemeError {
     word: dto.word,
     actualIssue: dto.actual_issue,
     suggestion: dto.suggestion,
-  }
+  };
 }
 
-export function toPhrasePronunciation(dto: PhrasePronunciationDto): PhrasePronunciation {
+export function toPhrasePronunciation(dto: PhraseEvaluationDto): PhrasePronunciation {
   return {
     phraseText: dto.phrase_text,
     phraseIndex: dto.phrase_index,
     metrics: toMetrics(dto),
     feedback: dto.feedback,
     phonemeErrors: dto.phoneme_errors.map(toPhonemeError),
-  }
+  };
 }
 
-export function averagePronunciationMetrics(evaluations: PhrasePronunciation[]): PronunciationMetrics {
-  const count = evaluations.length
+export function averagePronunciationMetrics(
+  evaluations: PhrasePronunciation[],
+): PronunciationMetrics {
+  const count = evaluations.length;
   if (count === 0) {
     return {
       overallScore: 0,
@@ -39,7 +57,7 @@ export function averagePronunciationMetrics(evaluations: PhrasePronunciation[]):
       consonantScore: 0,
       fluencyScore: 0,
       intelligibilityScore: 0,
-    }
+    };
   }
 
   return {
@@ -47,34 +65,30 @@ export function averagePronunciationMetrics(evaluations: PhrasePronunciation[]):
     vowelScore: evaluations.reduce((sum, ev) => sum + ev.metrics.vowelScore, 0) / count,
     consonantScore: evaluations.reduce((sum, ev) => sum + ev.metrics.consonantScore, 0) / count,
     fluencyScore: evaluations.reduce((sum, ev) => sum + ev.metrics.fluencyScore, 0) / count,
-    intelligibilityScore: evaluations.reduce((sum, ev) => sum + ev.metrics.intelligibilityScore, 0) / count,
-  }
+    intelligibilityScore:
+      evaluations.reduce((sum, ev) => sum + ev.metrics.intelligibilityScore, 0) / count,
+  };
 }
 
-export function toSavePronunciationSessionDto(result: PronunciationSessionResult): SavePronunciationSessionDto {
+export function toSavePronunciationSessionDto(
+  result: PronunciationSessionResult,
+  parentId?: string | null,
+): SavePronunciationSessionDto {
+  const phrasesCount = result.phraseEvaluations.length;
+  const endedAt = new Date(result.timestamp);
+  const startedAt = new Date(result.timestamp - phrasesCount * APPROX_MS_PER_PHRASE);
+
   return {
-    level: result.level,
-    overall_score: result.metrics.overallScore,
-    vowel_score: result.metrics.vowelScore,
-    consonant_score: result.metrics.consonantScore,
-    fluency_score: result.metrics.fluencyScore,
-    intelligibility_score: result.metrics.intelligibilityScore,
-    summary_feedback: result.summaryFeedback,
-    evaluations: result.phraseEvaluations.map((ev): SavePhrasePronunciationDto => ({
-      phrase_text: ev.phraseText,
-      phrase_index: ev.phraseIndex,
-      overall_score: ev.metrics.overallScore,
-      vowel_score: ev.metrics.vowelScore,
-      consonant_score: ev.metrics.consonantScore,
-      fluency_score: ev.metrics.fluencyScore,
-      intelligibility_score: ev.metrics.intelligibilityScore,
-      feedback: ev.feedback,
-      phoneme_errors: ev.phonemeErrors.map((e) => ({
-        phoneme: e.phoneme,
-        word: e.word,
-        actual_issue: e.actualIssue,
-        suggestion: e.suggestion,
-      })),
-    })),
-  }
+    started_at: startedAt.toISOString(),
+    ended_at: endedAt.toISOString(),
+    metrics: {
+      level: result.level,
+      vowel_score: clampPct(result.metrics.vowelScore),
+      consonant_score: clampPct(result.metrics.consonantScore),
+      fluency_score: clampPct(result.metrics.fluencyScore),
+      intelligibility_score: clampPct(result.metrics.intelligibilityScore),
+      phrases_count: phrasesCount,
+    },
+    parent_id: parentId ?? null,
+  };
 }

@@ -26,7 +26,7 @@ export function SessionSummaryScreen({ overallScore, rounds, onNewSession }: Ses
         {/* Per-round grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
           {rounds.map((round, idx) => (
-            <div key={round.id} className="bg-surface-alt rounded-xl p-3 flex flex-col items-center gap-1">
+            <div key={round.roundIndex} className="bg-surface-alt rounded-xl p-3 flex flex-col items-center gap-1">
               <span className="text-text-muted text-xs">Ronda {idx + 1}</span>
               {round.scores ? (
                 <span className={`text-lg font-bold ${scoreColor(round.scores.overall)}`}>
