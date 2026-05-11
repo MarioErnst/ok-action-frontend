@@ -14,6 +14,7 @@ Cada archivo describe la arquitectura, los componentes, los hooks y el flujo de 
 | Muletillas | [modulos/muletillas.md](modulos/muletillas.md) | Deteccion de palabras de relleno en respuestas orales via Gemini |
 | Fluidez | [modulos/fluidez.md](modulos/fluidez.md) | Practica de continuidad oral con feedback en tiempo real |
 | Consistencia | [modulos/consistencia.md](modulos/consistencia.md) | Evaluacion de estabilidad entre inicio, desarrollo y cierre |
+| Perfil | [modulos/perfil.md](modulos/perfil.md) | Pantalla de usuario, historial de ejercicios y cápsulas en video |
 
 ## Estructura general del frontend
 
