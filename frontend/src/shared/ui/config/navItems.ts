@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/precision', icon: 'precision', label: 'Precisión' },
   { to: '/sesion-libre', icon: 'live', label: 'Sesión Libre' },
   { to: '/expresion-facial', icon: 'facial', label: 'Expresión Facial' },
+  { to: '/expresion-corporal', icon: 'body', label: 'Expresion Corporal' },
   { to: '/versatilidad-linguistica', icon: 'lexical', label: 'Versatilidad' },
   { to: '/fluidez', icon: 'fluency', label: 'Fluidez' },
   { to: '/consistencia', icon: 'consistency', label: 'Consistencia' },
