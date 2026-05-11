@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useGuidedVersatilitySession } from '../hooks/useGuidedVersatilitySession'
 import { GuidedSessionView } from '../components/organisms/GuidedSessionView'
 import { SessionResultsView } from '../components/organisms/SessionResultsView'
-import type { RichnessLevel } from '../../domain/LinguisticVersatility'
+import type { RichnessScore } from '../../domain/LinguisticVersatility'
 
 /**
  * Top-level page for linguistic versatility (guided mode only).
@@ -56,10 +56,8 @@ export function LinguisticVersatilityPage() {
 
       {tracking.status === 'results' && tracking.finalResult && (
         <SessionResultsView
-          overallScore={tracking.finalResult.overall_score}
-          averageRichness={modalRichness(
-            tracking.finalResult.rounds.map((r) => r.vocabulary_richness),
-          )}
+          overallScore={tracking.finalResult.overallScore}
+          averageRichness={tracking.finalResult.vocabularyRichnessAvg}
           rounds={tracking.finalResult.rounds}
           onRestart={() => {
             tracking.reset()
@@ -116,24 +114,8 @@ function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => voi
   )
 }
 
-/**
- * Compute the modal richness across rounds — falls back to the highest tier
- * on a tie so users err on the optimistic side. Returns null if no
- * intelligible round exists.
- */
-function modalRichness(values: Array<RichnessLevel | null>): RichnessLevel | null {
-  const filtered = values.filter((v): v is RichnessLevel => v != null)
-  if (filtered.length === 0) return null
-  const counts: Record<number, number> = {}
-  for (const v of filtered) counts[v] = (counts[v] ?? 0) + 1
-  let bestLevel: RichnessLevel = filtered[0]
-  let bestCount = 0
-  for (const [level, count] of Object.entries(counts)) {
-    const lvl = Number(level) as RichnessLevel
-    if (count > bestCount || (count === bestCount && lvl > bestLevel)) {
-      bestCount = count
-      bestLevel = lvl
-    }
-  }
-  return bestLevel
-}
+// vocabularyRichnessAvg now comes pre-aggregated from the backend's
+// metrics row (avg of intelligible rounds), so the modal-richness helper
+// the legacy 1/2/3 enum needed no longer applies. Keeping the unused
+// type import out of the page so the module stays clean.
+export type _RichnessTypeRef = RichnessScore

@@ -29,9 +29,11 @@ export interface LoudnessPreset {
   label: string;
   description: string;
   silenceOffsetDb: number;
-  tooLowOffsetDb: number;
+  lowOffsetDb: number;
   optimalOffsetDb: number;
-  clipThresholdDbfs: number;
+  clipThresholdDb: number;
+  isDefault: boolean;
+  isGlobal: boolean;
 }
 
 export type CalibrationPhase = 'idle' | 'noise' | 'voice' | 'active';

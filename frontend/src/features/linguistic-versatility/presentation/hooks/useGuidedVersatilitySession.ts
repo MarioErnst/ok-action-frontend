@@ -37,8 +37,8 @@ export function useGuidedVersatilitySession() {
     setLastResult(null)
     setFinalResult(null)
     try {
-      const res = await HttpLinguisticVersatilityRepository.startSession()
-      setSessionId(res.session_id)
+      const res = await HttpLinguisticVersatilityRepository.startSession('guided', 5)
+      setSessionId(res.sessionId)
       setQuestions(res.questions)
       setCurrentIndex(0)
       // After loading the first question we land in idle-per-question state,
@@ -89,6 +89,7 @@ export function useGuidedVersatilitySession() {
       recorderRef.current = null
       const result = await HttpLinguisticVersatilityRepository.submitRound(
         sid,
+        currentIndex,
         question.id,
         audio,
       )

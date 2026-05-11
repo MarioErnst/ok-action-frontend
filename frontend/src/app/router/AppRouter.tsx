@@ -11,6 +11,7 @@ import MuletillasPage from '../../features/muletillas/presentation/pages/Muletil
 import { PrecisionPage } from '../../features/precision/presentation/pages/PrecisionPage'
 import LiveSessionPage from '../../features/live-session/presentation/pages/LiveSessionPage'
 import { FacialExpressionPage } from '../../features/facial-expression'
+import { BodyExpressionPage } from '../../features/body-expression'
 import { LinguisticVersatilityPage } from '../../features/linguistic-versatility/presentation/pages/LinguisticVersatilityPage'
 import { PauseEvaluationPage } from '../../features/pauses'
 import { FluencyPage } from '../../features/fluency'
@@ -33,6 +34,7 @@ export const AppRouter = () => (
         <Route path="/precision" element={<PrecisionPage />} />
         <Route path="/sesion-libre" element={<LiveSessionPage />} />
         <Route path="/expresion-facial" element={<FacialExpressionPage />} />
+        <Route path="/expresion-corporal" element={<BodyExpressionPage />} />
         <Route path="/versatilidad-linguistica" element={<LinguisticVersatilityPage />} />
         <Route path="/fluidez" element={<FluencyPage />} />
         <Route path="/consistencia" element={<ConsistencyPage />} />

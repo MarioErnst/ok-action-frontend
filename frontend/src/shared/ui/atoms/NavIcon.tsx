@@ -9,6 +9,7 @@ export type NavIconName =
   | 'precision'
   | 'live'
   | 'facial'
+  | 'body'
   | 'lexical'
   | 'fluency'
   | 'consistency'
@@ -113,6 +114,14 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <circle cx="9" cy="10" r="1" fill="currentColor" strokeWidth={0} />
       <circle cx="15" cy="10" r="1" fill="currentColor" strokeWidth={0} />
       <path d="M9 16 Q12 14 15 16" />
+    </>
+  ),
+  body: (
+    <>
+      <circle cx="12" cy="4" r="2" />
+      <path d="M12 6v7" />
+      <path d="M7 9l5 3 5-3" />
+      <path d="M9 21l3-8 3 8" />
     </>
   ),
   fluency: (

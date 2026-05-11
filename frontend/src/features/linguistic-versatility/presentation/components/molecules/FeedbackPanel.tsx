@@ -1,9 +1,9 @@
-import type { RichnessLevel } from '../../../domain/LinguisticVersatility'
+import type { RichnessScore } from '../../../domain/LinguisticVersatility'
 import { RichnessBadge } from '../atoms/RichnessBadge'
 
 type Props = {
   versatilityScore: number | null
-  vocabularyRichness: RichnessLevel | null
+  vocabularyRichness: RichnessScore | null
   feedback: string | null
   audioIntelligible: boolean
 }

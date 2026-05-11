@@ -1,6 +1,6 @@
 import { apiRequest, ApiError } from '../../../../api/client'
 import type {
-  PhrasePronunciationDto,
+  PhraseEvaluationDto,
   PronunciationSessionDto,
   PronunciationSessionListItemDto,
   SavePronunciationSessionDto,
@@ -16,7 +16,7 @@ async function evaluatePhrase(
   phraseText: string,
   phraseIndex: number,
   level: string,
-): Promise<PhrasePronunciationDto> {
+): Promise<PhraseEvaluationDto> {
   const formData = new FormData()
   formData.append('audio', audioBlob, 'recording.webm')
   formData.append('phrase_text', phraseText)
@@ -53,7 +53,7 @@ async function evaluatePhrase(
     )
   }
 
-  return payload as PhrasePronunciationDto
+  return payload as PhraseEvaluationDto
 }
 
 export const HttpPronunciationRepository = {

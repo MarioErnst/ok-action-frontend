@@ -129,10 +129,10 @@ export function usePrecisionSession() {
     try {
       const round = await submitPrecisionAnswer(
         state.sessionId,
+        state.currentQuestionIndex,
         currentQuestion.id,
+        currentQuestion.text,
         audioBlob,
-        state.noiseLevel,
-        elapsedRef.current  // use ref, not state — state would be stale
       )
       setState(s => ({
         ...s,

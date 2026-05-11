@@ -1,5 +1,11 @@
 import { ApiError } from '../../../api/client'
-import type { EvaluateRoundDTO, FinalizeSessionDTO, PrecisionSessionDTO, StartSessionDTO } from './PrecisionSessionDTO'
+import type {
+  EvaluateRoundDTO,
+  FinalizeSessionDTO,
+  PrecisionSessionDTO,
+  StartSessionDTO,
+  StartSessionRequestDTO,
+} from './PrecisionSessionDTO'
 
 // Mirrors the API_BASE_URL resolution used across all HTTP repositories in this project.
 const API_BASE_URL =
@@ -39,28 +45,29 @@ async function handleResponse<T>(res: Response): Promise<T> {
 }
 
 export class PrecisionRepository {
-  static async startSession(totalRounds: number = 5): Promise<StartSessionDTO> {
-    const res = await fetch(`${API_BASE_URL}/precision/sessions?total_rounds=${totalRounds}`, {
+  static async startSession(
+    rounds_total: number,
+    parent_id?: string | null,
+  ): Promise<StartSessionDTO> {
+    const body: StartSessionRequestDTO = { rounds_total, parent_id: parent_id ?? null }
+    const res = await fetch(`${API_BASE_URL}/precision/sessions`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     })
     return handleResponse<StartSessionDTO>(res)
   }
 
-  static async submitAnswer(
+  static async evaluateRound(
     sessionId: string,
-    questionId: string,
+    roundIndex: number,
+    promptId: string,
     audioBlob: Blob,
-    noiseLevel: 'low' | 'medium' | 'high',
-    audioDurationSecs?: number,
   ): Promise<EvaluateRoundDTO> {
     const form = new FormData()
     form.append('audio', audioBlob, 'response.webm')
-    form.append('question_id', questionId)
-    form.append('noise_level', noiseLevel)
-    if (audioDurationSecs !== undefined) {
-      form.append('audio_duration_secs', String(audioDurationSecs))
-    }
+    form.append('round_index', String(roundIndex))
+    form.append('prompt_id', promptId)
 
     const res = await fetch(`${API_BASE_URL}/precision/sessions/${sessionId}/rounds`, {
       method: 'POST',

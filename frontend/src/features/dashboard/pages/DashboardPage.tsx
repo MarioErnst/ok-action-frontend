@@ -16,6 +16,7 @@ const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/sesion-libre': 'Practica una respuesta completa con feedback integrado.',
   '/fluidez': 'Reduce trabas, repeticiones y reinicios al hablar.',
   '/consistencia': 'Evalua si mantienes ritmo, claridad, foco y seguridad.',
+  '/expresion-corporal': 'Analiza postura, gestos, apertura y estabilidad frente a camara.',
 }
 
 export const DashboardPage = () => {

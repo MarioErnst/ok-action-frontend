@@ -1,6 +1,6 @@
 // Session logic for the muletillas module: documentacion/modulos/muletillas.md
 import { useCallback, useRef, useState } from 'react'
-import { toMuletillasEvaluation } from '../../infrastructure/mappers/muletillasMapper'
+import { toMuletillasEvaluation, toSaveMuletillasSessionDto } from '../../infrastructure/mappers/muletillasMapper'
 import { HttpMuletillasRepository } from '../../infrastructure/repositories/HttpMuletillasRepository'
 import type { MuletillasEvaluation } from '../../domain/MuletillasSession'
 import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder'
@@ -53,19 +53,13 @@ export default function useMuletillasSession() {
       const dto = await HttpMuletillasRepository.evaluateResponse(audioBlob, questionRef.current)
       const evaluation = toMuletillasEvaluation(dto)
 
-      // Save session to DB without blocking to avoid delaying result display
-      HttpMuletillasRepository.saveSession({
-        question_text: questionRef.current,
-        overall_score: dto.overall_score,
-        fluency_score: dto.fluency_score,
-        muletillas_score: dto.muletillas_score,
-        total_muletillas_count: dto.total_muletillas_count,
-        muletillas_per_minute: dto.muletillas_per_minute,
-        feedback: dto.feedback,
-        strengths: dto.strengths,
-        improvement_areas: dto.improvement_areas,
-        muletillas_detected: dto.muletillas_detected,
-      }).catch((err) => {
+      // Save session to DB without blocking to avoid delaying result display.
+      // The mapper builds the new uniform-schema payload (timestamps + the
+      // metrics wrapper with normalized words); ephemeral Gemini fields like
+      // feedback/strengths stay in-memory only.
+      HttpMuletillasRepository.saveSession(
+        toSaveMuletillasSessionDto(evaluation),
+      ).catch((err) => {
         console.error('Error al guardar la sesion de muletillas:', err)
       })
 

@@ -53,10 +53,10 @@ export function GuidedSessionView({
 
       {showResult && (
         <FeedbackPanel
-          versatilityScore={lastResult.versatility_score}
-          vocabularyRichness={lastResult.vocabulary_richness}
+          versatilityScore={lastResult.versatilityScore}
+          vocabularyRichness={lastResult.vocabularyRichness}
           feedback={lastResult.feedback}
-          audioIntelligible={lastResult.audio_intelligible}
+          audioIntelligible={lastResult.audioIntelligible}
         />
       )}
 
