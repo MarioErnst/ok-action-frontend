@@ -16,6 +16,7 @@ import { LinguisticVersatilityPage } from '../../features/linguistic-versatility
 import { PauseEvaluationPage } from '../../features/pauses'
 import { FluencyPage } from '../../features/fluency'
 import { ConsistencyPage } from '../../features/consistency'
+import { ProfilePage } from '../../features/profile/presentation/pages/ProfilePage'
 
 export const AppRouter = () => (
   <Routes>
@@ -37,6 +38,7 @@ export const AppRouter = () => (
         <Route path="/versatilidad-linguistica" element={<LinguisticVersatilityPage />} />
         <Route path="/fluidez" element={<FluencyPage />} />
         <Route path="/consistencia" element={<ConsistencyPage />} />
+        <Route path="/perfil" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>
     </Route>
