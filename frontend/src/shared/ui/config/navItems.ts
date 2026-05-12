@@ -10,6 +10,7 @@ export type NavItemConfig = {
 export const NAV_ITEMS: NavItemConfig[] = [
   { to: '/dashboard', icon: 'dashboard', label: 'Inicio', end: true },
   { to: '/ejercicios', icon: 'exercises', label: 'Ejercicios' },
+  { to: '/capsulas', icon: 'capsules', label: 'Cápsulas' },
   { to: '/fonacion', icon: 'phonation', label: 'Fonación' },
   { to: '/pronunciacion', icon: 'pronunciation', label: 'Pronunciación' },
   { to: '/acentuacion', icon: 'accentuation', label: 'Acentuación' },

@@ -1,6 +1,7 @@
 export type NavIconName =
   | 'dashboard'
   | 'exercises'
+  | 'capsules'
   | 'phonation'
   | 'pronunciation'
   | 'accentuation'
@@ -46,6 +47,13 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <rect x="19.5" y="9" width="2.5" height="6" rx="0.5" />
       <rect x="4.5" y="10.5" width="2" height="3" rx="0.4" />
       <rect x="17.5" y="10.5" width="2" height="3" rx="0.4" />
+    </>
+  ),
+  // Play en círculo — representa el catálogo de cápsulas de video.
+  capsules: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" strokeLinejoin="round" />
     </>
   ),
   phonation: (
