@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { VoiceExercise } from '../../../domain/PhonationSession';
 
 interface ExerciseCardProps {
@@ -12,10 +13,24 @@ const typeLabels: Record<VoiceExercise['type'], string> = {
   glissando: 'Glissando',
 };
 
-const typeIcons: Record<VoiceExercise['type'], string> = {
-  sustained: '🎵',
-  phrase: '📖',
-  glissando: '🎶',
+const ICON_CLASS = 'h-5 w-5';
+
+const typeIcons: Record<VoiceExercise['type'], ReactNode> = {
+  sustained: (
+    <svg className={ICON_CLASS} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l11-2v13M9 19a3 3 0 11-6 0 3 3 0 016 0zm11-2a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>
+  ),
+  phrase: (
+    <svg className={ICON_CLASS} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h10M4 18h10" />
+    </svg>
+  ),
+  glissando: (
+    <svg className={ICON_CLASS} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l5-7 4 5 4-6 5 8" />
+    </svg>
+  ),
 };
 
 export const ExerciseCard = ({ exercise, isSelected, onToggle }: ExerciseCardProps) => {
