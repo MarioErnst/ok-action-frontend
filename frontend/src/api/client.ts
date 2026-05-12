@@ -19,7 +19,15 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE_URL: string = import.meta.env.VITE_API_URL || '/api';
+// Resolution order matches the deploy story:
+// 1. window.__APP_API_URL__ — injected at container start by entrypoint.sh
+//    so the same image can target different backends without a rebuild.
+// 2. import.meta.env.VITE_API_URL — baked at build time for local dev.
+// 3. '/api' — fallback when neither is set (same-origin reverse proxy setups).
+export const API_BASE_URL: string =
+  (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ??
+  import.meta.env.VITE_API_URL ??
+  '/api';
 
 export const WS_BASE_URL =
   (globalThis as { __APP_WS_URL__?: string }).__APP_WS_URL__ ??
