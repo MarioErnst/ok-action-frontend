@@ -32,7 +32,7 @@ export default function PauseRecordingScreen({
   const progress = durationMs > 0 ? Math.min(100, (elapsedMs / durationMs) * 100) : 0;
 
   return (
-    <main className="min-h-screen bg-bg p-4 text-text md:p-6">
+    <main className="min-h-[100dvh] bg-bg p-4 text-text md:p-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
         <header className="rounded-xl border border-border bg-surface p-5">
           <p className="m-0 text-sm text-text-muted">Medicion de pausas</p>

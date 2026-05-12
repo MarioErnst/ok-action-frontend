@@ -120,6 +120,9 @@ La UI usa Atomic Design pragmático:
 - organisms: calibración, sesión en vivo, resultados;
 - page: orquestación de estados.
 
+La pagina usa `min-h-[100dvh]` en lugar de `min-h-screen` para que Safari/iOS
+calcule la altura visible con sus barras dinamicas y no corte acciones inferiores.
+
 ## Feedback
 
 El resultado inmediato muestra feedback del backend. Si Gemini responde, el panel marca `Gemini`; si falla, se usan reglas determinísticas. El texto no se guarda en BD.

@@ -45,3 +45,5 @@ implementaron antes de establecer la convencion de carpeta `presentation/`.
   directamente a los campos snake_case de los DTOs.
 - El audio se captura siempre mediante `useAudioRecorder` (grabacion discreta) o `useVoiceMonitor`
   (analisis continuo en tiempo real con AudioWorklet).
+- Las pantallas de altura completa usan `min-h-[100dvh]` o `h-[100dvh]`, no `min-h-screen`
+  ni `h-screen`, para evitar cortes por las barras dinamicas de Safari/iOS.
