@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import axios from 'axios';
+import { apiRequest } from '../../../../../api/client';
 import { VideoCard } from '../molecules/VideoCard';
 
 interface VideoData {
@@ -17,8 +17,8 @@ export const VideoCapsulesSection = () => {
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
 
   useEffect(() => {
-    axios.get<VideoData[]>('http://localhost:8000/videos')
-      .then(res => setVideos(res.data))
+    apiRequest<VideoData[]>('/videos')
+      .then((data) => setVideos(data))
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
