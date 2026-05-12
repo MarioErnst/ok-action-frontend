@@ -3,16 +3,18 @@ import {
   computeEffectiveConfig,
   computeVoiceBaseline,
 } from '../services/loudnessEffectiveConfig';
-import type { LoudnessPreset } from '../types';
+import type { LoudnessPreset } from '../domain/LoudnessSession';
 
 const preset: LoudnessPreset = {
   presetId: 'test',
   label: 'Test',
   description: 'Test preset',
   silenceOffsetDb: 6,
-  tooLowOffsetDb: -8,
+  lowOffsetDb: -8,
   optimalOffsetDb: 10,
-  clipThresholdDbfs: -3,
+  clipThresholdDb: -3,
+  isDefault: false,
+  isGlobal: false,
 };
 
 describe('computeEffectiveConfig', () => {

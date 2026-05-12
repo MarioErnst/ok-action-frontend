@@ -1,4 +1,4 @@
-import type { LoudnessBand, LoudnessConfig } from '../types';
+import type { LoudnessBand, LoudnessConfig } from '../domain/LoudnessSession';
 
 export function classifyLoudness(
   db: number,

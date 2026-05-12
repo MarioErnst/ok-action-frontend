@@ -1,10 +1,18 @@
-import type { PhraseEvaluation, AccentuationSessionResult, SpecificError } from '../../types';
+import type {
+  PhraseEvaluation,
+  AccentuationSessionResult,
+  SpecificError,
+} from '../../domain/AccentuationSession';
 import type {
   PhraseEvaluationDto,
+  PhraseSpecificErrorDto,
   SaveAccentuationSessionDto,
-  SavePhraseEvaluationDto,
-  SpecificErrorDto,
 } from '../dto/AccentuationDtos';
+
+const clampPct = (value: number): number => {
+  if (Number.isNaN(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+};
 
 export function toPhraseEvaluation(dto: PhraseEvaluationDto): PhraseEvaluation {
   return {
@@ -15,14 +23,14 @@ export function toPhraseEvaluation(dto: PhraseEvaluationDto): PhraseEvaluation {
       pronunciationScore: dto.pronunciation_score,
       rhythmScore: dto.rhythm_score,
       intonationScore: dto.intonation_score,
-      stressAccuracyScore: dto.stress_accuracy_score,
+      stressAccuracyScore: dto.stress_score,
     },
     feedback: dto.feedback,
     specificErrors: dto.specific_errors.map(toSpecificError),
   };
 }
 
-function toSpecificError(dto: SpecificErrorDto): SpecificError {
+function toSpecificError(dto: PhraseSpecificErrorDto): SpecificError {
   return {
     word: dto.word,
     expectedStress: dto.expected_stress,
@@ -31,35 +39,32 @@ function toSpecificError(dto: SpecificErrorDto): SpecificError {
   };
 }
 
-function toSavePhraseEvaluationDto(evaluation: PhraseEvaluation): SavePhraseEvaluationDto {
-  return {
-    phrase_text: evaluation.phraseText,
-    phrase_index: evaluation.phraseIndex,
-    overall_score: evaluation.metrics.overallScore,
-    pronunciation_score: evaluation.metrics.pronunciationScore,
-    rhythm_score: evaluation.metrics.rhythmScore,
-    intonation_score: evaluation.metrics.intonationScore,
-    stress_accuracy_score: evaluation.metrics.stressAccuracyScore,
-    feedback: evaluation.feedback,
-    specific_errors: evaluation.specificErrors.map((error) => ({
-      word: error.word,
-      expected_stress: error.expectedStress,
-      actual_issue: error.actualIssue,
-      suggestion: error.suggestion,
-    })),
-  };
-}
+// Rough estimate: backend wants started_at / ended_at on the session row
+// but the frontend only tracks the moment of finalization. Use the
+// timestamp as ended_at and approximate started_at as 1 minute earlier
+// per phrase (the actual recording time is opaque to the use_case).
+const APPROX_MS_PER_PHRASE = 60_000;
 
 export function toSaveAccentuationSessionDto(
   result: AccentuationSessionResult,
+  parentId?: string | null,
 ): SaveAccentuationSessionDto {
+  const phrasesCount = result.phraseEvaluations.length;
+  const endedAt = new Date(result.timestamp);
+  const startedAt = new Date(
+    result.timestamp - phrasesCount * APPROX_MS_PER_PHRASE,
+  );
+
   return {
-    overall_score: result.metrics.overallScore,
-    pronunciation_score: result.metrics.pronunciationScore,
-    rhythm_score: result.metrics.rhythmScore,
-    intonation_score: result.metrics.intonationScore,
-    stress_accuracy_score: result.metrics.stressAccuracyScore,
-    summary_feedback: result.summaryFeedback,
-    evaluations: result.phraseEvaluations.map(toSavePhraseEvaluationDto),
+    started_at: startedAt.toISOString(),
+    ended_at: endedAt.toISOString(),
+    metrics: {
+      pronunciation_score: clampPct(result.metrics.pronunciationScore),
+      rhythm_score: clampPct(result.metrics.rhythmScore),
+      intonation_score: clampPct(result.metrics.intonationScore),
+      stress_score: clampPct(result.metrics.stressAccuracyScore),
+      phrases_count: phrasesCount,
+    },
+    parent_id: parentId ?? null,
   };
 }

@@ -1,1 +1,1 @@
-export { default as PronunciationPage } from './pages/PronunciationPage'
+export { default as PronunciationPage } from './presentation/pages/PronunciationPage'

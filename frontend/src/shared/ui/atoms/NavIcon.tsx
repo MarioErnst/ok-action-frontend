@@ -1,4 +1,21 @@
-export type NavIconName = 'dashboard' | 'phonation' | 'pronunciation' | 'accentuation' | 'loudness' | 'muletillas' | 'precision' | 'live'
+export type NavIconName =
+  | 'dashboard'
+  | 'exercises'
+  | 'capsules'
+  | 'phonation'
+  | 'pronunciation'
+  | 'accentuation'
+  | 'loudness'
+  | 'pauses'
+  | 'muletillas'
+  | 'precision'
+  | 'live'
+  | 'facial'
+  | 'body'
+  | 'lexical'
+  | 'fluency'
+  | 'consistency'
+  | 'user'
 
 type NavIconProps = {
   name: NavIconName
@@ -20,6 +37,23 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <rect x="14" y="3" width="7" height="7" rx="1" />
       <rect x="3" y="14" width="7" height="7" rx="1" />
       <rect x="14" y="14" width="7" height="7" rx="1" />
+    </>
+  ),
+  // Mancuerna estilizada — punto de entrada al catálogo de ejercicios.
+  exercises: (
+    <>
+      <line x1="6" y1="12" x2="18" y2="12" />
+      <rect x="2" y="9" width="2.5" height="6" rx="0.5" />
+      <rect x="19.5" y="9" width="2.5" height="6" rx="0.5" />
+      <rect x="4.5" y="10.5" width="2" height="3" rx="0.4" />
+      <rect x="17.5" y="10.5" width="2" height="3" rx="0.4" />
+    </>
+  ),
+  // Play en círculo — representa el catálogo de cápsulas de video.
+  capsules: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 8.5l6 3.5-6 3.5z" fill="currentColor" strokeLinejoin="round" />
     </>
   ),
   phonation: (
@@ -45,6 +79,13 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
     </>
   ),
+  pauses: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M10 8v8" />
+      <path d="M14 8v8" />
+    </>
+  ),
   // Burbuja de dialogo con puntos — representa palabras de relleno en el habla
   muletillas: (
     <>
@@ -62,6 +103,53 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0} />
     </>
   ),
+  // Libro abierto — representa riqueza y variedad léxica
+  lexical: (
+    <>
+      <path d="M2 6 L12 8 L22 6 L22 19 L12 21 L2 19 Z" />
+      <path d="M12 8 L12 21" />
+      <path d="M5 9 L9 9.5" />
+      <path d="M5 12 L9 12.5" />
+      <path d="M5 15 L9 15.5" />
+      <path d="M15 9.5 L19 9" />
+      <path d="M15 12.5 L19 12" />
+      <path d="M15 15.5 L19 15" />
+    </>
+  ),
+  // Cara con expresion neutra — representa evaluacion de expresion facial
+  consistency: (
+    <>
+      <path d="M4 6h16" />
+      <path d="M4 12h16" />
+      <path d="M4 18h16" />
+      <circle cx="8" cy="6" r="1.5" fill="currentColor" strokeWidth={0} />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" strokeWidth={0} />
+      <circle cx="16" cy="18" r="1.5" fill="currentColor" strokeWidth={0} />
+    </>
+  ),
+  facial: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="9" cy="10" r="1" fill="currentColor" strokeWidth={0} />
+      <circle cx="15" cy="10" r="1" fill="currentColor" strokeWidth={0} />
+      <path d="M9 16 Q12 14 15 16" />
+    </>
+  ),
+  body: (
+    <>
+      <circle cx="12" cy="4" r="2" />
+      <path d="M12 6v7" />
+      <path d="M7 9l5 3 5-3" />
+      <path d="M9 21l3-8 3 8" />
+    </>
+  ),
+  fluency: (
+    <>
+      <path d="M4 14c2.5-5 5.5-5 8 0s5.5 5 8 0" />
+      <path d="M4 9c2.5-5 5.5-5 8 0s5.5 5 8 0" />
+      <path d="M8 20h8" />
+    </>
+  ),
   // Microfono — representa sesion de habla en vivo
   live: (
     <>
@@ -69,6 +157,12 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
       <line x1="12" y1="19" x2="12" y2="23" />
       <line x1="8" y1="23" x2="16" y2="23" />
+    </>
+  ),
+  user: (
+    <>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </>
   ),
 }

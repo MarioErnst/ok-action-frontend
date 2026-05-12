@@ -1,4 +1,4 @@
-import type { PronunciationPhrase, PronunciationLevel } from '../types'
+import type { PronunciationPhrase, PronunciationLevel } from '../domain/PronunciationSession'
 
 const PHRASES: PronunciationPhrase[] = [
   // Basico

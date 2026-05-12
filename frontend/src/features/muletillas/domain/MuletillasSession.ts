@@ -1,4 +1,7 @@
-export type MuletillaSeverity = 'alta' | 'media' | 'baja'
+// Severity matches the backend's muletilla_severity_enum exactly so we
+// don't translate at the boundary; the UI renders user-facing Spanish
+// labels from these English keys.
+export type MuletillaSeverity = 'low' | 'medium' | 'high'
 
 export type MuletillaDetected = {
   word: string

@@ -19,7 +19,15 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE_URL = (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ?? import.meta.env.VITE_API_URL ?? '/api';
+// Resolution order matches the deploy story:
+// 1. window.__APP_API_URL__ — injected at container start by entrypoint.sh
+//    so the same image can target different backends without a rebuild.
+// 2. import.meta.env.VITE_API_URL — baked at build time for local dev.
+// 3. '/api' — fallback when neither is set (same-origin reverse proxy setups).
+export const API_BASE_URL: string =
+  (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ??
+  import.meta.env.VITE_API_URL ??
+  '/api';
 
 export const WS_BASE_URL =
   (globalThis as { __APP_WS_URL__?: string }).__APP_WS_URL__ ??
@@ -52,14 +60,25 @@ export const apiRequest = async <TResponse, TBody = unknown>(
     ? { Authorization: `Bearer ${token}` }
     : {};
 
+  // FormData bodies skip JSON serialization so the browser can set
+  // Content-Type with the multipart boundary. Used by the live
+  // audio-evaluation endpoint to upload the recorded blob.
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
+  const baseHeaders: Record<string, string> = isFormData ? {} : defaultHeaders;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
-      ...defaultHeaders,
+      ...baseHeaders,
       ...authHeaders,
       ...headers,
     },
-    body: body ? JSON.stringify(body) : undefined,
+    body: isFormData
+      ? (body as unknown as FormData)
+      : body
+        ? JSON.stringify(body)
+        : undefined,
     signal,
   });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { classifyLoudness } from '../services/loudnessClassifier';
-import type { LoudnessConfig } from '../types';
+import type { LoudnessConfig } from '../domain/LoudnessSession';
 
 const config: LoudnessConfig = {
   presetId: 'test',

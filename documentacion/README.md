@@ -12,6 +12,10 @@ Cada archivo describe la arquitectura, los componentes, los hooks y el flujo de 
 | Acentuacion | [modulos/acentuacion.md](modulos/acentuacion.md) | Evaluacion de acento prosodico, entonacion y ritmo via Gemini |
 | Volumen | [modulos/volumen.md](modulos/volumen.md) | Coach de volumen en tiempo real con calibracion de ruido y voz |
 | Muletillas | [modulos/muletillas.md](modulos/muletillas.md) | Deteccion de palabras de relleno en respuestas orales via Gemini |
+| Fluidez | [modulos/fluidez.md](modulos/fluidez.md) | Practica de continuidad oral con feedback en tiempo real |
+| Consistencia | [modulos/consistencia.md](modulos/consistencia.md) | Evaluacion de estabilidad entre inicio, desarrollo y cierre |
+| Perfil | [modulos/perfil.md](modulos/perfil.md) | Pantalla de usuario, historial de ejercicios y cápsulas en video |
+| Expresion Corporal | [modulos/expresion-corporal.md](modulos/expresion-corporal.md) | Analisis de postura, gestos, apertura y estabilidad con MediaPipe Pose |
 
 ## Estructura general del frontend
 
@@ -41,3 +45,5 @@ implementaron antes de establecer la convencion de carpeta `presentation/`.
   directamente a los campos snake_case de los DTOs.
 - El audio se captura siempre mediante `useAudioRecorder` (grabacion discreta) o `useVoiceMonitor`
   (analisis continuo en tiempo real con AudioWorklet).
+- Las pantallas de altura completa usan `min-h-[100dvh]` o `h-[100dvh]`, no `min-h-screen`
+  ni `h-screen`, para evitar cortes por las barras dinamicas de Safari/iOS.

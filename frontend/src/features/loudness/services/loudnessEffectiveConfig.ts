@@ -1,4 +1,4 @@
-import type { LoudnessConfig, LoudnessPreset } from '../types';
+import type { LoudnessConfig, LoudnessPreset } from '../domain/LoudnessSession';
 
 const VOICE_GUARD_DB = 10;
 
@@ -11,9 +11,9 @@ export function computeEffectiveConfig(
     label: preset.label,
     description: preset.description,
     silenceOffsetDb: preset.silenceOffsetDb,
-    tooLowCeilingDbfs: voiceBaseline + preset.tooLowOffsetDb,
+    tooLowCeilingDbfs: voiceBaseline + preset.lowOffsetDb,
     optimalCeilingDbfs: voiceBaseline + preset.optimalOffsetDb,
-    clipThresholdDbfs: preset.clipThresholdDbfs,
+    clipThresholdDbfs: preset.clipThresholdDb,
   };
 }
 

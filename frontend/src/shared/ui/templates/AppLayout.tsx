@@ -10,10 +10,10 @@ export const AppLayout = () => {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-bg flex flex-col">
+    <div className="min-h-[100dvh] bg-bg flex flex-col">
       <AppSidebar user={user} onLogout={logout} />
-      <main className="lg:pl-20 pb-24 lg:pb-0 min-h-screen flex flex-col">
-        <div className="flex-1 flex flex-col justify-center py-6">
+      <main className="lg:pl-20 pb-24 lg:pb-0 min-h-[100dvh] flex flex-col">
+        <div className="flex-1 flex flex-col py-6">
           <Outlet />
         </div>
       </main>

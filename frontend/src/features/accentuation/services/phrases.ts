@@ -1,4 +1,4 @@
-import type { AccentuationPhrase } from '../types';
+import type { AccentuationPhrase } from '../domain/AccentuationSession';
 
 export const ACCENTUATION_PHRASES: AccentuationPhrase[] = [
   {

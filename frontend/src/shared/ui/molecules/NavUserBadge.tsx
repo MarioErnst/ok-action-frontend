@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom'
 import type { User } from '../../../features/auth/domain/entities/User'
 
 type NavUserBadgeProps = {
@@ -15,16 +16,33 @@ const getInitials = (fullName: string): string =>
 
 export const NavUserBadge = ({ user, onLogout }: NavUserBadgeProps) => (
   <div className="flex items-center gap-3 px-4 py-4 overflow-hidden">
-    <div className="w-8 h-8 rounded-full bg-accent/20 border border-accent/30 flex items-center justify-center shrink-0">
+    <NavLink
+      to="/perfil"
+      aria-label="Ir al perfil"
+      className={({ isActive }) =>
+        `w-8 h-8 rounded-full border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
+          isActive
+            ? 'bg-accent/30 border-accent shadow-[0_0_12px_-2px_rgba(245,158,11,0.6)]'
+            : 'bg-accent/20 border-accent/30 hover:bg-accent/30'
+        }`
+      }
+    >
       <span className="text-accent text-xs font-bold">{getInitials(user.fullName)}</span>
-    </div>
-    <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 min-w-0">
-      <p className="text-text text-xs font-medium whitespace-nowrap truncate max-w-[120px]">
+    </NavLink>
+    <div className="opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-200 delay-100 min-w-0 flex flex-col items-start">
+      <NavLink
+        to="/perfil"
+        className={({ isActive }) =>
+          `text-xs font-medium whitespace-nowrap truncate max-w-[120px] transition-colors cursor-pointer focus-visible:outline-none focus-visible:underline ${
+            isActive ? 'text-accent font-semibold' : 'text-text hover:text-accent'
+          }`
+        }
+      >
         {user.fullName}
-      </p>
+      </NavLink>
       <button
         onClick={onLogout}
-        className="text-text-muted text-xs hover:text-danger transition-colors cursor-pointer"
+        className="text-text-muted text-xs hover:text-danger transition-colors cursor-pointer focus-visible:outline-none focus-visible:text-danger"
       >
         Salir
       </button>

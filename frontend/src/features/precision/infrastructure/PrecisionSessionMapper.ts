@@ -2,42 +2,44 @@ import type { PrecisionRound } from '../domain/PrecisionRound'
 import type { PrecisionSession } from '../domain/PrecisionSession'
 import type { PrecisionRoundDTO, PrecisionSessionDTO } from './PrecisionSessionDTO'
 
-function mapRound(dto: PrecisionRoundDTO): PrecisionRound {
-  const hasScores = dto.audio_intelligible &&
+function mapRound(dto: PrecisionRoundDTO, questionText: string): PrecisionRound {
+  const hasScores =
+    dto.is_audio_intelligible &&
     dto.relevance_score !== null &&
     dto.directness_score !== null &&
     dto.conciseness_score !== null &&
-    dto.overall_score !== null
+    dto.score !== null
 
   return {
-    id: dto.id,
-    questionText: dto.question_text,
+    roundIndex: dto.round_index,
+    promptId: dto.prompt_id,
+    questionText,
     scores: hasScores
       ? {
           relevance: dto.relevance_score!,
           directness: dto.directness_score!,
           conciseness: dto.conciseness_score!,
-          overall: dto.overall_score!,
+          overall: dto.score!,
         }
       : null,
-    feedback: dto.feedback,
-    strengths: dto.strengths,
-    improvementAreas: dto.improvement_areas,
-    noiseLevel: dto.noise_level as 'low' | 'medium' | 'high',
-    audioIntelligible: dto.audio_intelligible,
-    createdAt: dto.created_at,
+    feedback: null,
+    strengths: null,
+    improvementAreas: null,
+    audioIntelligible: dto.is_audio_intelligible,
   }
 }
 
 export function mapSession(dto: PrecisionSessionDTO): PrecisionSession {
   return {
     id: dto.id,
-    mode: dto.mode as 'standalone' | 'live_session',
-    totalRounds: dto.total_rounds,
-    completedRounds: dto.completed_rounds,
-    overallScore: dto.overall_score,
-    status: dto.status as 'active' | 'completed' | 'abandoned',
+    mode: dto.metrics.mode,
+    totalRounds: dto.metrics.rounds_total,
+    completedRounds: dto.metrics.rounds_completed,
+    overallScore: dto.score,
+    status: dto.status,
     createdAt: dto.created_at,
-    rounds: dto.rounds.map(mapRound),
+    // Detail does not include prompt text on each round; the UI keeps
+    // its own questions[] array indexed by round_index for display.
+    rounds: dto.rounds.map((r) => mapRound(r, '')),
   }
 }

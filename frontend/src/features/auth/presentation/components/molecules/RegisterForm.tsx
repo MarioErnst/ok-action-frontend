@@ -67,7 +67,9 @@ export const RegisterForm = ({ onGoToLogin }: RegisterFormProps) => {
       {mutation.isError && (
         <div className="flex flex-col items-center gap-2 mt-1 animate-fade-in">
           <div className="w-10 h-10 rounded-full border-2 border-danger flex items-center justify-center animate-scale-in">
-            <span className="text-danger text-xl font-bold">✕</span>
+            <svg className="w-5 h-5 text-danger" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </div>
           <p className="text-danger text-sm">No fue posible registrar el usuario</p>
         </div>
@@ -76,7 +78,9 @@ export const RegisterForm = ({ onGoToLogin }: RegisterFormProps) => {
       {mutation.isSuccess && (
         <div className="flex flex-col items-center gap-2 mt-1 animate-fade-in">
           <div className="w-10 h-10 rounded-full border-2 border-success flex items-center justify-center animate-scale-in">
-            <span className="text-success text-xl">✓</span>
+            <svg className="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
           </div>
           <p className="text-success text-sm">Usuario registrado correctamente</p>
         </div>

@@ -7,16 +7,19 @@ export interface StartedSession {
   totalRounds: number
 }
 
-export async function startPrecisionSession(totalRounds: number = 5): Promise<StartedSession> {
-  const dto = await PrecisionRepository.startSession(totalRounds)
+export async function startPrecisionSession(
+  totalRounds: number = 5,
+  parentId?: string | null,
+): Promise<StartedSession> {
+  const dto = await PrecisionRepository.startSession(totalRounds, parentId)
   return {
     sessionId: dto.session_id,
-    questions: dto.questions.map(q => ({
-      id: q.id,
-      text: q.text,
-      category: q.category,
-      difficultyLevel: q.difficulty_level,
+    questions: dto.prompts.map((p) => ({
+      id: p.id,
+      text: p.text,
+      category: p.category,
+      difficulty: p.difficulty,
     })),
-    totalRounds: dto.total_rounds,
+    totalRounds: dto.rounds_total,
   }
 }
