@@ -1,6 +1,6 @@
 import { useAuthStore } from '../../../auth/presentation/store/authStore';
-import { ExerciseHistory } from '../components/ExerciseHistory';
-import { VideoCapsulesSection } from '../components/VideoCapsulesSection';
+import { ExerciseHistory } from '../components/organisms/ExerciseHistory';
+import { VideoCapsulesSection } from '../components/organisms/VideoCapsulesSection';
 
 export const ProfilePage = () => {
   const user = useAuthStore(s => s.user);
@@ -25,8 +25,8 @@ export const ProfilePage = () => {
         </div>
         <div className="flex flex-col items-center md:items-start flex-1 text-center md:text-left">
           <p className="text-accent text-xs font-bold tracking-widest uppercase mb-1 drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]">Mi Perfil</p>
-          <h1 className="text-3xl md:text-5xl font-extrabold text-text tracking-tight mb-2">{user?.fullName || 'Usuario Demo'}</h1>
-          <p className="text-text-muted text-sm md:text-base bg-surface-alt/50 px-4 py-1.5 rounded-full border border-white/5 inline-block">{user?.email || 'test@okaction.local'}</p>
+          <h1 className="text-3xl md:text-5xl font-extrabold text-text tracking-tight mb-2">{user?.fullName}</h1>
+          <p className="text-text-muted text-sm md:text-base bg-surface-alt/50 px-4 py-1.5 rounded-full border border-white/5 inline-block">{user?.email}</p>
         </div>
       </header>
 

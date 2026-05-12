@@ -31,9 +31,10 @@ const aggregateGroup = (
   const breaksSum = group.reduce((acc, e) => acc + e.breaks, 0);
   const inRangeCount = group.filter((e) => e.inRange).length;
 
+  const computedAvgHz = count === 0 ? 0 : avgHzSum / count;
   return {
     exercise_type: exerciseType,
-    avg_hz: count === 0 ? 0 : avgHzSum / count,
+    avg_hz: Number.isNaN(computedAvgHz) ? 0 : computedAvgHz || 0,
     stability_score: count === 0 ? 0 : clampPct(stabilitySum / count),
     breaks_count: breaksSum,
     in_range_pct: count === 0 ? 0 : clampPct((inRangeCount / count) * 100),
@@ -80,12 +81,12 @@ export const toSavePhonationSessionDto = (
     ended_at: endedAt.toISOString(),
     score: clampPct(result.overallScore),
     metrics: {
-      avg_hz: result.avgHz,
+      avg_hz: Number.isNaN(result.avgHz) ? 0 : result.avgHz || 0,
       stability_score: stabilityAvg,
       breaks_count: breaksTotal,
       exercises_count: grouped.length,
     },
     exercises: grouped,
-    parent_id: parentId ?? null,
+    parent_id: parentId || undefined,
   };
 };

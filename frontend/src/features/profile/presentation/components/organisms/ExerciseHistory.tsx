@@ -1,29 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { VOICE_EXERCISES } from '../../../phonation/services/exercises';
-import { ACCENTUATION_PHRASES } from '../../../accentuation/services/phrases';
-import { getPhrasesByLevel } from '../../../pronunciation/services/phrases';
-import { FLUENCY_PROMPTS } from '../../../fluency/services/questions';
-import { CONSISTENCY_PROMPTS } from '../../../consistency/services/questions';
-import { LOUDNESS_PRESETS } from '../../../loudness/services/loudnessPresets';
-import { PAUSE_QUESTIONS } from '../../../pauses/services/questions';
-import { NavIcon } from '../../../../shared/ui/atoms/NavIcon';
-import type { NavIconName } from '../../../../shared/ui/atoms/NavIcon';
+import { apiRequest } from '../../../../../api/client';
+import { NavIcon } from '../../../../../shared/ui/atoms/NavIcon';
+import type { NavIconName } from '../../../../../shared/ui/atoms/NavIcon';
 
-type SubExercise = {
+export type SubExercise = {
   id: string;
   title: string;
   tags: string[];
   viewed: boolean;
 };
 
-type ExerciseCategory = {
+export type ExerciseCategory = {
   id: string;
   title: string;
   exercises: SubExercise[];
 };
 
-type ModuleHistory = {
+export type ModuleHistory = {
   moduleId: string;
   moduleName: string;
   iconName: NavIconName;
@@ -31,213 +25,60 @@ type ModuleHistory = {
   categories: ExerciseCategory[];
 };
 
-// 1. Fonación
-const fonacionCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-sustained',
-    title: 'Vocales sostenidas',
-    exercises: VOICE_EXERCISES.filter(e => e.type === 'sustained').map(e => ({
-      id: e.id,
-      title: e.instruction,
-      tags: [`${e.durationMs / 1000}s`, `${e.targetHzRange.min}-${e.targetHzRange.max} Hz`],
-      viewed: e.id === 'sustained-a' || e.id === 'sustained-e'
-    }))
-  },
-  {
-    id: 'cat-phrase',
-    title: 'Frases',
-    exercises: VOICE_EXERCISES.filter(e => e.type === 'phrase').map(e => ({
-      id: e.id,
-      title: e.instruction,
-      tags: [`${e.durationMs / 1000}s`, `${e.targetHzRange.min}-${e.targetHzRange.max} Hz`],
-      viewed: true
-    }))
-  },
-  {
-    id: 'cat-glissando',
-    title: 'Glissando',
-    exercises: VOICE_EXERCISES.filter(e => e.type === 'glissando').map(e => ({
-      id: e.id,
-      title: e.instruction,
-      tags: [`${e.durationMs / 1000}s`, `${e.targetHzRange.min}-${e.targetHzRange.max} Hz`],
-      viewed: false
-    }))
-  }
-];
-
-// 2. Acentuación
-const acentuacionCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-declarative',
-    title: 'Frases Declarativas',
-    exercises: ACCENTUATION_PHRASES.filter(p => p.category === 'declarative').map((p, i) => ({
-      id: p.id,
-      title: `Lee: "${p.text}"`,
-      tags: ['Declarativa'],
-      viewed: i === 0
-    }))
-  },
-  {
-    id: 'cat-interrogative',
-    title: 'Frases Interrogativas/Exclamativas',
-    exercises: ACCENTUATION_PHRASES.filter(p => p.category !== 'declarative').map((p, i) => ({
-      id: p.id,
-      title: `Lee: "${p.text}"`,
-      tags: [p.category === 'interrogative' ? 'Interrogativa' : 'Exclamativa'],
-      viewed: i === 1
-    }))
-  }
-];
-
-// 3. Pronunciación
-const pronunciacionCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-basico',
-    title: 'Nivel Básico',
-    exercises: getPhrasesByLevel('basico').map((p, i) => ({
-      id: p.id,
-      title: p.text,
-      tags: ['Básico'],
-      viewed: i < 3
-    }))
-  },
-  {
-    id: 'cat-intermedio',
-    title: 'Nivel Intermedio',
-    exercises: getPhrasesByLevel('intermedio').map((p, i) => ({
-      id: p.id,
-      title: p.text,
-      tags: ['Intermedio'],
-      viewed: i === 0
-    }))
-  },
-  {
-    id: 'cat-avanzado',
-    title: 'Nivel Avanzado',
-    exercises: getPhrasesByLevel('avanzado').map((p) => ({
-      id: p.id,
-      title: p.text,
-      tags: ['Avanzado'],
-      viewed: false
-    }))
-  }
-];
-
-// 4. Fluidez
-const fluidezCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-fluency',
-    title: 'Preguntas de Fluidez',
-    exercises: FLUENCY_PROMPTS.map((p, i) => ({
-      id: `fluency-${i}`,
-      title: p,
-      tags: ['Pregunta abierta'],
-      viewed: i === 0
-    }))
-  }
-];
-
-// 5. Consistencia
-const consistenciaCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-consistency',
-    title: 'Preguntas de Consistencia',
-    exercises: CONSISTENCY_PROMPTS.map((p, i) => ({
-      id: `cons-${i}`,
-      title: p,
-      tags: ['Evaluación integral'],
-      viewed: i === 0
-    }))
-  }
-];
-
-// 6. Volumen
-const volumenCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-loudness',
-    title: 'Escenarios de Volumen',
-    exercises: LOUDNESS_PRESETS.map((p) => ({
-      id: p.presetId,
-      title: p.label,
-      tags: [p.description],
-      viewed: true
-    }))
-  }
-];
-
-// 7. Pausas
-const pausasCategories: ExerciseCategory[] = [
-  {
-    id: 'cat-pauses',
-    title: 'Preguntas para Pausas',
-    exercises: PAUSE_QUESTIONS.map((p, i) => ({
-      id: p.id,
-      title: p.text,
-      tags: ['Pregunta'],
-      viewed: i === 0
-    }))
-  }
-];
-
-const MOCK_HISTORY: ModuleHistory[] = [
-  {
-    moduleId: '1',
-    moduleName: 'Fonación',
-    iconName: 'phonation',
-    averageScore: 85,
-    categories: fonacionCategories
-  },
-  {
-    moduleId: '2',
-    moduleName: 'Pronunciación',
-    iconName: 'pronunciation',
-    averageScore: 65,
-    categories: pronunciacionCategories
-  },
-  {
-    moduleId: '3',
-    moduleName: 'Acentuación',
-    iconName: 'accentuation',
-    averageScore: 70,
-    categories: acentuacionCategories
-  },
-  {
-    moduleId: '4',
-    moduleName: 'Volumen',
-    iconName: 'loudness',
-    averageScore: 90,
-    categories: volumenCategories
-  },
-  {
-    moduleId: '5',
-    moduleName: 'Pausas',
-    iconName: 'pauses',
-    averageScore: 50,
-    categories: pausasCategories
-  },
-  {
-    moduleId: '6',
-    moduleName: 'Fluidez',
-    iconName: 'fluency',
-    averageScore: 60,
-    categories: fluidezCategories
-  },
-  {
-    moduleId: '7',
-    moduleName: 'Consistencia',
-    iconName: 'consistency',
-    averageScore: 80,
-    categories: consistenciaCategories
-  }
-];
-
 export const ExerciseHistory = () => {
+  const [history, setHistory] = useState<ModuleHistory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedModule, setSelectedModule] = useState<ModuleHistory | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(false);
+
+    apiRequest<ModuleHistory[]>('/profile/history')
+      .then(res => setHistory(res))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+        {[1, 2, 3, 4, 5, 6].map(i => (
+          <div key={i} className="h-32 md:h-40 rounded-3xl bg-surface-alt/30 animate-pulse border border-border/40" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-6 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-500 text-sm flex items-center gap-3 animate-fade-in">
+        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        No se pudo cargar el historial de ejercicios. Por favor, intenta nuevamente más tarde.
+      </div>
+    );
+  }
+
+  const historyArray = Array.isArray(history) ? history : ((history as any)?.data || []);
+
+  const hasActivity = historyArray.some((mod: ModuleHistory) =>
+    mod.averageScore > 0 ||
+    mod.categories.some(cat => cat.exercises.some(ex => ex.viewed))
+  );
+
+  if (!hasActivity) {
+    return (
+      <div className="text-text-muted text-sm p-4 bg-surface-alt/20 rounded-2xl border border-border/30 animate-fade-in">
+        Aún no has completado ejercicios. ¡Empieza a entrenar para ver tu progreso aquí!
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
-        {MOCK_HISTORY.map((mod) => {
+        {historyArray.map((mod: ModuleHistory) => {
           return (
             <button
               key={mod.moduleId}
@@ -269,7 +110,7 @@ export const ExerciseHistory = () => {
           />
           <div className="relative w-full max-w-3xl max-h-[85vh] bg-surface border border-border/60 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden animate-scale-in">
             {/* Header del Modal */}
-            <div className="flex justify-between items-center p-5 md:p-6 border-b border-border/40 bg-surface-alt/30">
+            <div className="flex justify-between items-center p-5 md:p-6 border-b border-border/40 bg-surface-alt/30 shrink-0">
               <div>
                 <h2 className="text-xl md:text-2xl font-extrabold text-text">{selectedModule.moduleName}</h2>
                 <p className="text-xs md:text-sm text-accent font-medium mt-1">Desglose de ejercicios realizados</p>

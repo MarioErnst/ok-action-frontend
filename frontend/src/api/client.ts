@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-export const API_BASE_URL = (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ?? import.meta.env.VITE_API_URL ?? '/api';
+export const API_BASE_URL: string = import.meta.env.VITE_API_URL || '/api';
 
 export const WS_BASE_URL =
   (globalThis as { __APP_WS_URL__?: string }).__APP_WS_URL__ ??

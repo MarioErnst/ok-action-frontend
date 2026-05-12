@@ -2,15 +2,15 @@ export interface VideoCardProps {
   id: string;
   title: string;
   url: string;
+  filename?: string;
+  onClick: () => void;
 }
 
-export const VideoCard = ({ title, url }: VideoCardProps) => {
+export const VideoCard = ({ title, onClick }: VideoCardProps) => {
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative flex flex-col items-start text-left gap-3 md:gap-4 p-4 md:p-6 bg-surface/80 backdrop-blur-md border border-border rounded-3xl active:scale-95 hover:border-accent/60 md:hover:-translate-y-1 hover:shadow-[0_10px_40px_-10px_rgba(245,158,11,0.3)] shadow-[0_4px_20px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 cursor-pointer overflow-hidden animate-fade-in"
+    <button
+      onClick={onClick}
+      className="group relative flex flex-col items-start text-left gap-3 md:gap-4 p-4 md:p-6 bg-surface/80 backdrop-blur-md border border-border rounded-3xl active:scale-95 hover:border-accent/60 md:hover:-translate-y-1 hover:shadow-[0_10px_40px_-10px_rgba(245,158,11,0.3)] shadow-[0_4px_20px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 cursor-pointer overflow-hidden animate-fade-in w-full"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
       
@@ -25,6 +25,6 @@ export const VideoCard = ({ title, url }: VideoCardProps) => {
         <h3 className="text-text font-extrabold text-base md:text-xl group-hover:text-accent transition-colors">{title}</h3>
         <span className="text-[10px] md:text-xs font-medium text-text-muted">Reproducir video</span>
       </div>
-    </a>
+    </button>
   );
 };
