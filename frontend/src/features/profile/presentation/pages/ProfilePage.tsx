@@ -1,6 +1,5 @@
 import { useAuthStore } from '../../../auth/presentation/store/authStore';
 import { ExerciseHistory } from '../components/organisms/ExerciseHistory';
-import { VideoCapsulesSection } from '../components/organisms/VideoCapsulesSection';
 
 export const ProfilePage = () => {
   const user = useAuthStore(s => s.user);
@@ -33,11 +32,6 @@ export const ProfilePage = () => {
       <section>
         <h2 className="text-2xl font-bold text-text mb-6 pl-2">Ejercicios realizados</h2>
         <ExerciseHistory />
-      </section>
-
-      <section>
-        <h2 className="text-2xl font-bold text-text mb-6 pl-2">Cápsulas de aprendizaje</h2>
-        <VideoCapsulesSection />
       </section>
     </div>
   );
