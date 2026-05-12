@@ -1,5 +1,6 @@
 export type NavIconName =
   | 'dashboard'
+  | 'exercises'
   | 'phonation'
   | 'pronunciation'
   | 'accentuation'
@@ -35,6 +36,16 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
       <rect x="14" y="3" width="7" height="7" rx="1" />
       <rect x="3" y="14" width="7" height="7" rx="1" />
       <rect x="14" y="14" width="7" height="7" rx="1" />
+    </>
+  ),
+  // Mancuerna estilizada — punto de entrada al catálogo de ejercicios.
+  exercises: (
+    <>
+      <line x1="6" y1="12" x2="18" y2="12" />
+      <rect x="2" y="9" width="2.5" height="6" rx="0.5" />
+      <rect x="19.5" y="9" width="2.5" height="6" rx="0.5" />
+      <rect x="4.5" y="10.5" width="2" height="3" rx="0.4" />
+      <rect x="17.5" y="10.5" width="2" height="3" rx="0.4" />
     </>
   ),
   phonation: (
