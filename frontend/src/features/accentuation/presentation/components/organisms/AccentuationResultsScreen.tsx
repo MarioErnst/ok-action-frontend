@@ -43,8 +43,10 @@ function PhraseResultRow({ evaluation, index }: PhraseResultRowProps) {
           <span className={`font-extrabold text-lg ${getScoreColorClass(evaluation.metrics.overallScore)}`}>
             {Math.round(evaluation.metrics.overallScore)}
           </span>
-          <span className="text-accent flex items-center justify-center w-6 h-6 rounded-full bg-accent/10 border border-accent/20">
-            {isExpanded ? '▲' : '▼'}
+          <span className={`text-accent flex items-center justify-center w-6 h-6 rounded-full bg-accent/10 border border-accent/20 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
           </span>
         </div>
       </button>
