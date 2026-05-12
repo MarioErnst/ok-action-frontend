@@ -83,6 +83,8 @@ export const VideoCapsulesSection = () => {
                 src={selectedVideo.url}
                 controls
                 autoPlay
+                muted
+                playsInline
                 className="w-full h-full object-contain outline-none max-h-[calc(85vh-80px)]"
               >
                 Tu navegador no soporta la reproducción de videos.
