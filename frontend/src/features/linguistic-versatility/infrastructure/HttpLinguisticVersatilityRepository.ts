@@ -1,3 +1,4 @@
+import { apiRequest, ApiError } from '../../../api/client'
 import type {
   EvaluateRoundResponse,
   SessionDetail,
@@ -11,29 +12,7 @@ import type {
 // before the user sees an indefinite spinner.
 const AUDIO_REQUEST_TIMEOUT_MS = 60_000
 
-const API_BASE_URL =
-  (globalThis as { __APP_API_URL__?: string }).__APP_API_URL__ ??
-  import.meta.env.VITE_API_URL ??
-  '/api'
-
 const PREFIX = '/linguistic-versatility'
-
-function authHeaders(): Record<string, string> {
-  const token = localStorage.getItem('auth_token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-async function jsonRequest<T>(path: string, init: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: { ...authHeaders(), ...(init.headers ?? {}) },
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`)
-  }
-  return res.json() as Promise<T>
-}
 
 async function uploadAudio<T>(
   path: string,
@@ -50,17 +29,11 @@ async function uploadAudio<T>(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), AUDIO_REQUEST_TIMEOUT_MS)
   try {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
+    return await apiRequest<T, FormData>(path, {
       method: 'POST',
-      headers: authHeaders(),
       body: form,
       signal: controller.signal,
     })
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new Error(`HTTP ${res.status}: ${text || res.statusText}`)
-    }
-    return res.json() as Promise<T>
   } catch (err) {
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new Error('Tiempo de espera agotado al enviar el audio.')
@@ -126,14 +99,13 @@ export const HttpLinguisticVersatilityRepository = {
     roundsTotal: number = 5,
     parentId?: string | null,
   ): Promise<StartSessionResponse> {
-    const dto = await jsonRequest<StartSessionRawDto>(`${PREFIX}/sessions`, {
+    const dto = await apiRequest<StartSessionRawDto>(`${PREFIX}/sessions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: {
         mode,
         rounds_total: roundsTotal,
         parent_id: parentId ?? null,
-      }),
+      },
     })
     return {
       sessionId: dto.session_id,
@@ -173,27 +145,27 @@ export const HttpLinguisticVersatilityRepository = {
   async finalize(sessionId: string): Promise<SessionDetail> {
     // The finalize endpoint returns a flat summary, not the full detail;
     // call get afterwards to populate rounds for the results view.
-    await jsonRequest<unknown>(`${PREFIX}/sessions/${sessionId}/finalize`, {
+    await apiRequest<unknown>(`${PREFIX}/sessions/${sessionId}/finalize`, {
       method: 'POST',
     })
     return this.getSession(sessionId)
   },
 
   async abandon(sessionId: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}${PREFIX}/sessions/${sessionId}/abandon`, {
-      method: 'PATCH',
-      headers: authHeaders(),
-    })
-    if (!res.ok && res.status !== 204) {
+    try {
+      await apiRequest<void>(`${PREFIX}/sessions/${sessionId}/abandon`, {
+        method: 'PATCH',
+      })
+    } catch (err) {
       // 404 is intentionally swallowed: abandon is fire-and-forget on nav-away.
-      throw new Error(`HTTP ${res.status}`)
+      if (err instanceof ApiError && err.status === 404) return
+      throw err
     }
   },
 
   async getSession(sessionId: string): Promise<SessionDetail> {
-    const dto = await jsonRequest<SessionDetailRawDto>(
+    const dto = await apiRequest<SessionDetailRawDto>(
       `${PREFIX}/sessions/${sessionId}`,
-      { method: 'GET' },
     )
     return {
       id: dto.id,
@@ -218,10 +190,7 @@ export const HttpLinguisticVersatilityRepository = {
   },
 
   async getHistory(): Promise<SessionListItem[]> {
-    const dtos = await jsonRequest<SessionListItemRawDto[]>(
-      `${PREFIX}/sessions`,
-      { method: 'GET' },
-    )
+    const dtos = await apiRequest<SessionListItemRawDto[]>(`${PREFIX}/sessions`)
     return dtos.map((d) => ({
       id: d.id,
       mode: d.mode,
