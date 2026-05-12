@@ -46,7 +46,12 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
             className="flex-1 relative overflow-hidden rounded-2xl border border-border/60 bg-surface/60 backdrop-blur-sm py-3.5 text-sm font-bold text-text shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 active:scale-95 hover:border-accent/60 group"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <span className="relative z-10 group-hover:text-accent transition-colors">✓ Todos</span>
+            <span className="relative z-10 inline-flex items-center justify-center gap-2 group-hover:text-accent transition-colors">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Todos
+            </span>
           </button>
           <button
             type="button"
@@ -54,7 +59,12 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
             className="flex-1 relative overflow-hidden rounded-2xl border border-border/60 bg-surface/60 backdrop-blur-sm py-3.5 text-sm font-bold text-text shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300 active:scale-95 hover:border-accent/60 group"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <span className="relative z-10 group-hover:text-accent transition-colors">✕ Ninguno</span>
+            <span className="relative z-10 inline-flex items-center justify-center gap-2 group-hover:text-accent transition-colors">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Ninguno
+            </span>
           </button>
         </div>
 
