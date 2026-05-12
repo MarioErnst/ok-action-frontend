@@ -16,8 +16,10 @@ export const NavItem = ({ to, icon, label, end, indicatorVariant = 'vertical' }:
     to={to}
     end={end}
     className={({ isActive }) =>
-      `relative flex items-center gap-3 mx-2 px-4 py-2.5 rounded-xl transition-colors duration-200 hover:bg-surface-alt ${
-        isActive ? 'bg-accent/10' : ''
+      `relative flex items-center gap-3 mx-2 px-4 py-2.5 rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
+        isActive
+          ? 'bg-accent/15 hover:bg-accent/20'
+          : 'hover:bg-surface-alt'
       }`
     }
   >
