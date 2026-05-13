@@ -53,8 +53,14 @@ export default function usePronunciationSession() {
   const [phraseStates, setPhraseStates] = useState<PhraseState[]>([]);
   const [pendingEvaluationCount, setPendingEvaluationCount] = useState(0);
 
-  const { isRecording, recordingError, startRecording, stopRecording, releaseResources } =
-    useAudioRecorder();
+  const {
+    isRecording,
+    recordingError,
+    activeStream,
+    startRecording,
+    stopRecording,
+    releaseResources,
+  } = useAudioRecorder();
 
   const sessionResultRef = useRef<PronunciationSessionResult | null>(null);
 
@@ -175,6 +181,7 @@ export default function usePronunciationSession() {
     phraseStates,
     isRecording,
     recordingError,
+    activeStream,
     totalPhrases: getPhrasesByLevel(currentLevel).length,
     startSession,
     finishCurrentPhrase,

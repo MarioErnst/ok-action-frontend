@@ -1,4 +1,5 @@
 import type { PhraseState, PronunciationLevel } from '../../../domain/PronunciationSession'
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
 import PhraseCard from '../molecules/PhraseCard'
 
 interface RecordingScreenProps {
@@ -8,6 +9,7 @@ interface RecordingScreenProps {
   phraseStates: PhraseState[]
   isRecording: boolean
   recordingError: string | null
+  activeStream: MediaStream | null
   onFinishPhrase: () => void
   onReset: () => void
 }
@@ -25,6 +27,7 @@ export default function RecordingScreen({
   phraseStates,
   isRecording,
   recordingError,
+  activeStream,
   onFinishPhrase,
   onReset,
 }: RecordingScreenProps) {
@@ -51,6 +54,10 @@ export default function RecordingScreen({
         <p className="text-center text-xl md:text-2xl font-bold leading-relaxed text-text relative z-10">
           {currentPhrase?.phrase.text}
         </p>
+      </div>
+
+      <div className="w-full">
+        <RecordingWaveform stream={activeStream} active={isRecording} height={48} />
       </div>
 
       {isRecording && (
