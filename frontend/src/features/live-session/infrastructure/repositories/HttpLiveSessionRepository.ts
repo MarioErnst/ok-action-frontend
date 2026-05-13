@@ -99,6 +99,7 @@ export const HttpLiveSessionRepository = {
     frameIndex: number,
     modules: FrameModuleDto[],
     evaluatedSoFarSeconds: number,
+    signal?: AbortSignal,
   ): Promise<FrameEvaluationResponseDto> {
     const form = new FormData()
     const filename = `frame-${sessionId}-${frameIndex}.${
@@ -113,7 +114,7 @@ export const HttpLiveSessionRepository = {
 
     return apiRequest<FrameEvaluationResponseDto, FormData>(
       `/live/sessions/${sessionId}/evaluate-frame`,
-      { method: 'POST', body: form },
+      { method: 'POST', body: form, signal },
     )
   },
 }
