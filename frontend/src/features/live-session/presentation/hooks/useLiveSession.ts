@@ -65,6 +65,11 @@ interface UseLiveSessionResult {
   activeStream: MediaStream | null
   videoStream: MediaStream | null
   isRecording: boolean
+  // True from the moment start() begins until the session has moved
+  // past 'calibrating'. The DimensionSelector reads this to disable
+  // its CTA so the user does not re-fire start() while permission
+  // prompts or the lazy-loaded MediaPipe download are in flight.
+  isStarting: boolean
   calibrationProgress: number
   strikeEvents: ReturnType<typeof useFrameStrikes>['events']
   stopReason: StopReason | null
@@ -137,6 +142,7 @@ export function useLiveSession(): UseLiveSessionResult {
   const [emotionTriggerLabel, setEmotionTriggerLabel] = useState<string | null>(null)
   const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null)
   const [recordingDurationMs, setRecordingDurationMs] = useState(0)
+  const [isStarting, setIsStarting] = useState(false)
 
   const facialEnabled = selectedModules.includes('facial_expression')
   const strikes = useFrameStrikes()
@@ -160,6 +166,11 @@ export function useLiveSession(): UseLiveSessionResult {
   const inFlightFramesRef = useRef(0)
   const evaluatedSoFarSecondsRef = useRef(0)
   const isStoppingRef = useRef(false)
+  // Guard against double-firing start(): the CTA disable flips
+  // through state which is async, so a fast double tap can still
+  // reach start() twice. The ref gives us a synchronous check that
+  // works no matter the render scheduling.
+  const isStartingRef = useRef(false)
   // Single AbortController per session that fires on triggerStop, so
   // in-flight evaluate-frame requests do not land on the backend after
   // the session row is already aborted/completed (those would 422).
@@ -443,6 +454,10 @@ export function useLiveSession(): UseLiveSessionResult {
   }, [triggerStop])
 
   const start = useCallback(async () => {
+    if (isStartingRef.current) return
+    isStartingRef.current = true
+    setIsStarting(true)
+    try {
     if (selectedModules.length === 0) {
       setError('Selecciona al menos un módulo')
       return
@@ -463,7 +478,11 @@ export function useLiveSession(): UseLiveSessionResult {
     strikes.reset()
     emotionStop.reset()
 
-    // Open audio stream and (when facial is active) request the camera.
+    // Open audio stream first. LiveFaceLoop opens its own camera
+    // stream later when facial_expression is active; doing it
+    // sequentially keeps the audio path the same as before so a
+    // camera permission denial does not interfere with the audio
+    // pipeline.
     let audioStream: MediaStream
     try {
       audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -628,6 +647,14 @@ export function useLiveSession(): UseLiveSessionResult {
         return next
       })
     }, 1000)
+    } finally {
+      // Clear the "preparando" guard regardless of how we got out. If
+      // start() reached the recording phase the user has long stopped
+      // looking at the CTA; if it failed early, releasing the guard
+      // lets the user retry.
+      isStartingRef.current = false
+      setIsStarting(false)
+    }
   }, [
     selectedModules,
     facialEnabled,
@@ -716,6 +743,7 @@ export function useLiveSession(): UseLiveSessionResult {
     activeStream,
     videoStream,
     isRecording,
+    isStarting,
     calibrationProgress,
     strikeEvents: strikes.events,
     stopReason,

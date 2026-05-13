@@ -26,6 +26,7 @@ export default function LiveSessionPage() {
             void live.start()
           }}
           isStartDisabled={live.selectedModules.length === 0}
+          isStarting={live.isStarting}
         />
         {live.error && <ErrorBanner message={live.error} />}
       </main>

@@ -9,6 +9,11 @@ interface Props {
   onToggle: (module: LiveModule) => void
   onStart: () => void
   isStartDisabled: boolean
+  // While true the CTA shows the loader label and ignores further
+  // clicks. The parent flips this on as soon as start() begins so the
+  // user does not retrigger the flow while permission prompts /
+  // MediaPipe download are in progress.
+  isStarting?: boolean
 }
 
 // Initial phase of the live session. The user picks a non-empty subset
@@ -20,6 +25,7 @@ export function DimensionSelector({
   onToggle,
   onStart,
   isStartDisabled,
+  isStarting = false,
 }: Props) {
   return (
     <div className="flex flex-col items-center gap-8 p-6 w-full max-w-md mx-auto animate-fade-in">
@@ -91,14 +97,21 @@ export function DimensionSelector({
 
       <button
         onClick={onStart}
-        disabled={isStartDisabled}
+        disabled={isStartDisabled || isStarting}
         type="button"
         className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-r from-accent to-accent-hover
                    py-4 font-extrabold text-text-on-accent shadow-[0_0_20px_rgba(245,158,11,0.3)]
                    transition-all duration-300 active:scale-95 hover:shadow-[0_0_30px_rgba(245,158,11,0.5)]
-                   disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed min-h-[44px]"
+                   disabled:opacity-40 disabled:grayscale disabled:cursor-not-allowed min-h-[44px]
+                   inline-flex items-center justify-center gap-3"
       >
-        Comenzar sesión libre
+        {isStarting && (
+          <span
+            aria-hidden
+            className="h-5 w-5 rounded-full border-2 border-text-on-accent/40 border-t-text-on-accent animate-spin"
+          />
+        )}
+        {isStarting ? 'Preparando…' : 'Comenzar sesión libre'}
       </button>
     </div>
   )
