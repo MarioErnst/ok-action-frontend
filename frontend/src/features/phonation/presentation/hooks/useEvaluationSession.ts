@@ -98,6 +98,7 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
   const { result: diagnosisResult } = useDiagnosis(
     phase === 'finished' ? accumulator.recordedResults : new Map<string, PhonationFrame[]>(),
     exercises,
+    phase === 'finished' ? noiseFloor : null,
   );
 
   const savedRef = useRef(false);
