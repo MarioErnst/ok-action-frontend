@@ -18,7 +18,7 @@ import { calibrateNoiseFloor } from '../../services/audioFraming/noiseCalibrator
 import { PauseDetector } from '../../services/audioFraming/pauseDetector'
 import { FrameRecorder } from '../../services/audioFraming/frameRecorder'
 import { FacialSummaryBuilder } from '../../services/emotionMonitor/facialSummaryBuilder'
-import { LiveFaceLoop } from '../../services/emotionMonitor/liveFaceLoop'
+import { LiveFaceLoop, type BlendshapeBaseline } from '../../services/emotionMonitor/liveFaceLoop'
 import { useFrameStrikes } from './useFrameStrikes'
 import { useEmotionStop } from './useEmotionStop'
 
@@ -163,6 +163,16 @@ export function useLiveSession(): UseLiveSessionResult {
   const selectedModulesRef = useRef<LiveModule[]>([])
   const phaseRef = useRef<LiveSessionPhase>('selection')
   const stopReasonRef = useRef<StopReason | null>(null)
+  // Facial baseline accumulation. While facialPhase is 'calibrating' we
+  // sum blendshape activations per category so we can build the user's
+  // neutral-face baseline at the moment the calibration window closes.
+  // Once facialPhase flips to 'live' we stop summing and pass the
+  // baseline into classify() so emotion scores reflect deltas above
+  // neutral rather than absolute activations.
+  const facialPhaseRef = useRef<'calibrating' | 'live'>('calibrating')
+  const baselineSumRef = useRef<Map<string, number>>(new Map())
+  const baselineCountRef = useRef(0)
+  const finalBaselineRef = useRef<BlendshapeBaseline | null>(null)
 
   // Keep refs in sync with state so closures can read fresh values.
   useEffect(() => {
@@ -250,6 +260,10 @@ export function useLiveSession(): UseLiveSessionResult {
     evaluatedSoFarSecondsRef.current = 0
     isStoppingRef.current = false
     stopReasonRef.current = null
+    facialPhaseRef.current = 'calibrating'
+    baselineSumRef.current = new Map()
+    baselineCountRef.current = 0
+    finalBaselineRef.current = null
 
     setSelectedModules([])
     setElapsedSeconds(0)
@@ -471,15 +485,37 @@ export function useLiveSession(): UseLiveSessionResult {
     sessionIdRef.current = openResponse.session_id
     startedAtIsoRef.current = openResponse.started_at
 
-    // Lazy-load and start the face loop when facial_expression is tildada.
-    // The session id is already open at this point so emotion ticks can
-    // start feeding the summary builder without a race.
+    // Lazy-load and start the face loop when facial_expression is
+    // tildada. The session id is already open at this point so emotion
+    // ticks can start feeding the summary builder without a race.
+    //
+    // During the 'calibrating' phase the loop emits RAW blendshapes
+    // that we accumulate into baselineSumRef to build the user's
+    // neutral baseline. After calibration ends we set
+    // facialPhaseRef.current = 'live' and from that tick onward the
+    // listener classifies with the baseline and feeds the smoother +
+    // summary builder.
     if (facialEnabled) {
       facialSummaryBuilderRef.current = new FacialSummaryBuilder()
+      facialPhaseRef.current = 'calibrating'
+      baselineSumRef.current = new Map()
+      baselineCountRef.current = 0
+      finalBaselineRef.current = null
       const loop = new LiveFaceLoop()
       try {
         await loop.load()
-        await loop.start((prediction) => {
+        await loop.start((blendshapes) => {
+          if (facialPhaseRef.current === 'calibrating') {
+            for (const sample of blendshapes) {
+              baselineSumRef.current.set(
+                sample.categoryName,
+                (baselineSumRef.current.get(sample.categoryName) ?? 0) + sample.score,
+              )
+            }
+            baselineCountRef.current += 1
+            return
+          }
+          const prediction = loop.classify(blendshapes, finalBaselineRef.current ?? undefined)
           facialSummaryBuilderRef.current?.feed(prediction.emotion)
           emotionStop.feedPrediction(prediction.emotion, prediction.confidence)
         })
@@ -511,6 +547,21 @@ export function useLiveSession(): UseLiveSessionResult {
     })
     window.clearInterval(calibrationInterval)
     setCalibrationProgress(1)
+
+    // Build the facial baseline from blendshapes accumulated during
+    // calibration. If for any reason we did not collect any sample
+    // (camera failed to deliver frames within the window) we leave the
+    // baseline empty: classify() then falls back to absolute scores,
+    // which is the same behavior as before this fix and at least lets
+    // the session continue.
+    if (facialEnabled && baselineCountRef.current > 0) {
+      const baseline: BlendshapeBaseline = {}
+      for (const [key, sum] of baselineSumRef.current) {
+        baseline[key] = sum / baselineCountRef.current
+      }
+      finalBaselineRef.current = baseline
+    }
+    facialPhaseRef.current = 'live'
 
     // Start the full-audio recorder for the final composed evaluation.
     const mime = pickMimeType()
