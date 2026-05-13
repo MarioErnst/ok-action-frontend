@@ -625,7 +625,6 @@ export function useLiveSession(): UseLiveSessionResult {
       }
       // Avoid duplicate work in callbacks once unmounted.
       sessionIdRef.current = null
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }
   }, [clearElapsedTimer, releaseAudioGraph])
 
