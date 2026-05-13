@@ -31,8 +31,16 @@ export function toPhraseEvaluation(dto: PhraseEvaluationDto): PhraseEvaluation {
 }
 
 function toSpecificError(dto: PhraseSpecificErrorDto): SpecificError {
+  const wordIndex = dto.word_index ?? null;
+  // Gemini uses -1 to mean "could not determine which syllable was stressed";
+  // normalize that to null so the UI can branch on its presence cleanly.
+  const rawActual = dto.actual_stressed_syllable_index;
+  const actualStressedSyllableIndex =
+    rawActual === undefined || rawActual === null || rawActual < 0 ? null : rawActual;
   return {
     word: dto.word,
+    wordIndex,
+    actualStressedSyllableIndex,
     expectedStress: dto.expected_stress,
     actualIssue: dto.actual_issue,
     suggestion: dto.suggestion,
