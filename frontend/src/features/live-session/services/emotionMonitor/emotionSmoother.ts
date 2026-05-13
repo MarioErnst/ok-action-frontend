@@ -28,9 +28,15 @@ export interface EmotionSmootherOptions {
   dominanceThreshold?: number
 }
 
+// Default thresholds calibrated for the in-browser emotion classifier
+// when fed with baseline-adjusted blendshapes. The confidence floor at
+// 0.45 is intentionally permissive because the underlying classifier
+// rarely crosses 0.6 even for clearly marked expressions; the dominance
+// requirement at 80% of the window still keeps single-frame flickers
+// from sneaking through.
 const DEFAULTS: Required<EmotionSmootherOptions> = {
   windowMs: 1000,
-  confidenceThreshold: 0.65,
+  confidenceThreshold: 0.45,
   dominanceThreshold: 0.8,
 }
 
