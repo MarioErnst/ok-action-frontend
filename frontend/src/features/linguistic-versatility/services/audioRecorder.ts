@@ -43,6 +43,15 @@ export class AudioRecorder {
     return this.mediaRecorder?.state === 'recording'
   }
 
+  /**
+   * Exposes the active MediaStream so consumers can attach analysers (e.g.
+   * the RecordingWaveform molecule) without re-requesting microphone access.
+   * Returns null when there is no active recording session.
+   */
+  getStream(): MediaStream | null {
+    return this.stream
+  }
+
   async start(): Promise<void> {
     if (this.isRecording()) return
 

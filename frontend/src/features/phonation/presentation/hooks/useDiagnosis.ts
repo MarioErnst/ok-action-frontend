@@ -1,6 +1,13 @@
 import { useMemo } from 'react';
 import { VOICE_EXERCISES } from '../../services/exercises';
-import type { ExerciseResult, PhonationFrame, SessionResult, VoiceExercise } from '../../domain/PhonationSession';
+import type {
+  ExerciseResult,
+  PhonationFrame,
+  SessionExtendedMetrics,
+  SessionResult,
+  VoiceExercise,
+} from '../../domain/PhonationSession';
+import { computeExtendedPhonationMetrics } from '../../services/extendedMetrics';
 
 // --- Thresholds based on scientific literature ---
 const F0_SD_PATHOLOGICAL = 15;
@@ -137,6 +144,7 @@ function analyzeExercise(exercise: VoiceExercise, frames: PhonationFrame[]): Exe
 export default function useDiagnosis(
   recordedResults: Map<string, PhonationFrame[]>,
   exercises: VoiceExercise[] = VOICE_EXERCISES,
+  noiseFloorDb: number | null = null,
 ): { result: SessionResult | null } {
   const result = useMemo<SessionResult | null>(() => {
     if (recordedResults.size === 0) return null;
@@ -245,14 +253,61 @@ export default function useDiagnosis(
       }
     }
 
+    const extended = aggregateExtendedMetrics(
+      activeExercises,
+      exerciseResults,
+      noiseFloorDb,
+    );
+
     return {
       exercises: exerciseResults,
       overallScore,
       avgHz,
       observations,
       timestamp: Date.now(),
+      extended,
     };
-  }, [recordedResults, exercises]);
+  }, [recordedResults, exercises, noiseFloorDb]);
 
   return { result };
+}
+
+// Aggregates the per-exercise extended metrics into a single session-level
+// summary. Skipped (returns null) when no noise floor is available since the
+// silence threshold would be unreliable.
+function aggregateExtendedMetrics(
+  activeExercises: VoiceExercise[],
+  exerciseResults: ExerciseResult[],
+  noiseFloorDb: number | null,
+): SessionExtendedMetrics | null {
+  if (noiseFloorDb === null || !Number.isFinite(noiseFloorDb)) return null;
+
+  let maxSustainedVoicingMs = 0;
+  let weakPhraseEndingsCount = 0;
+  let weightedSlopeSum = 0;
+  let totalWeight = 0;
+
+  for (const exerciseResult of exerciseResults) {
+    const exercise = activeExercises.find((e) => e.id === exerciseResult.exerciseId);
+    if (!exercise) continue;
+
+    const metrics = computeExtendedPhonationMetrics(exerciseResult.frames, {
+      noiseFloorDb,
+      totalDurationMs: exercise.durationMs,
+      context: exercise.type === 'phrase' ? 'speech' : 'sustained',
+    });
+
+    maxSustainedVoicingMs = Math.max(maxSustainedVoicingMs, metrics.maxSustainedVoicingMs);
+    weakPhraseEndingsCount += metrics.weakPhraseEndingsCount;
+
+    if (exercise.durationMs > 0) {
+      weightedSlopeSum += metrics.dbSlopeDbPerSec * exercise.durationMs;
+      totalWeight += exercise.durationMs;
+    }
+  }
+
+  const dbSlopeDbPerSec =
+    totalWeight === 0 ? 0 : Number((weightedSlopeSum / totalWeight).toFixed(3));
+
+  return { maxSustainedVoicingMs, dbSlopeDbPerSec, weakPhraseEndingsCount };
 }

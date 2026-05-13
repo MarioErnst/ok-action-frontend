@@ -1,4 +1,5 @@
 import type { MuletillasEvaluation } from '../../../domain/MuletillasSession'
+import { HighlightedTranscript } from '../atoms/HighlightedTranscript'
 import MuletillasDetail from '../molecules/MuletillasDetail'
 
 type Props = {
@@ -56,6 +57,20 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
           </span>
         </div>
       </div>
+
+      {/* Transcript with filler-word highlights */}
+      {result.transcript && (
+        <div className="bg-[#1C1C1E] rounded-xl p-4 sm:p-5 border border-[#334155]">
+          <p className="text-[#9CA3AF] text-xs uppercase tracking-widest mb-2">
+            Tu respuesta
+          </p>
+          <HighlightedTranscript
+            transcript={result.transcript}
+            positions={result.muletillasPositions}
+            className="text-[#F8FAFC] text-sm sm:text-base leading-relaxed"
+          />
+        </div>
+      )}
 
       {/* General feedback */}
       <div className="bg-[#232B38] rounded-xl p-4 sm:p-5 border border-[#334155] space-y-3">

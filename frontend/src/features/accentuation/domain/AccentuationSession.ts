@@ -6,6 +6,10 @@ export interface AccentuationPhrase {
 
 export interface SpecificError {
   word: string;
+  /** 0-based index of the word within the phrase, or null if not reported. */
+  wordIndex: number | null;
+  /** 0-based index of the syllable the speaker actually stressed, or null. */
+  actualStressedSyllableIndex: number | null;
   expectedStress: string;
   actualIssue: string;
   suggestion: string;

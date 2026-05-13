@@ -8,7 +8,7 @@ export function PrecisionPage() {
   const {
     phase, currentQuestion, currentQuestionIndex, questions,
     rounds, overallScore, errorMessage, noiseLevel, elapsedSeconds,
-    isLastRound,
+    isLastRound, activeStream,
     startSession, startRecordingAnswer, stopAndEvaluate,
     nextQuestion, retryRecording, retry, reset,
   } = usePrecisionSession()
@@ -61,6 +61,7 @@ export function PrecisionPage() {
         questionNumber={currentQuestionIndex + 1}
         totalQuestions={questions.length}
         isRecording={phase === 'RECORDING'}
+        activeStream={activeStream}
         elapsedSeconds={elapsedSeconds}
         noiseLevel={noiseLevel}
         onStartRecording={startRecordingAnswer}

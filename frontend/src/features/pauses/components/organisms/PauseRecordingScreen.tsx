@@ -1,5 +1,6 @@
 import PauseMetricsSummary from '../molecules/PauseMetricsSummary';
 import { formatDuration } from '../../services/pauseFormatters';
+import { RecordingWaveform } from '../../../../shared/ui/molecules/RecordingWaveform';
 import type { PauseDetectionPhase, PauseMetrics } from '../../types';
 
 interface PauseRecordingScreenProps {
@@ -11,6 +12,7 @@ interface PauseRecordingScreenProps {
   noiseFloor: number;
   isSilent: boolean;
   currentMetrics: PauseMetrics;
+  analyser: AnalyserNode | null;
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -25,6 +27,7 @@ export default function PauseRecordingScreen({
   noiseFloor,
   isSilent,
   currentMetrics,
+  analyser,
   onStart,
   onStop,
   onReset,
@@ -68,6 +71,10 @@ export default function PauseRecordingScreen({
 
         {phase === 'recording' && (
           <>
+            <section className="rounded-xl border border-border bg-surface p-5">
+              <RecordingWaveform analyser={analyser} active height={48} />
+            </section>
+
             <section className="rounded-xl border border-border bg-surface p-5">
               <div className="flex items-center justify-between">
                 <div>

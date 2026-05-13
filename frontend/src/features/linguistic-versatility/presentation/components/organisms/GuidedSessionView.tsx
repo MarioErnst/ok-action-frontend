@@ -3,6 +3,7 @@ import type {
   GuidedStatus,
   VersatilityQuestion,
 } from '../../../domain/LinguisticVersatility'
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
 import { QuestionCard } from '../molecules/QuestionCard'
 import { RecordButton } from '../molecules/RecordButton'
 import { FeedbackPanel } from '../molecules/FeedbackPanel'
@@ -14,6 +15,7 @@ type Props = {
   total: number
   isLastQuestion: boolean
   lastResult: EvaluateRoundResponse | null
+  activeStream: MediaStream | null
   onStartRecording: () => void
   onStopAndUpload: () => void
   onNext: () => void
@@ -34,6 +36,7 @@ export function GuidedSessionView({
   total,
   isLastQuestion,
   lastResult,
+  activeStream,
   onStartRecording,
   onStopAndUpload,
   onNext,
@@ -61,6 +64,9 @@ export function GuidedSessionView({
       )}
 
       <div className="mt-auto flex flex-col gap-3">
+        {!showResult && status === 'recording' && (
+          <RecordingWaveform stream={activeStream} active height={48} />
+        )}
         {!showResult && (
           <RecordButton
             state={recordState}

@@ -23,6 +23,9 @@ export function useGuidedVersatilitySession() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [lastResult, setLastResult] = useState<EvaluateRoundResponse | null>(null)
   const [finalResult, setFinalResult] = useState<SessionDetail | null>(null)
+  // Exposed so consumers (e.g. the RecordingWaveform molecule) can attach
+  // analysers to the live microphone stream without re-requesting access.
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null)
 
   // Refs for things that must mutate synchronously inside callbacks.
   const recorderRef = useRef<AudioRecorder | null>(null)
@@ -61,11 +64,13 @@ export function useGuidedVersatilitySession() {
     try {
       recorderRef.current = new AudioRecorder()
       await recorderRef.current.start()
+      setActiveStream(recorderRef.current.getStream())
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Sin acceso al micrófono'
       statusRef.current = 'error'
       setError(msg)
       setStatus('error')
+      setActiveStream(null)
     }
   }, [])
 
@@ -87,6 +92,7 @@ export function useGuidedVersatilitySession() {
     try {
       const audio = await recorder.stop()
       recorderRef.current = null
+      setActiveStream(null)
       const result = await HttpLinguisticVersatilityRepository.submitRound(
         sid,
         currentIndex,
@@ -132,6 +138,7 @@ export function useGuidedVersatilitySession() {
   const reset = useCallback(() => {
     recorderRef.current?.cancel()
     recorderRef.current = null
+    setActiveStream(null)
     statusRef.current = 'idle'
     setStatus('idle')
     setError(null)
@@ -163,6 +170,7 @@ export function useGuidedVersatilitySession() {
     currentQuestion: questions[currentIndex] ?? null,
     lastResult,
     finalResult,
+    activeStream,
     isLastQuestion: currentIndex + 1 === questions.length,
     start,
     startRecording,

@@ -13,6 +13,9 @@ function getSupportedMimeType(): string {
 export default function useAudioRecorder() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
+  // Exposed as state so consumers (e.g. RecordingWaveform) can react when
+  // the stream becomes available or is torn down.
+  const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -24,6 +27,7 @@ export default function useAudioRecorder() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      setActiveStream(stream);
 
       const mimeType = getSupportedMimeType();
       const recorderOptions = mimeType ? { mimeType } : {};
@@ -64,6 +68,7 @@ export default function useAudioRecorder() {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
         }
+        setActiveStream(null);
 
         audioChunksRef.current = [];
         mediaRecorderRef.current = null;
@@ -85,6 +90,7 @@ export default function useAudioRecorder() {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    setActiveStream(null);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
@@ -93,5 +99,12 @@ export default function useAudioRecorder() {
     setIsRecording(false);
   }
 
-  return { isRecording, recordingError, startRecording, stopRecording, releaseResources };
+  return {
+    isRecording,
+    recordingError,
+    activeStream,
+    startRecording,
+    stopRecording,
+    releaseResources,
+  };
 }

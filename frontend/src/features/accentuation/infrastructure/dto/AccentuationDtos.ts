@@ -7,6 +7,8 @@ export type SessionStatusDto = 'active' | 'completed' | 'aborted';
 
 export interface PhraseSpecificErrorDto {
   word: string;
+  word_index?: number | null;
+  actual_stressed_syllable_index?: number | null;
   expected_stress: string;
   actual_issue: string;
   suggestion: string;

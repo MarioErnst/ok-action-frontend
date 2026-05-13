@@ -72,8 +72,14 @@ export default function useAccentuationSession() {
   const [phraseStates, setPhraseStates] = useState<PhraseState[]>(buildInitialPhraseStates);
   const [pendingEvaluationCount, setPendingEvaluationCount] = useState(0);
 
-  const { isRecording, recordingError, startRecording, stopRecording, releaseResources } =
-    useAudioRecorder();
+  const {
+    isRecording,
+    recordingError,
+    activeStream,
+    startRecording,
+    stopRecording,
+    releaseResources,
+  } = useAudioRecorder();
 
   const sessionResultRef = useRef<AccentuationSessionResult | null>(null);
   const savedRef = useRef(false);
@@ -187,6 +193,7 @@ export default function useAccentuationSession() {
     phraseStates,
     isRecording,
     recordingError,
+    activeStream,
     totalPhrases: ACCENTUATION_PHRASES.length,
     startSession,
     finishCurrentPhrase,

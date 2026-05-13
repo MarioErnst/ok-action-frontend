@@ -1,5 +1,9 @@
 import type { PhonationFrame } from '../../phonation/domain/PhonationSession';
-import type { PauseClassification, PauseInterval, PauseMetrics } from '../types';
+import {
+  segmentVoiceFrames,
+  type SilenceSegment,
+} from '../../../shared/services/voiceSegmentation';
+import type { PauseClassification, PauseInterval, PauseKind, PauseMetrics } from '../types';
 
 export interface PauseAnalysisConfig {
   silenceOffsetDb: number;
@@ -7,6 +11,9 @@ export interface PauseAnalysisConfig {
   mergeGapMs: number;
 }
 
+// 500ms minimum keeps the result faithful to spoken pause perception: shorter
+// gaps read as articulation, not pauses. mergeGapMs absorbs micro-spikes back
+// into voiced segments to avoid false positives.
 export const DEFAULT_PAUSE_ANALYSIS_CONFIG: PauseAnalysisConfig = {
   silenceOffsetDb: 6,
   minPauseMs: 500,
@@ -22,6 +29,9 @@ function createEmptyMetrics(): PauseMetrics {
     silenceRatio: 0,
     classification: 'pocas pausas',
     pauses: [],
+    naturalCount: 0,
+    rhetoricalCount: 0,
+    breakCount: 0,
   };
 }
 
@@ -34,23 +44,14 @@ export function classifyPauseMetrics(
   return 'pausas adecuadas';
 }
 
-function mergeClosePauses(pauses: PauseInterval[], mergeGapMs: number): PauseInterval[] {
-  const merged: PauseInterval[] = [];
-
-  for (const pause of pauses) {
-    const previous = merged[merged.length - 1];
-
-    if (!previous || pause.startMs - previous.endMs > mergeGapMs) {
-      merged.push({ ...pause });
-      continue;
-    }
-
-    previous.endMs = Math.max(previous.endMs, pause.endMs);
-    previous.durationMs = previous.endMs - previous.startMs;
-  }
-
-  return merged;
-}
+// VAD silences shorter than the rhetorical band are noise to the Pausas
+// module (they are articulatory or breath-level). Drop them; surface only
+// pauses that the user perceives as such.
+const REPORTABLE_KINDS: ReadonlyArray<SilenceSegment['kind']> = [
+  'natural',
+  'rhetorical',
+  'break',
+];
 
 export function analyzePauseFrames(
   frames: PhonationFrame[],
@@ -61,49 +62,33 @@ export function analyzePauseFrames(
   const totalDurationMs = Math.max(0, Math.round(durationMs));
   if (frames.length === 0 || totalDurationMs === 0) return createEmptyMetrics();
 
-  const orderedFrames = [...frames].sort((a, b) => a.timestamp - b.timestamp);
-  const sessionStart = orderedFrames[0].timestamp;
-  const sessionEnd = sessionStart + totalDurationMs;
-  const silenceThresholdDb = noiseFloor + config.silenceOffsetDb;
+  const { silences } = segmentVoiceFrames(frames, {
+    noiseFloorDb: noiseFloor,
+    silenceOffsetDb: config.silenceOffsetDb,
+    totalDurationMs,
+    mergeGapMs: config.mergeGapMs,
+    minSilenceMs: config.minPauseMs,
+    context: 'speech',
+  });
 
-  const rawPauses: PauseInterval[] = [];
-  let currentPauseStart: number | null = null;
+  const reportable = silences.filter((silence) => REPORTABLE_KINDS.includes(silence.kind));
 
-  for (const frame of orderedFrames) {
-    if (frame.timestamp < sessionStart || frame.timestamp > sessionEnd) continue;
+  const pauses: PauseInterval[] = reportable.map((silence) => ({
+    startMs: silence.startMs,
+    endMs: silence.endMs,
+    durationMs: silence.durationMs,
+    kind: silence.kind as PauseKind,
+  }));
 
-    const isSilent = frame.db < silenceThresholdDb;
-
-    if (isSilent && currentPauseStart === null) {
-      currentPauseStart = frame.timestamp;
-      continue;
-    }
-
-    if (!isSilent && currentPauseStart !== null) {
-      const startMs = Math.max(0, Math.round(currentPauseStart - sessionStart));
-      const endMs = Math.max(startMs, Math.round(frame.timestamp - sessionStart));
-      rawPauses.push({ startMs, endMs, durationMs: endMs - startMs });
-      currentPauseStart = null;
-    }
-  }
-
-  if (currentPauseStart !== null) {
-    const startMs = Math.max(0, Math.round(currentPauseStart - sessionStart));
-    const endMs = totalDurationMs;
-    rawPauses.push({ startMs, endMs, durationMs: endMs - startMs });
-  }
-
-  const pauses = mergeClosePauses(rawPauses, config.mergeGapMs).filter(
-    (pause) => pause.durationMs >= config.minPauseMs,
-  );
-  const totalPauseDurationMs = pauses.reduce((sum, pause) => sum + pause.durationMs, 0);
+  const totalPauseDurationMs = pauses.reduce((sum, p) => sum + p.durationMs, 0);
   const totalPauses = pauses.length;
   const averagePauseMs = totalPauses > 0 ? Math.round(totalPauseDurationMs / totalPauses) : 0;
-  const longestPauseMs = pauses.reduce(
-    (longest, pause) => Math.max(longest, pause.durationMs),
-    0,
-  );
+  const longestPauseMs = pauses.reduce((longest, p) => Math.max(longest, p.durationMs), 0);
   const silenceRatio = Number((totalPauseDurationMs / totalDurationMs).toFixed(4));
+
+  const naturalCount = pauses.filter((p) => p.kind === 'natural').length;
+  const rhetoricalCount = pauses.filter((p) => p.kind === 'rhetorical').length;
+  const breakCount = pauses.filter((p) => p.kind === 'break').length;
 
   return {
     totalPauses,
@@ -113,5 +98,8 @@ export function analyzePauseFrames(
     silenceRatio,
     classification: classifyPauseMetrics(totalPauses, silenceRatio),
     pauses,
+    naturalCount,
+    rhetoricalCount,
+    breakCount,
   };
 }

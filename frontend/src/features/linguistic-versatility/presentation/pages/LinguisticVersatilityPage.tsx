@@ -81,6 +81,7 @@ export function LinguisticVersatilityPage() {
             total={tracking.questions.length}
             isLastQuestion={tracking.isLastQuestion}
             lastResult={tracking.lastResult}
+            activeStream={tracking.activeStream}
             onStartRecording={tracking.startRecording}
             onStopAndUpload={tracking.stopAndUpload}
             onNext={tracking.next}

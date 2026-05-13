@@ -13,7 +13,7 @@ import { useSessionTimer } from './useSessionTimer';
 export type SessionPhase = 'idle' | 'countdown' | 'recording' | 'finished';
 
 export default function useEvaluationSession(customExercises?: VoiceExercise[]) {
-  const { hz, db, isCalibrating, frames, start, stop } = useVoiceMonitor();
+  const { hz, db, isCalibrating, frames, analyser, noiseFloor, start, stop } = useVoiceMonitor();
 
   const exercises = customExercises ?? VOICE_EXERCISES;
 
@@ -98,6 +98,7 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
   const { result: diagnosisResult } = useDiagnosis(
     phase === 'finished' ? accumulator.recordedResults : new Map<string, PhonationFrame[]>(),
     exercises,
+    phase === 'finished' ? noiseFloor : null,
   );
 
   const savedRef = useRef(false);
@@ -107,7 +108,7 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
   useEffect(() => {
     if (diagnosisResult && !savedRef.current) {
       savedRef.current = true;
-      const dto = toSavePhonationSessionDto(diagnosisResult);
+      const dto = toSavePhonationSessionDto(diagnosisResult, noiseFloor);
       HttpPhonationRepository.saveSession(dto).catch((err) => {
         console.error('Error saving phonation session:', err);
       });
@@ -132,6 +133,7 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
     hz,
     db,
     isCalibrating,
+    analyser,
     startSession,
     resetSession,
   };

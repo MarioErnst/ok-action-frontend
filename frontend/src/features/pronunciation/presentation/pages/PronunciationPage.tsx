@@ -13,6 +13,7 @@ export default function PronunciationPage() {
     phraseStates,
     isRecording,
     recordingError,
+    activeStream,
     sessionResult,
     startSession,
     finishCurrentPhrase,
@@ -35,6 +36,7 @@ export default function PronunciationPage() {
           phraseStates={phraseStates}
           isRecording={isRecording}
           recordingError={recordingError}
+          activeStream={activeStream}
           onFinishPhrase={finishCurrentPhrase}
           onReset={resetSession}
         />

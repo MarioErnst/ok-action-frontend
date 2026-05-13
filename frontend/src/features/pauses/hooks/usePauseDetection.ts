@@ -14,6 +14,7 @@ export default function usePauseDetection(defaultDurationMs = DEFAULT_DURATION_M
     isCalibrating,
     isListening,
     frames,
+    analyser,
     start: startVoiceMonitor,
     stop: stopVoiceMonitor,
   } = useVoiceMonitor();
@@ -176,6 +177,7 @@ export default function usePauseDetection(defaultDurationMs = DEFAULT_DURATION_M
     isSilent,
     currentMetrics,
     result,
+    analyser,
     start,
     stop: finishRecording,
     reset,

@@ -45,7 +45,8 @@ export function usePrecisionSession() {
   })
 
   // useAudioRecorder is a default export; startRecording and stopRecording are async
-  const { isRecording, startRecording, stopRecording, releaseResources } = useAudioRecorder()
+  const { isRecording, activeStream, startRecording, stopRecording, releaseResources } =
+    useAudioRecorder()
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevPhaseRef = useRef<Phase>('IDLE')
   // Tracks latest sessionId and phase so the unmount cleanup reads current values, not stale closure values from mount time.
@@ -198,6 +199,7 @@ export function usePrecisionSession() {
     currentQuestion: state.questions[state.currentQuestionIndex] ?? null,
     isLastRound: state.currentQuestionIndex === state.questions.length - 1,
     isRecording,
+    activeStream,
     startSession,
     startRecordingAnswer,
     stopAndEvaluate,

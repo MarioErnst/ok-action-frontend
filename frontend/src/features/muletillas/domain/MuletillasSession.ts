@@ -10,6 +10,12 @@ export type MuletillaDetected = {
   suggestion: string
 }
 
+export type MuletillaPosition = {
+  word: string
+  startChar: number
+  endChar: number
+}
+
 export type MuletillasEvaluation = {
   overallScore: number
   fluencyScore: number
@@ -17,6 +23,8 @@ export type MuletillasEvaluation = {
   totalMuletillasCount: number
   muletillasPerMinute: number
   muletillasDetected: MuletillaDetected[]
+  transcript: string | null
+  muletillasPositions: MuletillaPosition[]
   feedback: string
   strengths: string
   improvementAreas: string

@@ -1,3 +1,4 @@
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import type { LiveModule, LiveSessionPhase } from '../../../domain/LiveSession'
 
@@ -10,6 +11,8 @@ interface Props {
   phase: Extract<LiveSessionPhase, 'recording' | 'evaluating'>
   selectedModules: LiveModule[]
   elapsedSeconds: number
+  activeStream: MediaStream | null
+  isRecording: boolean
   onEnd: () => void
 }
 
@@ -21,6 +24,8 @@ export function LiveRecordingScreen({
   phase,
   selectedModules,
   elapsedSeconds,
+  activeStream,
+  isRecording,
   onEnd,
 }: Props) {
   const progressPercent = Math.min(
@@ -51,13 +56,12 @@ export function LiveRecordingScreen({
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-3 py-4">
+      <div className="flex flex-col items-center gap-3 py-4 w-full">
         {isEvaluating ? (
           <div className="w-16 h-16 rounded-full border-4 border-border border-t-accent animate-spin" />
         ) : (
-          <div className="relative flex items-center justify-center w-16 h-16">
-            <div className="absolute w-16 h-16 rounded-full bg-danger/20 animate-ping opacity-75" />
-            <div className="w-10 h-10 rounded-full bg-danger shadow-[0_0_20px_rgba(239,68,68,0.6)]" />
+          <div className="w-full">
+            <RecordingWaveform stream={activeStream} active={isRecording} height={56} />
           </div>
         )}
         <p className="text-sm font-medium text-text-muted">

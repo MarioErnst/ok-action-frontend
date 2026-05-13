@@ -29,8 +29,14 @@ describe('analyzePauseFrames', () => {
     );
 
     expect(metrics.totalPauses).toBe(1);
-    expect(metrics.pauses[0]).toEqual({ startMs: 500, endMs: 1400, durationMs: 900 });
+    expect(metrics.pauses[0]).toEqual({
+      startMs: 500,
+      endMs: 1400,
+      durationMs: 900,
+      kind: 'rhetorical',
+    });
     expect(metrics.longestPauseMs).toBe(900);
+    expect(metrics.rhetoricalCount).toBe(1);
   });
 
   it('ignora micro silencios menores a 500 ms', () => {
@@ -57,7 +63,12 @@ describe('analyzePauseFrames', () => {
     );
 
     expect(metrics.totalPauses).toBe(1);
-    expect(metrics.pauses[0]).toEqual({ startMs: 500, endMs: 1700, durationMs: 1200 });
+    expect(metrics.pauses[0]).toEqual({
+      startMs: 500,
+      endMs: 1700,
+      durationMs: 1200,
+      kind: 'rhetorical',
+    });
   });
 
   it('clasifica por ratio de silencio', () => {
