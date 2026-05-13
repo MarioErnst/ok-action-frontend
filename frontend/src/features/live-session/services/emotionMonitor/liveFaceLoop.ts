@@ -6,29 +6,26 @@ import type { RawEmotionName } from '../../domain/EmotionTrigger'
 // actually activates the facial module on a live session — never on
 // app startup, per the project-wide ML lazy-load rule.
 //
-// The loop emits one {emotion, confidence} prediction per detection
-// tick (which is itself rate-limited inside FaceDetectionService to
-// the 15 fps cap mandated by the multi-platform rules).
+// LiveFaceLoop is self-contained: it owns an off-screen video element
+// for the detection loop and exposes the underlying camera MediaStream
+// via getStream() so the recording screen can mirror the live preview
+// in a visible video element without opening a second camera.
 
 export interface FacePrediction {
   emotion: RawEmotionName
   confidence: number
 }
 
-// Late-binding to keep the dynamic-import boundary explicit.
 type DetectorModule = typeof import('../../../facial-expression/services/faceDetectionService')
 type ClassifierModule = typeof import('../../../facial-expression/services/emotionClassifier')
 
 export class LiveFaceLoop {
   private detector: InstanceType<DetectorModule['FaceDetectionService']> | null = null
   private classifyFn: ClassifierModule['classify'] | null = null
+  private hiddenVideo: HTMLVideoElement | null = null
   private listener: ((prediction: FacePrediction) => void) | null = null
   private loaded = false
 
-  // Lazy-load the model + classifier. Resolves when the model is ready
-  // to detect — keep the user-facing UI in a "loading" state until this
-  // resolves so the first emotion does not arrive into an unmounted
-  // session.
   async load(): Promise<void> {
     if (this.loaded && this.detector) return
     const [detectorMod, classifierMod] = await Promise.all([
@@ -41,14 +38,33 @@ export class LiveFaceLoop {
     this.loaded = true
   }
 
-  // Open the camera, attach to the supplied <video>, and start the
-  // detection loop. The listener fires once per detection tick.
-  async start(videoEl: HTMLVideoElement, listener: (prediction: FacePrediction) => void): Promise<void> {
+  // Open the camera into an internal off-screen video element and start
+  // the detection loop. The listener fires once per detection tick.
+  // After this resolves, getStream() returns the underlying MediaStream
+  // so the visible UI can bind the same stream to its own <video>.
+  async start(listener: (prediction: FacePrediction) => void): Promise<void> {
     if (!this.detector || !this.classifyFn) {
       throw new Error('LiveFaceLoop not loaded: call load() first')
     }
     this.listener = listener
-    await this.detector.startCamera(videoEl)
+
+    const hidden = document.createElement('video')
+    hidden.autoplay = true
+    hidden.muted = true
+    // playsInline is mandatory on iOS Safari per the multi-platform rules,
+    // otherwise the video forces full-screen and the detection loop sees
+    // an unmounted element.
+    hidden.setAttribute('playsinline', '')
+    hidden.style.position = 'absolute'
+    hidden.style.width = '1px'
+    hidden.style.height = '1px'
+    hidden.style.opacity = '0'
+    hidden.style.pointerEvents = 'none'
+    document.body.appendChild(hidden)
+    this.hiddenVideo = hidden
+
+    await this.detector.startCamera(hidden)
+
     const classify = this.classifyFn
     this.detector.startDetection((frame) => {
       const detection = classify(frame.blendshapes)
@@ -58,32 +74,19 @@ export class LiveFaceLoop {
     })
   }
 
-  // Returns the camera MediaStream once it has been opened. Used by
-  // the recording screen to bind the <video> element when the page
-  // first mounts the camera surface.
   getStream(): MediaStream | null {
     return this.detector?.getStream() ?? null
   }
 
-  // Attach the same stream to a different <video> element. Needed when
-  // the React view swaps the element on phase transition (calibrating
-  // -> recording -> stopped_transition) so the detection loop keeps
-  // running.
-  async attachStream(videoEl: HTMLVideoElement): Promise<void> {
-    if (!this.detector) return
-    await this.detector.attachStream(videoEl)
-  }
-
   stop(): void {
     this.listener = null
-    if (!this.detector) return
-    if (this.detector.isDetecting?.()) {
-      // FaceDetectionService exposes its loop teardown via a method we
-      // do not directly call here to keep the surface narrow. We rely
-      // on the detector instance being dropped along with the camera
-      // stream when stopCamera tears down.
+    this.detector?.stopDetection?.()
+    this.detector?.stopCamera?.()
+    if (this.hiddenVideo) {
+      this.hiddenVideo.pause()
+      this.hiddenVideo.srcObject = null
+      this.hiddenVideo.remove()
+      this.hiddenVideo = null
     }
-    this.detector.stopDetection?.()
-    this.detector.stopCamera?.()
   }
 }
