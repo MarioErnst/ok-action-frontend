@@ -2,7 +2,8 @@ import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import type {
   AccentuationSection,
   ComposedEvaluation,
-  ConsistencySection,
+  FacialEmotionName,
+  FacialExpressionSection,
   LiveModule,
   MuletillasSection,
   PronunciationSection,
@@ -195,13 +196,23 @@ interface SectionDescription {
   extra: React.ReactNode
 }
 
+const FACIAL_EMOTION_LABELS: Record<FacialEmotionName, string> = {
+  happy: 'Feliz',
+  sad: 'Tristeza',
+  angry: 'Enojo',
+  surprised: 'Sorpresa',
+  fearful: 'Miedo',
+  disgusted: 'Disgusto',
+  neutral: 'Neutral',
+}
+
 function describeSection(
   module: LiveModule,
   section:
     | MuletillasSection
     | AccentuationSection
     | PronunciationSection
-    | ConsistencySection,
+    | FacialExpressionSection,
 ): SectionDescription {
   if (module === 'muletillas') {
     const s = section as MuletillasSection
@@ -273,15 +284,45 @@ function describeSection(
     }
   }
 
-  const s = section as ConsistencySection
+  const s = section as FacialExpressionSection
+  const breakdownSource: Array<{ emotion: FacialEmotionName; pct: number }> = [
+    { emotion: 'happy' as FacialEmotionName, pct: s.happy_pct },
+    { emotion: 'sad' as FacialEmotionName, pct: s.sad_pct },
+    { emotion: 'angry' as FacialEmotionName, pct: s.angry_pct },
+    { emotion: 'surprised' as FacialEmotionName, pct: s.surprised_pct },
+    { emotion: 'fearful' as FacialEmotionName, pct: s.fearful_pct },
+    { emotion: 'disgusted' as FacialEmotionName, pct: s.disgusted_pct },
+    { emotion: 'neutral' as FacialEmotionName, pct: s.neutral_pct },
+  ]
+  const breakdown = breakdownSource
+    .filter((row) => row.pct > 0)
+    .sort((a, b) => b.pct - a.pct)
+
   return {
-    mainScore: s.consistency_score,
+    mainScore: s.expressiveness_score,
     subScores: [
-      { label: 'Consistencia', value: s.consistency_score },
-      { label: 'Tiempo activo', value: s.active_pct },
-      { label: 'Eventos', value: s.volatility_count },
+      { label: 'Expresividad', value: s.expressiveness_score },
+      { label: FACIAL_EMOTION_LABELS[s.top_emotion], value: 100 },
     ],
-    feedback: s.feedback,
-    extra: null,
+    feedback: `Tu emoción predominante fue ${FACIAL_EMOTION_LABELS[s.top_emotion].toLowerCase()}.`,
+    extra:
+      breakdown.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">
+            Distribución de emociones
+          </p>
+          <ul className="grid grid-cols-2 gap-1.5 text-sm">
+            {breakdown.map(({ emotion, pct }) => (
+              <li
+                key={emotion}
+                className="flex items-center justify-between gap-3 bg-surface-alt rounded-xl px-3 py-2"
+              >
+                <span className="text-text">{FACIAL_EMOTION_LABELS[emotion]}</span>
+                <span className="text-xs text-text-muted">{pct}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null,
   }
 }
