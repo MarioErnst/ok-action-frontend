@@ -1,12 +1,14 @@
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
 import QuestionCard from '../molecules/QuestionCard'
 
 type Props = {
   question: string
   isRecording: boolean
+  stream: MediaStream | null
   onStop: () => void
 }
 
-export default function RecordingScreen({ question, isRecording, onStop }: Props) {
+export default function RecordingScreen({ question, isRecording, stream, onStop }: Props) {
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 w-full max-w-lg mx-auto px-4 sm:px-0">
       <div className="text-center">
@@ -20,13 +22,11 @@ export default function RecordingScreen({ question, isRecording, onStop }: Props
 
       <QuestionCard question={question} />
 
-      {/* Indicador visual de grabacion activa */}
-      <div className="flex flex-col items-center gap-4">
-        {isRecording && (
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500/20 flex items-center justify-center animate-[pulse-glow_2s_ease-in-out_infinite]">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-500" />
-          </div>
-        )}
+      <div className="w-full">
+        <RecordingWaveform stream={stream} active={isRecording} height={56} />
+      </div>
+
+      <div className="flex flex-col items-center gap-2">
         <p className="text-red-400 text-xs sm:text-sm font-medium">
           {isRecording ? 'Grabando...' : 'Iniciando microfono...'}
         </p>

@@ -15,8 +15,14 @@ export default function useMuletillasSession() {
   const [evaluationResult, setEvaluationResult] = useState<MuletillasEvaluation | null>(null)
   const [evaluationError, setEvaluationError] = useState<string | null>(null)
 
-  const { isRecording, recordingError, startRecording, stopRecording, releaseResources } =
-    useAudioRecorder()
+  const {
+    isRecording,
+    recordingError,
+    activeStream,
+    startRecording,
+    stopRecording,
+    releaseResources,
+  } = useAudioRecorder()
 
   // Ref to keep the question available throughout the full evaluation cycle
   const questionRef = useRef<string>('')
@@ -86,6 +92,7 @@ export default function useMuletillasSession() {
     isLoadingQuestion,
     isRecording,
     recordingError,
+    activeStream,
     evaluationResult,
     evaluationError,
     loadQuestion,

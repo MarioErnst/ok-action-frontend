@@ -11,6 +11,7 @@ export default function MuletillasPage() {
     question,
     isLoadingQuestion,
     isRecording,
+    activeStream,
     evaluationResult,
     evaluationError,
     loadQuestion,
@@ -50,6 +51,7 @@ export default function MuletillasPage() {
         <RecordingScreen
           question={question}
           isRecording={isRecording}
+          stream={activeStream}
           onStop={stopAndEvaluate}
         />
       )}
