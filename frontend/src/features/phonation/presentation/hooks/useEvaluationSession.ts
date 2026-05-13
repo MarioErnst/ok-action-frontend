@@ -13,7 +13,7 @@ import { useSessionTimer } from './useSessionTimer';
 export type SessionPhase = 'idle' | 'countdown' | 'recording' | 'finished';
 
 export default function useEvaluationSession(customExercises?: VoiceExercise[]) {
-  const { hz, db, isCalibrating, frames, start, stop } = useVoiceMonitor();
+  const { hz, db, isCalibrating, frames, analyser, start, stop } = useVoiceMonitor();
 
   const exercises = customExercises ?? VOICE_EXERCISES;
 
@@ -132,6 +132,7 @@ export default function useEvaluationSession(customExercises?: VoiceExercise[]) 
     hz,
     db,
     isCalibrating,
+    analyser,
     startSession,
     resetSession,
   };

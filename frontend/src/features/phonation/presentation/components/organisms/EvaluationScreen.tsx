@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { SessionResult, VoiceExercise } from '../../../domain/PhonationSession';
 import useEvaluationSession from '../../hooks/useEvaluationSession';
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform';
 import { ExercisePrompt } from '../molecules/ExercisePrompt';
 import { LiveFeedback } from '../molecules/LiveFeedback';
 import { SessionProgress } from '../molecules/SessionProgress';
@@ -73,7 +74,12 @@ export const EvaluationScreen = ({ onFinish, exercises }: EvaluationScreenProps)
                  />
                </div>
 
-               <div className="rounded-2xl border-2 border-border/50 bg-surface p-5 shadow-sm">
+               <div className="rounded-2xl border-2 border-border/50 bg-surface p-5 shadow-sm flex flex-col gap-4">
+                  <RecordingWaveform
+                    analyser={session.analyser}
+                    active={session.phase === 'recording'}
+                    height={48}
+                  />
                   <LiveFeedback
                     hz={session.hz}
                     db={session.db}
