@@ -1,6 +1,7 @@
 import useAccentuationSession from '../../hooks/useAccentuationSession';
 import type { AccentuationSessionResult } from '../../../domain/AccentuationSession';
 import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform';
+import { StressedPhrase } from '../atoms/StressedPhrase';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
 import PhraseCard from '../molecules/PhraseCard';
@@ -68,8 +69,12 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
         <div className="flex flex-col gap-6">
           <div className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-50" />
-            <p className="text-center text-xl md:text-2xl font-bold leading-relaxed text-text relative z-10">
-              {currentPhrase.text}
+            <StressedPhrase
+              phrase={currentPhrase.text}
+              className="text-center text-xl md:text-2xl font-bold leading-relaxed text-text relative z-10"
+            />
+            <p className="mt-3 text-center text-xs font-medium uppercase tracking-widest text-text-muted relative z-10">
+              Sílaba tónica en color
             </p>
           </div>
 
