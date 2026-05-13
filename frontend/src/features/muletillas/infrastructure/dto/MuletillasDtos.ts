@@ -15,6 +15,12 @@ export type MuletillaDetectedEphemeralDto = {
   suggestion: string
 }
 
+export type MuletillaPositionDto = {
+  word: string
+  start_char: number
+  end_char: number
+}
+
 export type MuletillasEvaluationDto = {
   overall_score: number
   fluency_score: number
@@ -22,6 +28,11 @@ export type MuletillasEvaluationDto = {
   total_muletillas_count: number
   muletillas_per_minute: number
   muletillas_detected: MuletillaDetectedEphemeralDto[]
+  // Ephemeral transcript + positions emitted by Gemini so the UI can
+  // highlight every filler occurrence inline. Optional because legacy
+  // responses (before the prompt update) may not include them.
+  transcript?: string | null
+  muletillas_positions?: MuletillaPositionDto[]
   feedback: string
   strengths: string
   improvement_areas: string

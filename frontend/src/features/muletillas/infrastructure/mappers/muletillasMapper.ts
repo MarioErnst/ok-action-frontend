@@ -1,10 +1,12 @@
 import type {
   MuletillasEvaluation,
   MuletillaDetected,
+  MuletillaPosition,
   MuletillaSeverity,
 } from '../../domain/MuletillasSession'
 import type {
   MuletillaDetectedEphemeralDto,
+  MuletillaPositionDto,
   MuletillasEvaluationDto,
   SaveMuletillasSessionDto,
 } from '../dto/MuletillasDtos'
@@ -23,6 +25,14 @@ function toMuletillaDetected(dto: MuletillaDetectedEphemeralDto): MuletillaDetec
   }
 }
 
+function toMuletillaPosition(dto: MuletillaPositionDto): MuletillaPosition {
+  return {
+    word: dto.word,
+    startChar: dto.start_char,
+    endChar: dto.end_char,
+  }
+}
+
 export function toMuletillasEvaluation(dto: MuletillasEvaluationDto): MuletillasEvaluation {
   return {
     overallScore: dto.overall_score,
@@ -31,6 +41,8 @@ export function toMuletillasEvaluation(dto: MuletillasEvaluationDto): Muletillas
     totalMuletillasCount: dto.total_muletillas_count,
     muletillasPerMinute: dto.muletillas_per_minute,
     muletillasDetected: dto.muletillas_detected.map(toMuletillaDetected),
+    transcript: dto.transcript ?? null,
+    muletillasPositions: (dto.muletillas_positions ?? []).map(toMuletillaPosition),
     feedback: dto.feedback,
     strengths: dto.strengths,
     improvementAreas: dto.improvement_areas,
