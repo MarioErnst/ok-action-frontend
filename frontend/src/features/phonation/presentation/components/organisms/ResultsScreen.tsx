@@ -1,10 +1,38 @@
 import { VOICE_EXERCISES } from '../../../services/exercises';
-import type { SessionResult } from '../../../domain/PhonationSession';
+import type { SessionExtendedMetrics, SessionResult } from '../../../domain/PhonationSession';
 
 interface ResultsScreenProps {
   result: SessionResult | null;
   onReset: () => void;
 }
+
+// Bands chosen from the research baseline in documentacion/modulos/fonacion.md:
+// sustained voicing of 3+ s is the threshold for "buen soporte respiratorio"
+// in basic phonation testing.
+function describeSustainedVoicing(ms: number): { label: string; tone: 'good' | 'ok' | 'weak' } {
+  if (ms >= 3000) return { label: 'buen soporte', tone: 'good' };
+  if (ms >= 1500) return { label: 'aceptable', tone: 'ok' };
+  return { label: 'corto', tone: 'weak' };
+}
+
+function describeSlope(slopePerSec: number): { label: string; tone: 'good' | 'ok' | 'weak' } {
+  const abs = Math.abs(slopePerSec);
+  if (abs <= 1) return { label: 'estable', tone: 'good' };
+  if (abs <= 3) return { label: slopePerSec < 0 ? 'leve descenso' : 'leve ascenso', tone: 'ok' };
+  return { label: slopePerSec < 0 ? 'desvanece' : 'subiendo fuerte', tone: 'weak' };
+}
+
+function describeWeakEndings(count: number): { label: string; tone: 'good' | 'ok' | 'weak' } {
+  if (count === 0) return { label: 'sin finales débiles', tone: 'good' };
+  if (count <= 2) return { label: 'puntual', tone: 'ok' };
+  return { label: 'frecuente', tone: 'weak' };
+}
+
+const TONE_CLASSES: Record<'good' | 'ok' | 'weak', string> = {
+  good: 'text-success',
+  ok: 'text-warning',
+  weak: 'text-danger',
+};
 
 function getScoreColor(score: number): 'text-success' | 'text-warning' | 'text-danger' {
   if (score >= 70) return 'text-success';
@@ -92,6 +120,8 @@ export const ResultsScreen = ({ result, onReset }: ResultsScreenProps) => {
         })}
       </div>
 
+      {result.extended ? <ExtendedMetricsPanel metrics={result.extended} /> : null}
+
       <div className="w-full">
         <h2 className="text-xl font-extrabold text-text tracking-wide mb-3">Observaciones</h2>
         <div className="flex flex-col gap-2 bg-surface/40 backdrop-blur-sm p-5 rounded-3xl border border-border/50">
@@ -114,3 +144,54 @@ export const ResultsScreen = ({ result, onReset }: ResultsScreenProps) => {
     </div>
   );
 };
+
+interface ExtendedMetricsPanelProps {
+  metrics: SessionExtendedMetrics;
+}
+
+const ExtendedMetricsPanel = ({ metrics }: ExtendedMetricsPanelProps) => {
+  const sustained = describeSustainedVoicing(metrics.maxSustainedVoicingMs);
+  const slope = describeSlope(metrics.dbSlopeDbPerSec);
+  const endings = describeWeakEndings(metrics.weakPhraseEndingsCount);
+
+  return (
+    <section className="w-full">
+      <h2 className="text-xl font-extrabold text-text tracking-wide mb-3">Soporte respiratorio</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <MetricCard
+          label="Sostén más largo"
+          value={`${(metrics.maxSustainedVoicingMs / 1000).toFixed(1)} s`}
+          status={sustained.label}
+          tone={sustained.tone}
+        />
+        <MetricCard
+          label="Pendiente de dB"
+          value={`${metrics.dbSlopeDbPerSec >= 0 ? '+' : ''}${metrics.dbSlopeDbPerSec.toFixed(1)} dB/s`}
+          status={slope.label}
+          tone={slope.tone}
+        />
+        <MetricCard
+          label="Finales débiles"
+          value={`${metrics.weakPhraseEndingsCount}`}
+          status={endings.label}
+          tone={endings.tone}
+        />
+      </div>
+    </section>
+  );
+};
+
+interface MetricCardProps {
+  label: string;
+  value: string;
+  status: string;
+  tone: 'good' | 'ok' | 'weak';
+}
+
+const MetricCard = ({ label, value, status, tone }: MetricCardProps) => (
+  <div className="rounded-2xl border border-border/50 bg-surface/60 backdrop-blur-sm p-4 flex flex-col gap-1">
+    <p className="text-xs font-bold uppercase tracking-wider text-text-muted">{label}</p>
+    <p className={`text-2xl font-extrabold ${TONE_CLASSES[tone]}`}>{value}</p>
+    <p className="text-xs font-medium text-text-muted">{status}</p>
+  </div>
+);
