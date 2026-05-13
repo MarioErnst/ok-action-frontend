@@ -19,12 +19,14 @@ import { PauseEvaluationPage } from '../../features/pauses'
 import { FluencyPage } from '../../features/fluency'
 import { ConsistencyPage } from '../../features/consistency'
 import { ProfilePage } from '../../features/profile/presentation/pages/ProfilePage'
+import { WelcomePage } from '../../features/welcome'
 
 export const AppRouter = () => (
   <Routes>
     <Route path="/auth" element={<AuthPage />} />
 
     <Route element={<ProtectedRoute />}>
+      <Route path="/bienvenida" element={<WelcomePage />} />
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/ejercicios" element={<ExercisesPage />} />
