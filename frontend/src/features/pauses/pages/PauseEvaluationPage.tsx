@@ -31,6 +31,7 @@ export default function PauseEvaluationPage() {
       noiseFloor={detection.noiseFloor}
       isSilent={detection.isSilent}
       currentMetrics={detection.currentMetrics}
+      analyser={detection.analyser}
       onStart={() => {
         void detection.start(PAUSE_SESSION_DURATION_MS);
       }}
