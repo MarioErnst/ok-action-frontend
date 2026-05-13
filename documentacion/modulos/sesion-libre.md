@@ -1,15 +1,25 @@
 # Modulo de Sesion Libre — Frontend
 
+> El rediseño con sistema de strikes (calibración inicial, frames con detección
+> de pausas, evaluación por frame con corte automático a los 3 errores
+> acumulados, y corte por expresión facial sostenida) vive en
+> [`live-strike-system.md`](./live-strike-system.md). Este archivo describe
+> el modelo de pantalla y el flujo de alto nivel; los detalles de framing,
+> emoción y persistencia van en el documento del strike system.
+
 ## 1. Descripcion funcional
 
 La Sesion Libre permite al usuario hablar de forma espontanea durante hasta cinco minutos
-y obtener al final una evaluacion compuesta de hasta cuatro modulos sobre el mismo audio.
-El usuario elige los modulos a evaluar antes de empezar; durante la grabacion no se muestra
-retroalimentacion en tiempo real (el backend hace una unica llamada a Gemini al cierre); al
-terminar, la pantalla de resumen muestra el desglose por modulo y el puntaje agregado.
+y obtener al final una evaluacion compuesta sobre el mismo audio. El usuario elige los
+modulos a evaluar antes de empezar; durante la grabacion la app evalua frames cortos para
+alimentar un sistema de strikes y, si la expresion facial esta activa, monitorea emociones
+sostenidas. Si completa la sesion sin disparar el corte automatico, al cierre el backend
+hace una unica llamada Gemini compuesta y la pantalla de resumen muestra el desglose por
+modulo y el puntaje agregado. Si se dispara el corte automatico, ve la pantalla de
+feedback rica con detalle por modulo, audio reproducible y marcadores en cada evento.
 
 Los cuatro modulos disponibles en Sesion Libre son: muletillas, acentuacion, pronunciacion
-y consistencia. Los demas modulos del producto (fonacion, volumen, pausas, expresion facial,
+y expresion facial. Los demas modulos del producto (fonacion, volumen, pausas, consistencia,
 precision, versatilidad linguistica, fluidez) siguen disponibles solo como modulos
 independientes en sus propias paginas.
 
