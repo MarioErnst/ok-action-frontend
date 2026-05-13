@@ -8,10 +8,22 @@ import type { ComposedEvaluation, LiveModule } from '../../domain/LiveSession'
 
 export type SessionStatusDto = 'active' | 'completed' | 'aborted'
 
-export type StopReasonDto = 'user_stop' | 'time_limit' | 'error' | 'completed'
+export type StopReasonDto =
+  | 'user_stop'
+  | 'time_limit'
+  | 'error'
+  | 'completed'
+  | 'auto_stop_strikes'
+  | 'auto_stop_emotion'
+
+export type AutoStopReasonDto = 'auto_stop_strikes' | 'auto_stop_emotion'
 
 export interface AbandonRequestDto {
   stop_reason: 'user_stop' | 'time_limit' | 'error'
+}
+
+export interface FinalizeRequestDto {
+  auto_stop_reason?: AutoStopReasonDto | null
 }
 
 export interface StartSessionResponseDto {
@@ -21,9 +33,10 @@ export interface StartSessionResponseDto {
 
 export interface FinalizeSessionResponseDto {
   session_id: string
-  status: 'completed'
+  status: 'completed' | 'aborted'
   score: number | null
   children_count: number
+  stop_reason: 'completed' | AutoStopReasonDto
 }
 
 export interface LiveChildOutputDto {

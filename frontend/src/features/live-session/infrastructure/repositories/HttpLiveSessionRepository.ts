@@ -1,8 +1,10 @@
 import { apiRequest } from '../../../../api/client'
 import type {
   AbandonRequestDto,
+  AutoStopReasonDto,
   ComposedAudioEvaluationRequestDto,
   ComposedAudioEvaluationResponseDto,
+  FinalizeRequestDto,
   FinalizeSessionResponseDto,
   LiveSessionDetailDto,
   LiveSessionListItemDto,
@@ -19,10 +21,15 @@ export const HttpLiveSessionRepository = {
     })
   },
 
-  async finalizeSession(sessionId: string): Promise<FinalizeSessionResponseDto> {
-    return apiRequest<FinalizeSessionResponseDto>(
+  async finalizeSession(
+    sessionId: string,
+    autoStopReason: AutoStopReasonDto | null = null,
+  ): Promise<FinalizeSessionResponseDto> {
+    const body: FinalizeRequestDto =
+      autoStopReason !== null ? { auto_stop_reason: autoStopReason } : {}
+    return apiRequest<FinalizeSessionResponseDto, FinalizeRequestDto>(
       `/live/sessions/${sessionId}/finalize`,
-      { method: 'POST' },
+      { method: 'POST', body },
     )
   },
 
