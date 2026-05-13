@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import type { LiveModule, LiveSessionPhase } from '../../../domain/LiveSession'
@@ -12,6 +13,7 @@ interface Props {
   selectedModules: LiveModule[]
   elapsedSeconds: number
   activeStream: MediaStream | null
+  videoStream: MediaStream | null
   isRecording: boolean
   onEnd: () => void
 }
@@ -20,14 +22,33 @@ interface Props {
 // new backend produces a single Gemini call at close, not streaming
 // analysis. The visible state is intentionally minimal: a countdown,
 // the list of modules being measured, and the end-session button.
+// When facial_expression is active, the camera preview lives at the
+// top so the user can see themselves while the classifier feeds the
+// emotion monitor in the background.
 export function LiveRecordingScreen({
   phase,
   selectedModules,
   elapsedSeconds,
   activeStream,
+  videoStream,
   isRecording,
   onEnd,
 }: Props) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !videoStream) return
+    if (video.srcObject !== videoStream) {
+      video.srcObject = videoStream
+      void video.play().catch(() => {
+        // play() can reject on hidden tabs or blocked autoplay; the
+        // stream stays bound and will resume once the element becomes
+        // visible.
+      })
+    }
+  }, [videoStream])
+
   const progressPercent = Math.min(
     (elapsedSeconds / MAX_SESSION_SECONDS) * 100,
     100,
@@ -55,6 +76,18 @@ export function LiveRecordingScreen({
           />
         </div>
       </div>
+
+      {videoStream && (
+        <div className="w-full aspect-video rounded-2xl overflow-hidden bg-surface border border-border/30 relative">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover -scale-x-100"
+          />
+        </div>
+      )}
 
       <div className="flex flex-col items-center gap-3 py-4 w-full">
         {isEvaluating ? (
