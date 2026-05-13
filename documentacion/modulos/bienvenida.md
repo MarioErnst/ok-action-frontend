@@ -98,7 +98,8 @@ Si más adelante el equipo decide consumir scores reales del backend (vía un en
 **Recharts** (`recharts@^3.8.1`, mismo paquete que el dashboard). Se usa el componente `RadarChart` con:
 
 - `PolarGrid` `gridType="polygon"`, stroke `var(--color-border)` opacidad 0.35.
-- `PolarAngleAxis` con `tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}`.
+- `PolarAngleAxis` con un **tick component custom** (`AxisTick`) que parte labels multi-palabra en dos líneas vía `<tspan>` y usa `fontSize: 11` universal. Hereda el `textAnchor` que recharts calcula desde el ángulo del slice (start/middle/end) para que cada label "empuje" hacia afuera del centro.
+- `outerRadius="65%"` y `margin={{ top: 24, right: 32, bottom: 24, left: 32 }}` para que los labels largos (ej. "Pronunciación", "Versatilidad") vivan dentro del SVG en viewports angostos (~320px) sin recortarse.
 - Dominio fijo `[0, 100]` en `PolarRadiusAxis` (sin labels visibles, sólo los anillos).
 - `Radar` con fill `var(--color-accent)`, `fillOpacity={0.28}`, `strokeWidth={2}`, `dot`.
 - Animación de entrada (`isAnimationActive`, `animationDuration={1200}`).
@@ -121,9 +122,11 @@ Glow ámbar de fondo: dos blobs con `bg-accent/20 blur-[80px]` reutilizando `ani
 
 | Breakpoint | Layout |
 |---|---|
-| Móvil (`<sm`, 320-639px) | Padding `p-4`. Radar `w-full` con tope ~360px (aspect-square). Tick font 11. Botón full-width, `h-12`. `pb-safe`. |
-| Tablet (`sm-md`, 640-1023px) | Padding `p-8`. Radar 480×480. Tick font 12. Botón ancho `min-w-[200px]`. |
+| Móvil (`<sm`, 320-639px) | Padding `p-4`. Radar `w-full` con tope ~360px (aspect-square). Tick font 11 (universal). Botón full-width, `h-12`. `pb-safe`. |
+| Tablet (`sm-md`, 640-1023px) | Padding `p-8`. Radar 480×480. Botón ancho `min-w-[200px]`. |
 | Desktop (`md+`, ≥1024px) | Padding `p-12`. Contenedor `max-w-2xl`. Radar 520×520. Botón centrado `min-w-[220px]`. |
+
+El `fontSize` del tick es uniforme (11px) en todos los breakpoints — escalar fonts dentro de un SVG via CSS media queries no es trivial (los `<text>` SVG escalan con `transform`, no con el viewport). En cambio, lo que sí escala correctamente es el `outerRadius` porcentual, que mantiene proporción con el contenedor.
 
 Sin dependencia de `:hover` para nada esencial. Touch targets ≥ 44px. `100dvh` (no `100vh`). Labels cortos universales (no por breakpoint) para evitar reflow del radar al cambiar de orientación.
 
