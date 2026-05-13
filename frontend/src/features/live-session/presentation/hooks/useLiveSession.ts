@@ -18,6 +18,8 @@ interface UseLiveSessionResult {
   evaluation: ComposedEvaluation | null
   liveScore: number | null
   error: string | null
+  activeStream: MediaStream | null
+  isRecording: boolean
   toggleModule: (module: LiveModule) => void
   start: () => Promise<void>
   stop: () => Promise<void>
