@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '../../domain/entities/User';
+import { useWelcomeStore } from '../../../welcome';
 
 type AuthStore = {
   user: User | null;
@@ -22,6 +23,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   logout: () => {
     localStorage.removeItem('auth_user');
     localStorage.removeItem('auth_token');
+    useWelcomeStore.getState().disarm();
     set({ user: null, accessToken: null });
   },
 }));

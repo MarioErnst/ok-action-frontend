@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../../../shared/ui/atoms/Button';
 import { Input } from '../../../../../shared/ui/atoms/Input';
+import { useWelcomeStore } from '../../../../welcome';
 import { useLoginMutation } from '../../hooks/useLoginMutation';
 
 type LoginFormProps = {
@@ -14,8 +15,12 @@ export const LoginForm = ({ onGoToRegister }: LoginFormProps) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const arm = useWelcomeStore((s) => s.arm);
   const mutation = useLoginMutation({
-    onSuccess: () => navigate('/dashboard'),
+    onSuccess: () => {
+      arm();
+      navigate('/bienvenida', { replace: true });
+    },
   });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
