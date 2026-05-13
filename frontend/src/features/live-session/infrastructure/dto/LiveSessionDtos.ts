@@ -1,4 +1,5 @@
 import type { ComposedEvaluation, LiveModule } from '../../domain/LiveSession'
+import type { FacialSummaryPayload } from '../../domain/FacialSummary'
 
 // DTOs for the uniform-schema live backend. Live is now an HTTP
 // composition lifecycle (start / finalize / abandon / list / get) over
@@ -88,11 +89,14 @@ export interface ComposedAudioEvaluationResponseDto {
 }
 
 // Multipart payload for audio-evaluation. modules is sent as repeated
-// form fields (modules=muletillas&modules=consistency...) which FastAPI
-// parses as list[str] natively.
+// form fields (modules=muletillas&modules=facial_expression...) which
+// FastAPI parses as list[str] natively. When the modules list includes
+// facial_expression, the backend requires facialSummary to be present;
+// in any other case it can be omitted.
 export interface ComposedAudioEvaluationRequestDto {
   audio: Blob
   modules: LiveModule[]
   startedAt: string
   promptText?: string
+  facialSummary?: FacialSummaryPayload
 }

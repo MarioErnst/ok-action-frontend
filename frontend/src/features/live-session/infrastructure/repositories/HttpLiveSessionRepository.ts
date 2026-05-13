@@ -74,6 +74,13 @@ export const HttpLiveSessionRepository = {
     for (const module of request.modules) {
       form.append('modules', module)
     }
+    if (request.facialSummary) {
+      // Backend reads this as a JSON string and parses it with the
+      // FacialSummaryInput pydantic model; multipart does not have a
+      // native nested-object shape so JSON serialization is the
+      // simplest contract.
+      form.append('facial_summary', JSON.stringify(request.facialSummary))
+    }
 
     return apiRequest<ComposedAudioEvaluationResponseDto, FormData>(
       `/live/sessions/${sessionId}/audio-evaluation`,
