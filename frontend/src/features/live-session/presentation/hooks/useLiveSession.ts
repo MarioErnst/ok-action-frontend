@@ -160,6 +160,10 @@ export function useLiveSession(): UseLiveSessionResult {
   const inFlightFramesRef = useRef(0)
   const evaluatedSoFarSecondsRef = useRef(0)
   const isStoppingRef = useRef(false)
+  // Single AbortController per session that fires on triggerStop, so
+  // in-flight evaluate-frame requests do not land on the backend after
+  // the session row is already aborted/completed (those would 422).
+  const frameAbortRef = useRef<AbortController | null>(null)
   const selectedModulesRef = useRef<LiveModule[]>([])
   const phaseRef = useRef<LiveSessionPhase>('selection')
   const stopReasonRef = useRef<StopReason | null>(null)
@@ -264,6 +268,8 @@ export function useLiveSession(): UseLiveSessionResult {
     baselineSumRef.current = new Map()
     baselineCountRef.current = 0
     finalBaselineRef.current = null
+    frameAbortRef.current?.abort()
+    frameAbortRef.current = null
 
     setSelectedModules([])
     setElapsedSeconds(0)
@@ -312,11 +318,13 @@ export function useLiveSession(): UseLiveSessionResult {
           event.frameIndex,
           audioModules,
           evaluatedSoFarSecondsRef.current,
+          frameAbortRef.current?.signal,
         )
         strikes.registerFrameResponse(response)
       } catch {
         // Frame loss tolerated: the counter just stays the same and the
-        // next frame will land in 5 to 8 seconds.
+        // next frame will land in 5 to 8 seconds. AbortError (from the
+        // stop watcher) and 502 (Gemini timeout) both land here.
       } finally {
         inFlightFramesRef.current--
       }
@@ -388,6 +396,10 @@ export function useLiveSession(): UseLiveSessionResult {
       stopReasonRef.current = reason
 
       clearElapsedTimer()
+      // Abort any evaluate-frame requests that are still in flight so
+      // they do not 422 on the backend after the session row has been
+      // closed by the finalize call below.
+      frameAbortRef.current?.abort()
       pauseDetectorRef.current?.stop()
       pauseDetectorRef.current = null
       await frameRecorderRef.current?.stop()
@@ -447,6 +459,7 @@ export function useLiveSession(): UseLiveSessionResult {
     stopReasonRef.current = null
     inFlightFramesRef.current = 0
     evaluatedSoFarSecondsRef.current = 0
+    frameAbortRef.current = new AbortController()
     strikes.reset()
     emotionStop.reset()
 
