@@ -13,6 +13,10 @@ export interface PhonationExerciseDto {
   stability_score: number;
   breaks_count: number;
   in_range_pct: number;
+  // Extended metrics — optional so legacy sessions still serialize cleanly.
+  max_sustained_voicing_ms?: number | null;
+  db_slope?: number | null;
+  weak_phrase_endings_count?: number | null;
 }
 
 export interface PhonationMetricsDto {
