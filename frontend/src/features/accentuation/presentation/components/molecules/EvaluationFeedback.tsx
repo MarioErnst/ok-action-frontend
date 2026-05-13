@@ -1,12 +1,34 @@
 import type { PhraseEvaluation } from '../../../domain/AccentuationSession';
+import { StressedPhrase } from '../atoms/StressedPhrase';
 
 interface EvaluationFeedbackProps {
   evaluation: PhraseEvaluation;
 }
 
 export default function EvaluationFeedback({ evaluation }: EvaluationFeedbackProps) {
+  const errorWordIndices = evaluation.specificErrors
+    .map((error) => error.wordIndex)
+    .filter((index): index is number => index !== null && index >= 0);
+
+  const actualStressedSyllableByWord = evaluation.specificErrors.reduce<Record<number, number>>(
+    (acc, error) => {
+      if (error.wordIndex !== null && error.actualStressedSyllableIndex !== null) {
+        acc[error.wordIndex] = error.actualStressedSyllableIndex;
+      }
+      return acc;
+    },
+    {},
+  );
+
   return (
     <div className="flex flex-col gap-3">
+      <StressedPhrase
+        phrase={evaluation.phraseText}
+        errorWordIndices={errorWordIndices}
+        actualStressedSyllableByWord={actualStressedSyllableByWord}
+        className="text-base font-medium text-text leading-relaxed"
+      />
+
       <p className="text-sm text-text">{evaluation.feedback}</p>
 
       {evaluation.specificErrors.length > 0 && (
