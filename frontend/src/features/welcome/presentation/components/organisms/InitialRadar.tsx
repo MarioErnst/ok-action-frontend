@@ -5,6 +5,37 @@ type InitialRadarProps = {
   dimensions: RadarDimension[];
 };
 
+type AxisTickProps = {
+  x?: number;
+  y?: number;
+  textAnchor?: 'start' | 'middle' | 'end' | 'inherit';
+  payload?: { value: string };
+};
+
+// Wraps multi-word labels onto two lines via <tspan> so labels like
+// "Expr. facial" don't overflow horizontally on narrow viewports. Inherits
+// the textAnchor recharts already computes from the slice angle, so labels
+// on the right side push right, on the left push left, and on the top/bottom
+// stay centered.
+const AxisTick = ({ x = 0, y = 0, textAnchor = 'middle', payload }: AxisTickProps) => {
+  const words = (payload?.value ?? '').split(' ');
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor={textAnchor}
+      fill="var(--color-text-muted)"
+      fontSize={11}
+    >
+      {words.map((word, index) => (
+        <tspan key={`${word}-${index}`} x={x} dy={index === 0 ? 0 : 12}>
+          {word}
+        </tspan>
+      ))}
+    </text>
+  );
+};
+
 export const InitialRadar = ({ dimensions }: InitialRadarProps) => {
   const data = dimensions.map((d) => ({ label: d.label, score: d.score }));
 
@@ -18,12 +49,9 @@ export const InitialRadar = ({ dimensions }: InitialRadarProps) => {
         aria-hidden
       />
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={data} outerRadius="72%" margin={{ top: 16, right: 24, bottom: 16, left: 24 }}>
+        <RadarChart data={data} outerRadius="65%" margin={{ top: 24, right: 32, bottom: 24, left: 32 }}>
           <PolarGrid stroke="var(--color-border)" strokeOpacity={0.35} gridType="polygon" />
-          <PolarAngleAxis
-            dataKey="label"
-            tick={{ fill: 'var(--color-text-muted)', fontSize: 12 }}
-          />
+          <PolarAngleAxis dataKey="label" tick={<AxisTick />} />
           <PolarRadiusAxis
             domain={[0, 100]}
             tickCount={5}
