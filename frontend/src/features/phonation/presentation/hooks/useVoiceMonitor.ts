@@ -18,11 +18,16 @@ export default function useVoiceMonitor() {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [noiseFloor, setNoiseFloor] = useState(DEFAULT_DB);
   const [frames, setFrames] = useState<PhonationFrame[]>([]);
+  // Exposed so visualisation components (RecordingWaveform) can read frame
+  // data from the same AudioContext used by the worklet; reusing the source
+  // avoids spinning up a second AudioContext for the same microphone.
+  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
   const calibrationSamplesRef = useRef<number[]>([]);
   const calibrationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCalibratingRef = useRef(false);
@@ -72,10 +77,20 @@ export default function useVoiceMonitor() {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
 
+    if (analyserNodeRef.current) {
+      try {
+        analyserNodeRef.current.disconnect();
+      } catch {
+        // Already disconnected.
+      }
+    }
+
     audioContextRef.current = null;
     streamRef.current = null;
     sourceRef.current = null;
     workletNodeRef.current = null;
+    analyserNodeRef.current = null;
+    setAnalyser(null);
 
     isListeningRef.current = false;
     setIsListening(false);
@@ -133,6 +148,15 @@ export default function useVoiceMonitor() {
       }, UI_UPDATE_INTERVAL_MS);
 
       source.connect(workletNode);
+
+      // Side branch off the same source so consumers can visualise the
+      // live audio without forcing the worklet pipeline through a node
+      // it does not need.
+      const analyserNode = audioContext.createAnalyser();
+      analyserNodeRef.current = analyserNode;
+      source.connect(analyserNode);
+      setAnalyser(analyserNode);
+
       setIsCalibrating(true);
       isCalibratingRef.current = true;
       calibrationSamplesRef.current = [];
@@ -173,6 +197,7 @@ export default function useVoiceMonitor() {
     isCalibrating,
     noiseFloor,
     frames,
+    analyser,
     start,
     stop,
   };
