@@ -18,15 +18,22 @@ export const LIVE_MODULES: readonly LiveModule[] = [
   'facial_expression',
 ] as const
 
-// UI phases of a live session run. Selection is the initial picker, then
-// recording captures audio with MediaRecorder, evaluating waits for the
-// composed Gemini call, summary shows per-module results, and error is a
-// terminal state (the user goes back to selection).
+// UI phases of a live session run. Calibrating measures the noise floor
+// while the user stays silent, recording captures audio + frames +
+// optional emotion classifier, stopped_transition is the brief
+// cushioning overlay between an auto-stop and the rich feedback page,
+// stopped_feedback is the post-auto-stop feedback page itself,
+// evaluating waits for the composed Gemini call, summary shows the
+// natural-completion per-module results, and error is a terminal state
+// (the user goes back to selection).
 export type LiveSessionPhase =
   | 'selection'
+  | 'calibrating'
   | 'recording'
   | 'evaluating'
   | 'summary'
+  | 'stopped_transition'
+  | 'stopped_feedback'
   | 'error'
 
 // Per-module result sections inside the Gemini composed response. Field
