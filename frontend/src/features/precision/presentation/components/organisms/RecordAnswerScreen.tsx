@@ -1,5 +1,6 @@
 import { QuestionCard } from '../molecules/QuestionCard'
 import { PrecisionTimer } from '../atoms/PrecisionTimer'
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
 import type { PrecisionQuestion } from '../../../domain/PrecisionQuestion'
 
 interface RecordAnswerScreenProps {
@@ -7,6 +8,7 @@ interface RecordAnswerScreenProps {
   questionNumber: number
   totalQuestions: number
   isRecording: boolean
+  activeStream: MediaStream | null
   elapsedSeconds: number
   noiseLevel: 'low' | 'medium' | 'high'
   onStartRecording: () => void
@@ -27,7 +29,7 @@ const NOISE_LABELS = {
 
 export function RecordAnswerScreen({
   question, questionNumber, totalQuestions,
-  isRecording, elapsedSeconds, noiseLevel,
+  isRecording, activeStream, elapsedSeconds, noiseLevel,
   onStartRecording, onStopRecording,
 }: RecordAnswerScreenProps) {
   return (
@@ -73,6 +75,9 @@ export function RecordAnswerScreen({
         </button>
       ) : (
         <div className="flex flex-col items-center gap-4">
+          <div className="w-full">
+            <RecordingWaveform stream={activeStream} active={isRecording} height={48} />
+          </div>
           <div className="flex items-center gap-3 rounded-full bg-danger/10 px-4 py-2 border border-danger/20 animate-pulse-glow">
             <span className="h-3 w-3 rounded-full bg-danger shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
             <span className="text-xs font-bold text-danger uppercase tracking-wider">Grabando</span>
