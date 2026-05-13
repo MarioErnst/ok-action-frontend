@@ -36,6 +36,8 @@ export default function LiveSessionPage() {
           phase={live.phase}
           selectedModules={live.selectedModules}
           elapsedSeconds={live.elapsedSeconds}
+          activeStream={live.activeStream}
+          isRecording={live.isRecording}
           onEnd={() => {
             void live.stop()
           }}

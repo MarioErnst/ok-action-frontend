@@ -209,6 +209,8 @@ export function useLiveSession(): UseLiveSessionResult {
     evaluation,
     liveScore,
     error,
+    activeStream: recorder.activeStream,
+    isRecording: recorder.isRecording,
     toggleModule,
     start,
     stop,
