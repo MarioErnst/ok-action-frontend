@@ -1,5 +1,6 @@
 import useAccentuationSession from '../../hooks/useAccentuationSession';
 import type { AccentuationSessionResult } from '../../../domain/AccentuationSession';
+import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
 import PhraseCard from '../molecules/PhraseCard';
@@ -15,6 +16,7 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
     phraseStates,
     isRecording,
     recordingError,
+    activeStream,
     totalPhrases,
     startSession,
     finishCurrentPhrase,
@@ -69,6 +71,10 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
             <p className="text-center text-xl md:text-2xl font-bold leading-relaxed text-text relative z-10">
               {currentPhrase.text}
             </p>
+          </div>
+
+          <div className="w-full">
+            <RecordingWaveform stream={activeStream} active={isRecording} height={48} />
           </div>
 
           {isRecording && (
