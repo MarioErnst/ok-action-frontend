@@ -1,4 +1,5 @@
 import type { ComposedEvaluation, LiveModule } from '../../domain/LiveSession'
+import type { FacialSummaryPayload } from '../../domain/FacialSummary'
 
 // DTOs for the uniform-schema live backend. Live is now an HTTP
 // composition lifecycle (start / finalize / abandon / list / get) over
@@ -8,10 +9,22 @@ import type { ComposedEvaluation, LiveModule } from '../../domain/LiveSession'
 
 export type SessionStatusDto = 'active' | 'completed' | 'aborted'
 
-export type StopReasonDto = 'user_stop' | 'time_limit' | 'error' | 'completed'
+export type StopReasonDto =
+  | 'user_stop'
+  | 'time_limit'
+  | 'error'
+  | 'completed'
+  | 'auto_stop_strikes'
+  | 'auto_stop_emotion'
+
+export type AutoStopReasonDto = 'auto_stop_strikes' | 'auto_stop_emotion'
 
 export interface AbandonRequestDto {
   stop_reason: 'user_stop' | 'time_limit' | 'error'
+}
+
+export interface FinalizeRequestDto {
+  auto_stop_reason?: AutoStopReasonDto | null
 }
 
 export interface StartSessionResponseDto {
@@ -21,9 +34,10 @@ export interface StartSessionResponseDto {
 
 export interface FinalizeSessionResponseDto {
   session_id: string
-  status: 'completed'
+  status: 'completed' | 'aborted'
   score: number | null
   children_count: number
+  stop_reason: 'completed' | AutoStopReasonDto
 }
 
 export interface LiveChildOutputDto {
@@ -75,11 +89,14 @@ export interface ComposedAudioEvaluationResponseDto {
 }
 
 // Multipart payload for audio-evaluation. modules is sent as repeated
-// form fields (modules=muletillas&modules=consistency...) which FastAPI
-// parses as list[str] natively.
+// form fields (modules=muletillas&modules=facial_expression...) which
+// FastAPI parses as list[str] natively. When the modules list includes
+// facial_expression, the backend requires facialSummary to be present;
+// in any other case it can be omitted.
 export interface ComposedAudioEvaluationRequestDto {
   audio: Blob
   modules: LiveModule[]
   startedAt: string
   promptText?: string
+  facialSummary?: FacialSummaryPayload
 }

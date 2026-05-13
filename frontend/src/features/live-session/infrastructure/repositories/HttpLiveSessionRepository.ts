@@ -1,13 +1,19 @@
 import { apiRequest } from '../../../../api/client'
 import type {
   AbandonRequestDto,
+  AutoStopReasonDto,
   ComposedAudioEvaluationRequestDto,
   ComposedAudioEvaluationResponseDto,
+  FinalizeRequestDto,
   FinalizeSessionResponseDto,
   LiveSessionDetailDto,
   LiveSessionListItemDto,
   StartSessionResponseDto,
 } from '../dto/LiveSessionDtos'
+import type {
+  FrameEvaluationResponseDto,
+  FrameModuleDto,
+} from '../dto/FrameEvaluationDtos'
 
 // Live composition is HTTP-only: the WebSocket multi-dim orchestrator is
 // gone. Each component module session is attached to a live root via
@@ -19,10 +25,15 @@ export const HttpLiveSessionRepository = {
     })
   },
 
-  async finalizeSession(sessionId: string): Promise<FinalizeSessionResponseDto> {
-    return apiRequest<FinalizeSessionResponseDto>(
+  async finalizeSession(
+    sessionId: string,
+    autoStopReason: AutoStopReasonDto | null = null,
+  ): Promise<FinalizeSessionResponseDto> {
+    const body: FinalizeRequestDto =
+      autoStopReason !== null ? { auto_stop_reason: autoStopReason } : {}
+    return apiRequest<FinalizeSessionResponseDto, FinalizeRequestDto>(
       `/live/sessions/${sessionId}/finalize`,
-      { method: 'POST' },
+      { method: 'POST', body },
     )
   },
 
@@ -63,10 +74,47 @@ export const HttpLiveSessionRepository = {
     for (const module of request.modules) {
       form.append('modules', module)
     }
+    if (request.facialSummary) {
+      // Backend reads this as a JSON string and parses it with the
+      // FacialSummaryInput pydantic model; multipart does not have a
+      // native nested-object shape so JSON serialization is the
+      // simplest contract.
+      form.append('facial_summary', JSON.stringify(request.facialSummary))
+    }
 
     return apiRequest<ComposedAudioEvaluationResponseDto, FormData>(
       `/live/sessions/${sessionId}/audio-evaluation`,
       { method: 'POST', body: form },
+    )
+  },
+
+  // Multipart upload of a 5-8 second audio fragment for in-session
+  // strike detection. modules is sent as repeated form fields. The
+  // backend returns the per-module response sections that drive the
+  // strike counter. Failures (502, timeout) are propagated so the
+  // caller can simply drop the frame from the counter.
+  async evaluateFrame(
+    sessionId: string,
+    audio: Blob,
+    frameIndex: number,
+    modules: FrameModuleDto[],
+    evaluatedSoFarSeconds: number,
+    signal?: AbortSignal,
+  ): Promise<FrameEvaluationResponseDto> {
+    const form = new FormData()
+    const filename = `frame-${sessionId}-${frameIndex}.${
+      audio.type.includes('mp4') ? 'mp4' : 'webm'
+    }`
+    form.append('audio', audio, filename)
+    form.append('frame_index', String(frameIndex))
+    form.append('evaluated_so_far_seconds', String(evaluatedSoFarSeconds))
+    for (const module of modules) {
+      form.append('modules', module)
+    }
+
+    return apiRequest<FrameEvaluationResponseDto, FormData>(
+      `/live/sessions/${sessionId}/evaluate-frame`,
+      { method: 'POST', body: form, signal },
     )
   },
 }

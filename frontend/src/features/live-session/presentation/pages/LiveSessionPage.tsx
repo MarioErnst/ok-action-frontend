@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom'
 
 import { DimensionSelector } from '../components/organisms/DimensionSelector'
+import { CalibrationScreen } from '../components/organisms/CalibrationScreen'
 import { LiveRecordingScreen } from '../components/organisms/LiveRecordingScreen'
 import { SessionSummaryScreen } from '../components/organisms/SessionSummaryScreen'
+import { StoppedTransitionOverlay } from '../components/organisms/StoppedTransitionOverlay'
+import { StrikeFeedbackBody } from '../components/organisms/StrikeFeedbackBody'
 import { useLiveSession } from '../hooks/useLiveSession'
 
 // Page-level orchestrator. The page itself has no state; it picks which
@@ -23,8 +26,17 @@ export default function LiveSessionPage() {
             void live.start()
           }}
           isStartDisabled={live.selectedModules.length === 0}
+          isStarting={live.isStarting}
         />
         {live.error && <ErrorBanner message={live.error} />}
+      </main>
+    )
+  }
+
+  if (live.phase === 'calibrating') {
+    return (
+      <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center justify-center px-4">
+        <CalibrationScreen progress={live.calibrationProgress} />
       </main>
     )
   }
@@ -37,11 +49,72 @@ export default function LiveSessionPage() {
           selectedModules={live.selectedModules}
           elapsedSeconds={live.elapsedSeconds}
           activeStream={live.activeStream}
+          videoStream={live.videoStream}
           isRecording={live.isRecording}
           onEnd={() => {
             void live.stop()
           }}
         />
+      </main>
+    )
+  }
+
+  if (live.phase === 'stopped_transition') {
+    return (
+      <main className="min-h-[100dvh] w-full bg-bg">
+        <StoppedTransitionOverlay
+          reason={live.stopReason === 'auto_stop_emotion' ? 'emotion' : 'strikes'}
+          emotionLabel={live.emotionTriggerLabel ?? undefined}
+        />
+      </main>
+    )
+  }
+
+  if (
+    live.phase === 'stopped_feedback' &&
+    (live.stopReason === 'auto_stop_strikes' || live.stopReason === 'auto_stop_emotion')
+  ) {
+    return (
+      <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center px-4 py-8 pb-safe">
+        <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
+          <StrikeFeedbackBody
+            events={live.strikeEvents}
+            evaluation={live.evaluation}
+            liveScore={live.liveScore}
+            selectedModules={live.selectedModules}
+            audioUrl={live.recordingAudioUrl}
+            estimatedDurationMs={live.recordingDurationMs}
+            stopReason={live.stopReason}
+            emotionLabel={live.emotionTriggerLabel ?? undefined}
+          />
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <button
+              type="button"
+              onClick={live.reset}
+              className="flex-1 rounded-2xl bg-gradient-to-r from-accent to-accent-hover py-4 font-extrabold
+                         text-text-on-accent shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-95
+                         transition-all duration-300 min-h-[44px]"
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="flex-1 rounded-2xl border border-border/60 bg-surface-alt/50 text-text font-medium py-4
+                         hover:border-border active:scale-95 transition-all duration-200 min-h-[44px]"
+            >
+              Ir al dashboard
+            </button>
+            <button
+              type="button"
+              onClick={live.reset}
+              className="flex-1 rounded-2xl border border-border/40 bg-transparent text-text-muted font-medium py-4
+                         hover:text-text active:scale-95 transition-all duration-200 min-h-[44px]"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
       </main>
     )
   }
