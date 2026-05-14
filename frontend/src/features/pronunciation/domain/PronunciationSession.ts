@@ -24,6 +24,7 @@ export interface PronunciationMetrics {
 export interface PhrasePronunciation {
   phraseText: string
   phraseIndex: number
+  promptId: string
   metrics: PronunciationMetrics
   feedback: string
   phonemeErrors: PhonemeError[]

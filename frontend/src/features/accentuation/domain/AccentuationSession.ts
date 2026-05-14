@@ -26,6 +26,7 @@ export interface EvaluationMetrics {
 export interface PhraseEvaluation {
   phraseText: string;
   phraseIndex: number;
+  promptId: string;
   metrics: EvaluationMetrics;
   feedback: string;
   specificErrors: SpecificError[];

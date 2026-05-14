@@ -2,19 +2,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toPhrasePronunciation, averagePronunciationMetrics, toSavePronunciationSessionDto } from '../../infrastructure/mappers/pronunciationMapper';
 import { HttpPronunciationRepository } from '../../infrastructure/repositories/HttpPronunciationRepository';
-import { getPhrasesByLevel } from '../../services/phrases';
+import type { PronunciationPhraseDto } from '../../infrastructure/dto/PronunciationDtos';
 import type {
   PhrasePronunciation,
   PhraseState,
   PronunciationLevel,
+  PronunciationPhrase,
   PronunciationSessionResult,
 } from '../../domain/PronunciationSession';
 import useAudioRecorder from '../../../../shared/hooks/useAudioRecorder';
 
-export type PronunciationPhase = 'idle' | 'recording' | 'processing' | 'finished';
+export type PronunciationPhase = 'idle' | 'loading' | 'recording' | 'processing' | 'finished';
 
-function buildInitialPhraseStates(level: PronunciationLevel): PhraseState[] {
-  return getPhrasesByLevel(level).map((phrase) => ({
+function toPronunciationPhrase(
+  dto: PronunciationPhraseDto,
+  fallbackLevel: PronunciationLevel,
+): PronunciationPhrase {
+  // difficulty is a free string in prompts; collapse anything outside the
+  // known levels to the level the user actually selected (defensive — the
+  // backend filter already ensures matching difficulty in practice).
+  const level =
+    dto.difficulty === 'basico' || dto.difficulty === 'intermedio' || dto.difficulty === 'avanzado'
+      ? (dto.difficulty as PronunciationLevel)
+      : fallbackLevel;
+  return { id: dto.id, text: dto.text, level };
+}
+
+function buildInitialPhraseStates(phrases: PronunciationPhrase[]): PhraseState[] {
+  return phrases.map((phrase) => ({
     phrase,
     status: 'pending',
     evaluation: null,
@@ -50,8 +65,10 @@ export default function usePronunciationSession() {
   const [phase, setPhase] = useState<PronunciationPhase>('idle');
   const [currentLevel, setCurrentLevel] = useState<PronunciationLevel>('basico');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [phrases, setPhrases] = useState<PronunciationPhrase[]>([]);
   const [phraseStates, setPhraseStates] = useState<PhraseState[]>([]);
   const [pendingEvaluationCount, setPendingEvaluationCount] = useState(0);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const {
     isRecording,
@@ -72,7 +89,13 @@ export default function usePronunciationSession() {
   }, [phase, pendingEvaluationCount, phraseStates, currentLevel]);
 
   const sendForEvaluation = useCallback(
-    (audioBlob: Blob, phraseIndex: number, phraseText: string, level: PronunciationLevel) => {
+    (
+      audioBlob: Blob,
+      phraseIndex: number,
+      phraseText: string,
+      level: PronunciationLevel,
+      promptId: string,
+    ) => {
       setPhraseStates((previous) =>
         previous.map((state, index) =>
           index === phraseIndex ? { ...state, status: 'uploading' } : state,
@@ -82,7 +105,7 @@ export default function usePronunciationSession() {
 
       HttpPronunciationRepository.evaluatePhrase(audioBlob, phraseText, phraseIndex, level)
         .then((dto) => {
-          const evaluation = toPhrasePronunciation(dto);
+          const evaluation = toPhrasePronunciation(dto, promptId);
           setPhraseStates((previous) =>
             previous.map((state, index) =>
               index === phraseIndex ? { ...state, status: 'evaluated', evaluation } : state,
@@ -105,8 +128,32 @@ export default function usePronunciationSession() {
 
   const startSession = useCallback(
     async (level: PronunciationLevel) => {
-      const initialStates = buildInitialPhraseStates(level);
       setCurrentLevel(level);
+      setCatalogError(null);
+      setPhase('loading');
+
+      let dtos: PronunciationPhraseDto[];
+      try {
+        dtos = await HttpPronunciationRepository.listPhrases(level);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'No se pudieron cargar las frases. Reintenta más tarde.';
+        setCatalogError(message);
+        setPhase('idle');
+        return;
+      }
+
+      if (dtos.length === 0) {
+        setCatalogError('No hay frases disponibles para este nivel.');
+        setPhase('idle');
+        return;
+      }
+
+      const mappedPhrases = dtos.map((dto) => toPronunciationPhrase(dto, level));
+      const initialStates = buildInitialPhraseStates(mappedPhrases);
+      setPhrases(mappedPhrases);
       setPhraseStates(initialStates);
       setCurrentIndex(0);
       setPendingEvaluationCount(0);
@@ -126,12 +173,18 @@ export default function usePronunciationSession() {
 
   const finishCurrentPhrase = useCallback(async () => {
     const audioBlob = await stopRecording();
-    const currentPhrase = getPhrasesByLevel(currentLevel)[currentIndex];
+    const currentPhrase = phrases[currentIndex];
+    if (!currentPhrase) return;
 
-    sendForEvaluation(audioBlob, currentIndex, currentPhrase.text, currentLevel);
+    sendForEvaluation(
+      audioBlob,
+      currentIndex,
+      currentPhrase.text,
+      currentLevel,
+      currentPhrase.id,
+    );
 
-    const totalPhrases = getPhrasesByLevel(currentLevel).length;
-    const isLastPhrase = currentIndex >= totalPhrases - 1;
+    const isLastPhrase = currentIndex >= phrases.length - 1;
 
     if (isLastPhrase) {
       setPhase('processing');
@@ -148,7 +201,7 @@ export default function usePronunciationSession() {
         index === nextIndex ? { ...state, status: 'recording' } : state,
       ),
     );
-  }, [currentIndex, currentLevel, stopRecording, sendForEvaluation, startRecording]);
+  }, [currentIndex, currentLevel, phrases, stopRecording, sendForEvaluation, startRecording]);
 
   const savedRef = useRef(false);
 
@@ -166,11 +219,13 @@ export default function usePronunciationSession() {
 
   const resetSession = useCallback(() => {
     releaseResources();
+    setPhrases([]);
     setPhraseStates([]);
     setCurrentIndex(0);
     setPendingEvaluationCount(0);
     sessionResultRef.current = null;
     savedRef.current = false;
+    setCatalogError(null);
     setPhase('idle');
   }, [releaseResources]);
 
@@ -182,7 +237,8 @@ export default function usePronunciationSession() {
     isRecording,
     recordingError,
     activeStream,
-    totalPhrases: getPhrasesByLevel(currentLevel).length,
+    totalPhrases: phrases.length,
+    catalogError,
     startSession,
     finishCurrentPhrase,
     resetSession,
