@@ -1,4 +1,5 @@
 // Full module documentation: documentacion/modulos/precision.md
+import { ModuleGuideLauncher } from '../../../journey'
 import { usePrecisionSession } from '../hooks/usePrecisionSession'
 import { RecordAnswerScreen } from '../components/organisms/RecordAnswerScreen'
 import { RoundResultScreen } from '../components/organisms/RoundResultScreen'
@@ -15,16 +16,19 @@ export function PrecisionPage() {
 
   if (phase === 'IDLE') {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4 sm:p-6 pb-28 lg:pb-6 animate-fade-in">
-        <h1 className="text-2xl font-bold text-text">Precisión</h1>
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4 sm:p-6 pb-28 lg:pb-6 animate-fade-in" data-journey-id="precision-intro">
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-bold text-text">Precision</h1>
+          <ModuleGuideLauncher guideId="precision" />
+        </div>
         <p className="text-text-muted text-sm leading-relaxed">
-          Responde preguntas en voz alta. El sistema evalúa qué tan directo, relevante y conciso eres en tu comunicación.
+          Responde preguntas en voz alta. El sistema evalua que tan directo, relevante y conciso eres en tu comunicacion.
         </p>
         <button
           onClick={() => startSession(5)}
           className="w-full rounded-2xl bg-gradient-to-r from-accent to-accent-hover px-8 py-4 font-extrabold text-text-on-accent shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-95 transition-all duration-300"
         >
-          COMENZAR SESIÓN
+          COMENZAR SESION
         </button>
       </div>
     )
@@ -35,7 +39,7 @@ export function PrecisionPage() {
       <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-4 p-6 h-64">
         <div className="h-8 w-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
         <p className="text-text-muted text-sm">
-          {phase === 'LOADING_SESSION' ? 'Preparando sesión...' : 'Evaluando respuesta...'}
+          {phase === 'LOADING_SESSION' ? 'Preparando sesion...' : 'Evaluando respuesta...'}
         </p>
       </div>
     )
@@ -44,7 +48,7 @@ export function PrecisionPage() {
   if (phase === 'ERROR') {
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col gap-4 p-6 animate-fade-in">
-        <p className="text-danger text-sm">{errorMessage ?? 'Ocurrió un error inesperado.'}</p>
+        <p className="text-danger text-sm">{errorMessage ?? 'Ocurrio un error inesperado.'}</p>
         <button onClick={retry} className="rounded-2xl border border-border bg-surface-alt px-6 py-3 text-sm font-semibold text-text active:scale-95">
           Reintentar
         </button>
@@ -53,7 +57,6 @@ export function PrecisionPage() {
   }
 
   if (phase === 'ASKING' || phase === 'RECORDING') {
-    // currentQuestion is guaranteed non-null here: ASKING/RECORDING only enter after questions are loaded
     if (!currentQuestion) return null
     return (
       <RecordAnswerScreen
@@ -86,13 +89,19 @@ export function PrecisionPage() {
 
   if (phase === 'COMPLETED') {
     return (
-      <SessionSummaryScreen
-        overallScore={overallScore}
-        rounds={rounds}
-        onNewSession={reset}
-      />
+      <div data-journey-id="precision-results">
+        <div className="mx-auto flex w-full max-w-lg justify-end px-4 pt-4 sm:px-6">
+          <ModuleGuideLauncher guideId="precision" />
+        </div>
+        <SessionSummaryScreen
+          overallScore={overallScore}
+          rounds={rounds}
+          onNewSession={reset}
+        />
+      </div>
     )
   }
 
   return null
 }
+

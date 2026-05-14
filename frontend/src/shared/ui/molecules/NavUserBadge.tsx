@@ -19,6 +19,7 @@ export const NavUserBadge = ({ user, onLogout }: NavUserBadgeProps) => (
     <NavLink
       to="/perfil"
       aria-label="Ir al perfil"
+      data-journey-id="nav-profile"
       className={({ isActive }) =>
         `w-8 h-8 rounded-full border flex items-center justify-center shrink-0 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
           isActive

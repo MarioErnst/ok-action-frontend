@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ModuleGuideLauncher } from '../../../journey'
 import { useGuidedVersatilitySession } from '../hooks/useGuidedVersatilitySession'
 import { GuidedSessionView } from '../components/organisms/GuidedSessionView'
 import { SessionResultsView } from '../components/organisms/SessionResultsView'
@@ -55,37 +56,49 @@ export function LinguisticVersatilityPage() {
       )}
 
       {tracking.status === 'results' && tracking.finalResult && (
-        <SessionResultsView
-          overallScore={tracking.finalResult.overallScore}
-          averageRichness={tracking.finalResult.vocabularyRichnessAvg}
-          rounds={tracking.finalResult.rounds}
-          onRestart={() => {
-            tracking.reset()
-            tracking.start()
-          }}
-          onExit={() => {
-            tracking.reset()
-            navigate('/dashboard')
-          }}
-        />
+        <div data-journey-id="versatility-results">
+          <div className="mx-auto flex w-full max-w-md justify-end px-4 pt-4">
+            <ModuleGuideLauncher guideId="linguistic-versatility" />
+          </div>
+          <SessionResultsView
+            overallScore={tracking.finalResult.overallScore}
+            averageRichness={tracking.finalResult.vocabularyRichnessAvg}
+            rounds={tracking.finalResult.rounds}
+            onRestart={() => {
+              tracking.reset()
+              tracking.start()
+            }}
+            onExit={() => {
+              tracking.reset()
+              navigate('/dashboard')
+            }}
+          />
+        </div>
       )}
 
       {(tracking.status === 'review' ||
         tracking.status === 'recording' ||
         tracking.status === 'uploading') &&
         tracking.currentQuestion && (
-          <GuidedSessionView
-            status={tracking.status}
-            question={tracking.currentQuestion}
-            index={tracking.currentIndex}
-            total={tracking.questions.length}
-            isLastQuestion={tracking.isLastQuestion}
-            lastResult={tracking.lastResult}
-            activeStream={tracking.activeStream}
-            onStartRecording={tracking.startRecording}
-            onStopAndUpload={tracking.stopAndUpload}
-            onNext={tracking.next}
-          />
+          <div className="flex h-full flex-col" data-journey-id="versatility-intro">
+            {tracking.status === 'review' && (
+              <div className="mx-auto flex w-full max-w-md justify-end px-4 pt-4">
+                <ModuleGuideLauncher guideId="linguistic-versatility" />
+              </div>
+            )}
+            <GuidedSessionView
+              status={tracking.status}
+              question={tracking.currentQuestion}
+              index={tracking.currentIndex}
+              total={tracking.questions.length}
+              isLastQuestion={tracking.isLastQuestion}
+              lastResult={tracking.lastResult}
+              activeStream={tracking.activeStream}
+              onStartRecording={tracking.startRecording}
+              onStopAndUpload={tracking.stopAndUpload}
+              onNext={tracking.next}
+            />
+          </div>
         )}
     </div>
   )

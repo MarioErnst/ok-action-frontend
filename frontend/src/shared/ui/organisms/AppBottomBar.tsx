@@ -18,6 +18,18 @@ const ROUTE_BY_SLOT = {
   right2: '/perfil',
 } as const
 
+// Targets used by the contextual journey guides (`features/journey`) to
+// highlight the bottom bar entries. Keep keys in sync with the slot
+// routes above; missing entries simply produce an undefined attribute
+// (no-op) so guides that do not need to point here keep working.
+const JOURNEY_NAV_IDS: Record<string, string> = {
+  '/ejercicios': 'nav-exercises',
+  '/capsulas': 'nav-capsules',
+  '/dashboard': 'nav-dashboard',
+  '/sesion-libre': 'nav-live-session',
+  '/perfil': 'nav-profile',
+}
+
 const findItem = (path: string): NavItemConfig | undefined =>
   NAV_ITEMS.find((item) => item.to === path)
 
@@ -43,6 +55,7 @@ const SideSlotLink = ({ item }: { item: NavItemConfig }) => (
   <NavLink
     to={item.to}
     end={item.end}
+    data-journey-id={JOURNEY_NAV_IDS[item.to]}
     className="relative flex flex-col items-center justify-center flex-1 h-16 group active:scale-95 transition-transform duration-200"
   >
     {({ isActive }) => (
@@ -89,6 +102,7 @@ const CenterSlotLink = ({ item }: { item: NavItemConfig }) => (
   <NavLink
     to={item.to}
     end={item.end}
+    data-journey-id={JOURNEY_NAV_IDS[item.to]}
     className="relative flex flex-col items-center justify-center -translate-y-4 z-10 mx-2"
   >
     {({ isActive }) => (

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ModuleGuideLauncher } from '../../../journey';
 import { HttpPauseRepository } from '../../infrastructure/repositories/HttpPauseRepository';
 import { toSavePauseSessionDto } from '../../infrastructure/mappers/pauseMapper';
 import PauseMetricsSummary from '../molecules/PauseMetricsSummary';
@@ -41,9 +42,14 @@ export default function PauseResultsScreen({ result, onReset }: PauseResultsScre
   return (
     <main className="min-h-[100dvh] bg-bg p-4 text-text md:p-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
-        <header className="rounded-xl border border-border bg-surface p-5">
-          <p className="m-0 text-sm text-text-muted">Resultado de pausas</p>
-          <h1 className="m-0 mt-2 text-2xl font-bold text-text">Analisis completado</h1>
+        <header className="rounded-xl border border-border bg-surface p-5" data-journey-id="pauses-results">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="m-0 text-sm text-text-muted">Resultado de pausas</p>
+              <h1 className="m-0 mt-2 text-2xl font-bold text-text">Analisis completado</h1>
+            </div>
+            <ModuleGuideLauncher guideId="pauses" />
+          </div>
         </header>
 
         <section className="rounded-xl border border-border bg-surface p-5">

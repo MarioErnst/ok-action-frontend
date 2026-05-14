@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ModuleGuideLauncher } from '../../../journey'
 import { useEmotionTracking } from '../hooks/useEmotionTracking'
 import { CalibrationView } from '../components/organisms/CalibrationView'
 import { LiveDetectionView } from '../components/organisms/LiveDetectionView'
@@ -58,17 +59,22 @@ export function FacialExpressionPage() {
       )}
 
       {tracking.status === 'results' && tracking.result && (
-        <SessionResultsView
-          result={tracking.result}
-          onRestart={() => {
-            tracking.reset()
-            tracking.startTracking()
-          }}
-          onExit={() => {
-            tracking.reset()
-            navigate('/dashboard')
-          }}
-        />
+        <div data-journey-id="facial-results">
+          <div className="mx-auto flex w-full max-w-md justify-end px-4 pt-4">
+            <ModuleGuideLauncher guideId="facial-expression" />
+          </div>
+          <SessionResultsView
+            result={tracking.result}
+            onRestart={() => {
+              tracking.reset()
+              tracking.startTracking()
+            }}
+            onExit={() => {
+              tracking.reset()
+              navigate('/dashboard')
+            }}
+          />
+        </div>
       )}
 
       {tracking.status === 'error' && (
@@ -93,7 +99,10 @@ function IntroScreen({
   onStart: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full max-w-md mx-auto px-6 gap-6 text-center">
+    <div className="flex flex-col items-center justify-center h-full w-full max-w-md mx-auto px-6 gap-6 text-center" data-journey-id="facial-intro">
+      <div className="flex w-full justify-end">
+        <ModuleGuideLauncher guideId="facial-expression" />
+      </div>
       {/* Stylized face placeholder built with concentric rings — no emoji. */}
       <div className="relative w-40 h-40">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-accent/5 blur-xl" />

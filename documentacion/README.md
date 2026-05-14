@@ -14,6 +14,7 @@ Cada archivo describe la arquitectura, los componentes, los hooks y el flujo de 
 | Muletillas | [modulos/muletillas.md](modulos/muletillas.md) | Deteccion de palabras de relleno en respuestas orales via Gemini |
 | Fluidez | [modulos/fluidez.md](modulos/fluidez.md) | Practica de continuidad oral con feedback en tiempo real |
 | Consistencia | [modulos/consistencia.md](modulos/consistencia.md) | Evaluacion de estabilidad entre inicio, desarrollo y cierre |
+| Guia contextual | [modulos/guia-contextual.md](modulos/guia-contextual.md) | Ayuda guiada frontend-only para orientar al usuario en la app y en cada modulo |
 | Perfil | [modulos/perfil.md](modulos/perfil.md) | Pantalla de usuario, historial de ejercicios y cápsulas en video |
 | Expresion Corporal | [modulos/expresion-corporal.md](modulos/expresion-corporal.md) | Analisis de postura, gestos, apertura y estabilidad con MediaPipe Pose |
 

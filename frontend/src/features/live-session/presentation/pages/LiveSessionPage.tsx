@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 
+import { ModuleGuideLauncher } from '../../../journey'
 import { DimensionSelector } from '../components/organisms/DimensionSelector'
 import { CalibrationScreen } from '../components/organisms/CalibrationScreen'
 import { LiveRecordingScreen } from '../components/organisms/LiveRecordingScreen'
@@ -19,15 +20,20 @@ export default function LiveSessionPage() {
   if (live.phase === 'selection') {
     return (
       <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center justify-center px-4 py-8">
-        <DimensionSelector
-          selected={live.selectedModules}
-          onToggle={live.toggleModule}
-          onStart={() => {
-            void live.start()
-          }}
-          isStartDisabled={live.selectedModules.length === 0}
-          isStarting={live.isStarting}
-        />
+        <div className="absolute right-4 top-4">
+          <ModuleGuideLauncher guideId="live-session" />
+        </div>
+        <div data-journey-id="live-selection">
+          <DimensionSelector
+            selected={live.selectedModules}
+            onToggle={live.toggleModule}
+            onStart={() => {
+              void live.start()
+            }}
+            isStartDisabled={live.selectedModules.length === 0}
+            isStarting={live.isStarting}
+          />
+        </div>
         {live.error && <ErrorBanner message={live.error} />}
       </main>
     )
@@ -83,6 +89,9 @@ export default function LiveSessionPage() {
     return (
       <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center px-4 py-8 pb-safe">
         <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
+          <div className="flex justify-end" data-journey-id="live-results">
+            <ModuleGuideLauncher guideId="live-session" />
+          </div>
           <StrikeFeedbackBody
             events={live.strikeEvents}
             evaluation={live.evaluation}
@@ -128,13 +137,18 @@ export default function LiveSessionPage() {
   if (live.phase === 'summary' && live.evaluation) {
     return (
       <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center px-4">
-        <SessionSummaryScreen
-          evaluation={live.evaluation}
-          selectedModules={live.selectedModules}
-          liveScore={live.liveScore}
-          onNewSession={live.reset}
-          onGoToDashboard={() => navigate('/dashboard')}
-        />
+        <div className="w-full" data-journey-id="live-results">
+          <div className="mx-auto flex w-full max-w-2xl justify-end px-4 pt-4">
+            <ModuleGuideLauncher guideId="live-session" />
+          </div>
+          <SessionSummaryScreen
+            evaluation={live.evaluation}
+            selectedModules={live.selectedModules}
+            liveScore={live.liveScore}
+            onNewSession={live.reset}
+            onGoToDashboard={() => navigate('/dashboard')}
+          />
+        </div>
       </main>
     )
   }
