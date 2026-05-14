@@ -1,12 +1,5 @@
-import { useEffect, useState } from 'react'
-import { HttpPronunciationRepository } from '../../../infrastructure/repositories/HttpPronunciationRepository'
-import type { PronunciationWeakestPromptDto } from '../../../infrastructure/dto/PronunciationDtos'
+import useWeakestPronunciationPrompts from '../../hooks/useWeakestPronunciationPrompts'
 import type { PronunciationLevel } from '../../../domain/PronunciationSession'
-
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'ready'; rows: PronunciationWeakestPromptDto[] }
-  | { status: 'error' }
 
 interface WeakestPhrasesCardProps {
   limit?: number
@@ -15,31 +8,16 @@ interface WeakestPhrasesCardProps {
 }
 
 // Module documentation: documentacion/modulos/pronunciacion.md (section 6).
-// Pulls /pronunciation/insights/weakest-prompts and renders the prompts where
-// the user has the lowest historical avg score, optionally filtered by level.
-// Hidden during cold start (no eligible history) to keep the entry clean.
+// Pure presentational molecule. Data fetching lives in
+// useWeakestPronunciationPrompts so this component stays at the molecule
+// tier. Hidden during cold start (no eligible history) to keep the entry
+// clean.
 export default function WeakestPhrasesCard({
   limit = 3,
   minPracticeCount = 1,
   level,
 }: WeakestPhrasesCardProps) {
-  const [state, setState] = useState<LoadState>({ status: 'loading' })
-
-  useEffect(() => {
-    let cancelled = false
-    HttpPronunciationRepository.getWeakestPrompts(limit, minPracticeCount, level)
-      .then((rows) => {
-        if (cancelled) return
-        setState({ status: 'ready', rows })
-      })
-      .catch(() => {
-        if (cancelled) return
-        setState({ status: 'error' })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [limit, minPracticeCount, level])
+  const state = useWeakestPronunciationPrompts(limit, minPracticeCount, level)
 
   if (state.status === 'loading' || state.status === 'error' || state.rows.length === 0) {
     return null
