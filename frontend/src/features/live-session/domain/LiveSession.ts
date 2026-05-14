@@ -48,11 +48,34 @@ export interface MuletillasDetectedItem {
   suggestion: string
 }
 
+// Position of one muletilla occurrence inside the root transcript. Anchored:
+// transcript[start_char:end_char] should equal the muletilla. The frontend
+// validates this contract before rendering the highlight; if it does not
+// match it falls back to indexOf or hides the highlight.
+export interface MuletillaPosition {
+  word: string
+  start_char: number
+  end_char: number
+}
+
 export interface MuletillasSection {
   fluency_score: number
   total_muletillas: number
   detected: MuletillasDetectedItem[]
+  // Optional for backwards compatibility with responses from before the
+  // grounding hotfix. New backend always includes them when at least one
+  // audio module is selected.
+  muletillas_positions?: MuletillaPosition[]
   feedback: string
+}
+
+// Prosodic error reported by Gemini in live, anchored to a word that must
+// appear in the root transcript. Ephemeral: not persisted in DB.
+export interface ProsodicError {
+  word: string
+  expected_stress: string
+  actual_issue: string
+  suggestion: string
 }
 
 export interface AccentuationSection {
@@ -60,7 +83,17 @@ export interface AccentuationSection {
   rhythm_score: number
   intonation_score: number
   stress_score: number
+  prosodic_errors?: ProsodicError[]
   feedback: string
+}
+
+// Phoneme error reported by Gemini in live, anchored to a word that must
+// appear in the root transcript. Ephemeral: not persisted in DB.
+export interface PhonemeError {
+  phoneme: string
+  word: string
+  actual_issue: string
+  suggestion: string
 }
 
 export interface PronunciationSection {
@@ -68,6 +101,7 @@ export interface PronunciationSection {
   consonant_score: number
   fluency_score: number
   intelligibility_score: number
+  phoneme_errors?: PhonemeError[]
   feedback: string
 }
 
@@ -103,6 +137,12 @@ export interface FacialExpressionSection {
 // client-side after computing it from the emotion classifier stream.
 export interface ComposedEvaluation {
   audio_intelligible: boolean
+  // Literal transcript of the audio. Required by the backend schema when at
+  // least one audio module is selected. Used both as the anti-hallucination
+  // contract for Gemini and as the source of truth the UI shows alongside
+  // the per-module errors. Optional so legacy responses (pre-hotfix) still
+  // parse cleanly.
+  transcript?: string
   muletillas?: MuletillasSection
   accentuation?: AccentuationSection
   pronunciation?: PronunciationSection

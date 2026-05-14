@@ -281,3 +281,159 @@ features/live-session/
 - Ajuste del umbral de 55 / 5s / 3 strikes en tiempo de runtime (constantes en código).
 - Notificación al backend de los strikes individuales — solo se notifica el stop_reason al cierre.
 - Configurabilidad de las emociones disparadoras (constantes en código).
+
+## 14. Hotfix de grounding en la pantalla de resultados
+
+A partir del hotfix `live-evaluation-grounding`, la respuesta del composed Gemini
+trae tres campos nuevos efímeros que la `SessionSummaryScreen` renderiza:
+
+### 14.1 Tarjeta de transcripción
+
+Cuando `evaluation.transcript` viene poblado, la pantalla muestra una tarjeta
+arriba de los módulos con el texto transcripto por Gemini. Si la respuesta
+incluye `evaluation.muletillas.muletillas_positions[]`, cada ocurrencia se
+pinta sobre el transcript usando el átomo compartido
+`shared/ui/atoms/HighlightedTranscript`. Esto permite al usuario verificar a
+simple vista qué se interpretó como muletilla, igual que en el módulo standalone
+de muletillas (que ya consumía el mismo átomo antes del hotfix).
+
+### 14.2 Lista de errores prosódicos (acentuación)
+
+La tarjeta del módulo `accentuation` ahora renderiza `prosodic_errors[]` cuando
+viene poblado: una lista de palabras del transcript con la acentuación esperada
+y la observada, más una sugerencia accionable. Si la lista llega vacía, no se
+renderiza nada extra (el score y el feedback quedan como antes).
+
+### 14.3 Lista de errores fonémicos (pronunciación)
+
+La tarjeta del módulo `pronunciation` ahora renderiza `phoneme_errors[]`: una
+lista de palabras con el fonema afectado, el problema y la sugerencia. Misma
+lógica de empty-state.
+
+### 14.4 Compatibilidad
+
+Los tres campos son opcionales en los tipos de dominio
+(`MuletillaPosition`, `ProsodicError`, `PhonemeError`). Si una respuesta vieja
+(pre-hotfix) llega sin estos campos, los componentes nuevos se ocultan
+silenciosamente y el resto de la pantalla funciona igual. Esto evita romper el
+rollout si llegara a haber un build de frontend en una región sin el backend
+actualizado, aunque hoy ambos despliegues van acoplados al mismo commit.
+
+### 14.5 Por qué el átomo de transcript es compartido
+
+Antes del hotfix el `HighlightedTranscript` vivía en
+`features/muletillas/presentation/components/atoms/`. El hotfix lo movió a
+`shared/ui/atoms/HighlightedTranscript.tsx` con una interfaz neutral
+(`startChar`, `endChar`) y dos consumidores: la pantalla de muletillas
+standalone y la `SessionSummaryScreen` del módulo live. Cada consumidor mapea
+sus posiciones a la forma neutral en su call site (live mapea snake_case →
+camelCase ahí mismo).
+
+## 15. Strike system por errores (no-dedup, threshold 2)
+
+### 15.1 Criterio de strike actual
+
+`useFrameStrikes` cuenta **cada item de error reportado** por Gemini en cada
+frame, sin deduplicar:
+
+| Categoría | Qué cuenta | Threshold |
+|---|---|---|
+| Muletillas | Cada ocurrencia detectada (suma de `count`) | 2 ocurrencias |
+| Pronunciación | Cada item en `phoneme_errors[]` | 2 items |
+| Acentuación | Cada item en `prosodic_errors[]` | 2 items |
+
+La sesión se autocorta cuando **cualquiera** de los tres contadores llega a 2.
+Son independientes: 1 muletilla + 1 error de pronunciación no detiene.
+
+### 15.2 Por qué no-dedup
+
+Probamos antes con dedup por palabra normalizada (lowercase + NFKD strip
+accents) y un usuario que repetía 6 veces el mismo error solo sumaba 1
+strike. Pedagógicamente fallaba: el usuario podía clavarse en el mismo
+error muchos segundos sin que el sistema lo frenara. El no-dedup es
+predecible (cada item que el modelo reporta cuenta) y le da al usuario un
+margen corto (1 error de aviso) antes del corte.
+
+Como Gemini ya agrupa naturalmente errores repetidos del mismo fonema en
+una sola entrada `phoneme_errors[]` la mayoría de las veces, en la práctica
+el counter no se dispara de forma absurda — refleja con bastante fidelidad
+"el usuario tuvo N momentos distintos con errores".
+
+## 16. Diferenciación por módulos seleccionados
+
+`useLiveSession` orquesta el pipeline en función de qué módulos están
+activos. Dos flags derivadas se exponen:
+
+- `audioEnabled = selectedModules.some(m => m !== 'facial_expression')`
+- `facialEnabled = selectedModules.includes('facial_expression')`
+
+### 16.1 Solo audio (`muletillas` / `accentuation` / `pronunciation`, sin facial)
+
+- Se pide permiso al micrófono.
+- Se construye el grafo de audio (analyser).
+- Se calibra el noise floor (`CALIBRATION_MS`).
+- Se levanta `MediaRecorder` principal + `PauseDetector` + `FrameRecorder`.
+- No se carga `LiveFaceLoop` ni `FaceDetectionService` (lazy import nunca).
+- No se ejecuta `useEmotionStop.start()`.
+- La pantalla `CalibrationScreen` muestra "Calibrando audio — mantente en silencio".
+
+### 16.2 Solo facial (`facial_expression`)
+
+- **NO se pide permiso al micrófono.** `audioStreamRef` queda en `null`.
+- No se construye grafo de audio, no se calibra noise floor.
+- No hay `MediaRecorder` principal, no hay frames audio enviados a Gemini.
+- Se carga `LiveFaceLoop` y se enciende la cámara.
+- La calibración corre por **timer Y mínimo `MIN_FACIAL_BASELINE_SAMPLES = 45`
+  muestras de blendshape** (con cap `FACIAL_CALIBRATION_CAP_MS = 10s`).
+- La pantalla muestra "Calibrando cámara — mirá la cámara con cara neutral".
+- Al cierre el endpoint `audio-evaluation` recibe un blob vacío; el backend
+  hace short-circuit y no llama a Gemini (ver sección 12.5 del doc backend).
+- `emotionStop` corre normal y puede disparar `auto_stop_emotion`.
+
+### 16.3 Audio + facial mezclados
+
+- Se piden ambos permisos (mic + cámara).
+- Calibración: espera el `CALIBRATION_MS` del audio Y las 45 muestras
+  faciales (lo que tarde más, capeado a 10s). El `progress` mostrado al
+  usuario es el mínimo de los dos.
+- La pantalla muestra "Calibrando audio y cámara — mantente en silencio y
+  mirá la cámara con cara neutral".
+- Todos los pipelines corren en paralelo.
+
+### 16.4 Por qué la calibración pide 45 muestras faciales
+
+El módulo standalone `facial_expression` exige exactamente 45 muestras
+para construir su baseline (`CALIBRATION_SAMPLES = 45` en
+`useEmotionTracking`). Live antes solo respetaba el timer del audio
+(~2-3s) y a 15fps eso da ~30-45 muestras, sensible al jitter del modelo
+MediaPipe al cargar. Por debajo de 30 muestras la varianza del baseline
+es alta y el `SustainedDetector` empieza a clasificar emociones reales
+como "neutralidad" (porque la baseline absorbió cara no-neutral) o
+viceversa. El parche fue igualar la cantidad mínima a la del standalone.
+
+### 15.3 StrikeEvent extendido
+
+`StrikeEvent` ahora carga campos opcionales accionables:
+
+- `word` (todas las categorías).
+- `phoneme` (pronunciación).
+- `expectedStress` (acentuación).
+- `actualIssue` y `suggestion` (pronunciación y acentuación).
+
+`StrikeFeedbackBody.WordErrorsPanel` (reemplaza al antiguo
+`ScoreThresholdPanel`) renderiza cada strike como:
+
+```
+palabra · fonema /rr/ o esperado PÁ-ja-ro    (timestamp)
+  cómo lo dijiste
+  cómo corregirlo
+```
+
+en lugar del `"Score parcial mínimo: 50"` genérico anterior.
+
+### 15.4 Compatibilidad de DTOs
+
+Los campos `phoneme_errors[]`, `prosodic_errors[]`, `muletillas_positions[]`
+y `transcript` en el frame DTO son opcionales. Si el backend devuelve un
+frame sin esos campos (pre-hotfix), el counter queda en 0 para esa categoría
+y no se cortan strikes — comportamiento seguro durante el rollout.

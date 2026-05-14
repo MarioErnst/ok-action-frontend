@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { ModuleGuideLauncher } from '../../../journey'
 import { BodyPromptCard } from '../components/molecules/BodyPromptCard'
 import { BodyCalibrationView } from '../components/organisms/BodyCalibrationView'
 import { BodyLiveSessionView } from '../components/organisms/BodyLiveSessionView'
@@ -11,17 +12,24 @@ export function BodyExpressionPage() {
 
   return (
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col gap-6 p-4 pb-28 pt-8 md:p-6 lg:pb-6">
-      <section className="flex flex-col gap-2 text-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-accent">
-          Expresion corporal
-        </p>
-        <h1 className="text-3xl font-extrabold text-text">
-          Evalua tu presencia mientras hablas
-        </h1>
-        <p className="mx-auto max-w-2xl text-sm leading-relaxed text-text-muted">
-          Practica una respuesta oral con camara activa. El analisis se hace en tu
-          navegador y solo se guardan metricas agregadas.
-        </p>
+      <section className="flex flex-col gap-4 text-center" data-journey-id="body-intro">
+        <div className="flex justify-end">
+          {(session.status === 'idle' || session.status === 'results' || session.status === 'error') && (
+            <ModuleGuideLauncher guideId="body-expression" />
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">
+            Expresion corporal
+          </p>
+          <h1 className="text-3xl font-extrabold text-text">
+            Evalua tu presencia mientras hablas
+          </h1>
+          <p className="mx-auto max-w-2xl text-sm leading-relaxed text-text-muted">
+            Practica una respuesta oral con camara activa. El analisis se hace en tu
+            navegador y solo se guardan metricas agregadas.
+          </p>
+        </div>
       </section>
 
       {session.status === 'idle' && (
@@ -67,17 +75,19 @@ export function BodyExpressionPage() {
       )}
 
       {session.status === 'results' && session.result && (
-        <BodyResultsView
-          result={session.result}
-          onRestart={() => {
-            session.resetSession()
-            session.startSession()
-          }}
-          onExit={() => {
-            session.resetSession()
-            navigate('/dashboard')
-          }}
-        />
+        <div data-journey-id="body-results">
+          <BodyResultsView
+            result={session.result}
+            onRestart={() => {
+              session.resetSession()
+              session.startSession()
+            }}
+            onExit={() => {
+              session.resetSession()
+              navigate('/dashboard')
+            }}
+          />
+        </div>
       )}
 
       {session.status === 'error' && (

@@ -1,45 +1,99 @@
+import type { StopCategory } from '../../hooks/useLiveSession'
+
 interface StoppedTransitionOverlayProps {
-  // Why the live session stopped. Drives the secondary message under
-  // the headline. The full breakdown lives in the feedback page below,
-  // this overlay only gives the user 2 seconds of psychological space
-  // before the rich content appears.
-  reason: 'strikes' | 'emotion'
-  // Optional human-readable emotion name (e.g. "enojo") for the
-  // 'emotion' reason. Ignored otherwise.
+  // Which counter triggered the auto-stop. Drives the per-category
+  // detail line under the headline. Null/undefined means we do not
+  // know which specific counter fired (treated as a generic stop).
+  category: StopCategory | null
+  // Human-readable emotion fragment ("enojo", "tristeza", ...) used
+  // when category === 'emotion'. Ignored otherwise.
   emotionLabel?: string
 }
 
-// Brief two-second backdrop that fades in over the recording screen
-// when the auto-stop fires. It cushions the cut between active
-// recording and the dense feedback page so the user does not feel
-// thrown out of the experience.
-export const StoppedTransitionOverlay = ({ reason, emotionLabel }: StoppedTransitionOverlayProps) => {
-  const subtitle =
-    reason === 'strikes'
-      ? 'Detectamos tres errores y pausamos la sesión.'
-      : `Mantuviste una expresión de ${emotionLabel ?? 'malestar'} por demasiado tiempo.`
+// Brief five-second backdrop that fades in over the recording screen
+// when the auto-stop fires. The board-shaped icon and the "¡CORTEN!"
+// shout are a deliberate cinematic cue: the system is "calling cut"
+// because it detected something worth pausing on. The detail line
+// below ("dos errores de pronunciación", "expresión de enojo", etc.)
+// gives the user a one-line reason while the dense feedback page
+// loads underneath.
+export const StoppedTransitionOverlay = ({
+  category,
+  emotionLabel,
+}: StoppedTransitionOverlayProps) => {
+  const detail = pickDetailCopy(category, emotionLabel)
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in px-6 text-center">
       <div className="flex items-center justify-center mb-6">
-        <div className="h-16 w-16 rounded-full border-2 border-warning/40 bg-warning/10 flex items-center justify-center animate-scale-in">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            className="h-8 w-8 text-warning"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            aria-hidden
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M4.93 19h14.14a2 2 0 001.74-3l-7.07-12a2 2 0 00-3.48 0L3.2 16a2 2 0 001.73 3z" />
-          </svg>
+        <div className="h-20 w-20 rounded-2xl border-2 border-accent/40 bg-accent/10 flex items-center justify-center animate-scale-in">
+          <ClapperboardIcon className="h-12 w-12 text-accent drop-shadow-[0_0_12px_rgba(245,158,11,0.55)]" />
         </div>
       </div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-text">
+      <p className="text-3xl sm:text-4xl font-extrabold tracking-widest text-accent drop-shadow-[0_0_14px_rgba(245,158,11,0.45)]">
+        ¡CORTEN!
+      </p>
+      <h1 className="mt-3 text-xl sm:text-2xl font-bold text-text">
         Tu sesión fue detenida
       </h1>
-      <p className="text-sm sm:text-base text-text-muted mt-3 max-w-md">{subtitle}</p>
+      <p className="text-sm sm:text-base text-text-muted mt-3 max-w-md">{detail}</p>
     </div>
+  )
+}
+
+// One-line detail explaining which counter fired. Strikes copy mirrors
+// the threshold currently configured in useFrameStrikes (2 events). If
+// we ever raise the threshold, update this copy or wire the actual
+// count through props.
+function pickDetailCopy(
+  category: StopCategory | null,
+  emotionLabel?: string,
+): string {
+  if (category === 'muletillas') {
+    return 'Acumulaste dos muletillas en poco tiempo.'
+  }
+  if (category === 'pronunciation') {
+    return 'Cometiste dos errores de pronunciación seguidos.'
+  }
+  if (category === 'accentuation') {
+    return 'Cometiste dos errores de acentuación.'
+  }
+  if (category === 'emotion') {
+    return `Mantuviste una expresión de ${emotionLabel ?? 'malestar'} por demasiado tiempo.`
+  }
+  return 'Pausamos la sesión para que revises el detalle.'
+}
+
+interface IconProps {
+  className?: string
+}
+
+// Inline clapperboard SVG: the body is a rounded rectangle and the
+// hinged top piece sits above with three diagonal stripes evoking the
+// classic black-and-white film slate. Stroke-based so it inherits
+// currentColor and aligns with the rest of the icon system.
+function ClapperboardIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      {/* Body */}
+      <rect x="3" y="9" width="18" height="11" rx="1.5" />
+      {/* Top arm */}
+      <path d="M3 9 L5 4 L21 4 L19 9 Z" />
+      {/* Diagonal stripes on top arm */}
+      <line x1="8.5" y1="4" x2="6.5" y2="9" />
+      <line x1="13.5" y1="4" x2="11.5" y2="9" />
+      <line x1="18.5" y1="4" x2="16.5" y2="9" />
+      {/* Subtle body crease so the rectangle reads as a slate */}
+      <line x1="3" y1="13" x2="21" y2="13" />
+    </svg>
   )
 }

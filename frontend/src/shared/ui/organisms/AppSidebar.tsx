@@ -9,6 +9,12 @@ type AppSidebarProps = {
   onLogout: () => void
 }
 
+const JOURNEY_NAV_IDS: Record<string, string> = {
+  '/ejercicios': 'nav-exercises',
+  '/capsulas': 'nav-capsules',
+  '/sesion-libre': 'nav-live-session',
+}
+
 export const AppSidebar = ({ user, onLogout }: AppSidebarProps) => (
   <aside
     style={{ transitionProperty: 'width' }}
@@ -28,6 +34,7 @@ export const AppSidebar = ({ user, onLogout }: AppSidebarProps) => (
           icon={item.icon}
           label={item.label}
           end={item.end}
+          journeyId={JOURNEY_NAV_IDS[item.to]}
         />
       ))}
     </nav>

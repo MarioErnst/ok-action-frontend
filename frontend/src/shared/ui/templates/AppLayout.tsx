@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { AppSidebar } from '../organisms/AppSidebar'
 import { AppBottomBar } from '../organisms/AppBottomBar'
 import { useAuthStore } from '../../../features/auth/presentation/store/authStore'
+import { JourneyProvider } from '../../../features/journey'
 
 export const AppLayout = () => {
   const user = useAuthStore(s => s.user)
@@ -18,6 +19,7 @@ export const AppLayout = () => {
         </div>
       </main>
       <AppBottomBar />
+      <JourneyProvider />
     </div>
   )
 }

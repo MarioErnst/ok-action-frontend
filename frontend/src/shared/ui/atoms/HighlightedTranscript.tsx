@@ -1,16 +1,24 @@
 import { Fragment, useMemo } from 'react';
 
-import type { MuletillaPosition } from '../../../domain/MuletillasSession';
+// Shared shape used by every feature that wants to render a transcript with
+// highlighted segments (muletillas standalone, live session summary, etc.).
+// Feature-specific position types (e.g. snake_case DTOs coming straight from
+// the backend) must be mapped to this shape at the call site so the atom
+// stays decoupled from any module's domain.
+export interface TranscriptHighlightRange {
+  startChar: number;
+  endChar: number;
+}
 
 interface HighlightedTranscriptProps {
   transcript: string;
-  positions: MuletillaPosition[];
+  positions: TranscriptHighlightRange[];
   className?: string;
 }
 
 /**
- * Renders the spoken transcript with every filler-word occurrence painted in
- * the danger colour. Overlapping or out-of-bounds positions are filtered out
+ * Renders the spoken transcript with every highlighted range painted in the
+ * danger colour. Overlapping or out-of-bounds positions are filtered out
  * silently so a malformed Gemini response can't crash the result screen.
  */
 export const HighlightedTranscript = ({
@@ -45,7 +53,7 @@ interface Segment {
 
 function buildSegments(
   transcript: string,
-  positions: MuletillaPosition[],
+  positions: TranscriptHighlightRange[],
 ): Segment[] {
   if (transcript.length === 0) return [];
 

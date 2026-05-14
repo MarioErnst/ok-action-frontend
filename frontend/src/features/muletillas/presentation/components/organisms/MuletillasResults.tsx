@@ -1,5 +1,6 @@
 import type { MuletillasEvaluation } from '../../../domain/MuletillasSession'
-import { HighlightedTranscript } from '../atoms/HighlightedTranscript'
+import { HighlightedTranscript } from '../../../../../shared/ui/atoms/HighlightedTranscript'
+import { ModuleGuideLauncher } from '../../../../journey'
 import MuletillasDetail from '../molecules/MuletillasDetail'
 
 type Props = {
@@ -25,7 +26,10 @@ export default function MuletillasResults({ result, questionText, onReset }: Pro
   const hasMuletillas = result.muletillasDetected.length > 0
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 w-full max-w-lg mx-auto px-4 sm:px-0 animate-[fade-in_0.4s_ease-out]">
+    <div className="flex flex-col gap-4 sm:gap-6 w-full max-w-lg mx-auto px-4 sm:px-0 animate-[fade-in_0.4s_ease-out]" data-journey-id="muletillas-results">
+      <div className="flex justify-end">
+        <ModuleGuideLauncher guideId="muletillas" />
+      </div>
       <h2 className="text-[#F8FAFC] text-xl sm:text-2xl font-bold text-center">
         Resultado de tu evaluacion
       </h2>
