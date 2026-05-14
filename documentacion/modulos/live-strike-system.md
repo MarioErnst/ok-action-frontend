@@ -329,29 +329,35 @@ standalone y la `SessionSummaryScreen` del módulo live. Cada consumidor mapea
 sus posiciones a la forma neutral en su call site (live mapea snake_case →
 camelCase ahí mismo).
 
-## 15. Hotfix por palabras en el strike system
+## 15. Strike system por errores (no-dedup, threshold 2)
 
-### 15.1 Nuevo criterio de strike
+### 15.1 Criterio de strike actual
 
-`useFrameStrikes` ya no se dispara cuando un sub-score del frame baja de un
-umbral genérico. Ahora cuenta **palabras únicas con error** durante toda la
-sesión:
+`useFrameStrikes` cuenta **cada item de error reportado** por Gemini en cada
+frame, sin deduplicar:
 
 | Categoría | Qué cuenta | Threshold |
 |---|---|---|
-| Muletillas | Cada ocurrencia detectada (suma de `count`) | 3 ocurrencias |
-| Pronunciación | Palabras únicas en `phoneme_errors[].word` (deduplicadas) | 3 palabras |
-| Acentuación | Palabras únicas en `prosodic_errors[].word` (deduplicadas) | 3 palabras |
+| Muletillas | Cada ocurrencia detectada (suma de `count`) | 2 ocurrencias |
+| Pronunciación | Cada item en `phoneme_errors[]` | 2 items |
+| Acentuación | Cada item en `prosodic_errors[]` | 2 items |
 
-La sesión se autocorta cuando **cualquiera** de los tres contadores llega a 3.
-Son independientes: 2 muletillas + 2 errores de pronunciación no detienen.
+La sesión se autocorta cuando **cualquiera** de los tres contadores llega a 2.
+Son independientes: 1 muletilla + 1 error de pronunciación no detiene.
 
-### 15.2 Normalización de palabras
+### 15.2 Por qué no-dedup
 
-El hook normaliza cada palabra antes de meterla en el Set:
-`lowercase + trim + NFKD strip combining marks`. Mismo criterio que el backend
-muletillas (`_normalize_word` en `use_cases/muletillas/sessions.py`). Esto
-hace que `"Perro"`, `"perro"` y `"pérro"` cuenten como la misma palabra.
+Probamos antes con dedup por palabra normalizada (lowercase + NFKD strip
+accents) y un usuario que repetía 6 veces el mismo error solo sumaba 1
+strike. Pedagógicamente fallaba: el usuario podía clavarse en el mismo
+error muchos segundos sin que el sistema lo frenara. El no-dedup es
+predecible (cada item que el modelo reporta cuenta) y le da al usuario un
+margen corto (1 error de aviso) antes del corte.
+
+Como Gemini ya agrupa naturalmente errores repetidos del mismo fonema en
+una sola entrada `phoneme_errors[]` la mayoría de las veces, en la práctica
+el counter no se dispara de forma absurda — refleja con bastante fidelidad
+"el usuario tuvo N momentos distintos con errores".
 
 ### 15.3 StrikeEvent extendido
 

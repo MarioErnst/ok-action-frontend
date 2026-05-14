@@ -2,61 +2,53 @@ import { useCallback, useRef, useState } from 'react'
 import type { FrameEvaluationResponseDto } from '../../infrastructure/dto/FrameEvaluationDtos'
 import type { StrikeEvent } from '../../domain/StrikeEvent'
 
-// Strike rules since the live-evaluation-grounding hotfix:
+// Strike rules (no-dedup variant, threshold 2):
 //
-//   - Muletillas: each detected occurrence (count from
-//     `muletillas.detected[].count`) adds to the muletilla counter. No
-//     deduplication across frames — the goal is to discourage filler use
-//     in real time.
-//   - Pronunciation: each unique mispronounced word reported across the
-//     whole session (Set deduplicated by normalised form) adds one strike
-//     to the pronunciation counter.
-//   - Accentuation: same as pronunciation but on prosodic_errors[].word.
+//   - Muletillas: every detected occurrence adds to the counter. A frame
+//     reporting "eh × 3" contributes 3 strikes.
+//   - Pronunciation: every phoneme_errors[] item adds to the counter. No
+//     deduplication of any kind — the same mispronounced word repeated
+//     across frames keeps incrementing. The intent is to stop the user
+//     fast when they keep failing the same phoneme instead of giving
+//     them N "free" repeats of the same mistake.
+//   - Accentuation: same as pronunciation but on prosodic_errors[].
 //   - The session stops as soon as ANY of the three counters reaches the
-//     STRIKE_THRESHOLD. Counters are independent: 2 muletillas + 2
-//     pronunciation errors does not stop the session.
+//     STRIKE_THRESHOLD. Counters are independent: 1 muletilla + 1
+//     pronunciation error does not stop the session.
 //
 // `strikeCount` (kept for backwards compatibility with consumers showing
-// "x/3") is the maximum of the three category counters — i.e. the worst
-// signal so far.
+// "x/2") is the maximum of the three category counters.
 
-const STRIKE_THRESHOLD = 3
+const STRIKE_THRESHOLD = 2
 
 interface UseFrameStrikesResult {
   strikeCount: number
   muletillaCount: number
-  pronunciationWordCount: number
-  accentuationWordCount: number
+  pronunciationErrorCount: number
+  accentuationErrorCount: number
   events: StrikeEvent[]
   shouldStop: boolean
   registerFrameResponse: (frame: FrameEvaluationResponseDto) => void
   reset: () => void
 }
 
-// Normalise a word to a stable form for deduplication across frames.
-// Lowercase + trim + NFKD strip combining marks (accents). Same convention
-// the backend uses for muletillas; consistency here matters because the
-// counter is what stops the session.
-const normaliseWord = (word: string): string =>
-  word.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().trim()
-
 export function useFrameStrikes(): UseFrameStrikesResult {
   const [muletillaCount, setMuletillaCount] = useState(0)
-  const [pronunciationWordCount, setPronunciationWordCount] = useState(0)
-  const [accentuationWordCount, setAccentuationWordCount] = useState(0)
+  const [pronunciationErrorCount, setPronunciationErrorCount] = useState(0)
+  const [accentuationErrorCount, setAccentuationErrorCount] = useState(0)
   const [events, setEvents] = useState<StrikeEvent[]>([])
 
   const muletillaCountRef = useRef(0)
-  const pronunciationWordsRef = useRef<Set<string>>(new Set())
-  const accentuationWordsRef = useRef<Set<string>>(new Set())
+  const pronunciationErrorCountRef = useRef(0)
+  const accentuationErrorCountRef = useRef(0)
   const eventsRef = useRef<StrikeEvent[]>([])
 
   const registerFrameResponse = useCallback(
     (frame: FrameEvaluationResponseDto) => {
       const newEvents: StrikeEvent[] = []
       let muletillaDelta = 0
-      const pronunciationAdds: string[] = []
-      const accentuationAdds: string[] = []
+      let pronunciationDelta = 0
+      let accentuationDelta = 0
       const now = performance.now()
 
       if (frame.muletillas) {
@@ -77,11 +69,8 @@ export function useFrameStrikes(): UseFrameStrikesResult {
 
       if (frame.pronunciation?.phoneme_errors) {
         for (const error of frame.pronunciation.phoneme_errors) {
-          const key = normaliseWord(error.word)
-          if (key.length === 0) continue
-          if (pronunciationWordsRef.current.has(key)) continue
-          pronunciationWordsRef.current.add(key)
-          pronunciationAdds.push(key)
+          if (!error.word || error.word.trim().length === 0) continue
+          pronunciationDelta += 1
           newEvents.push({
             kind: 'pronunciation',
             frameIndex: frame.frame_index,
@@ -97,11 +86,8 @@ export function useFrameStrikes(): UseFrameStrikesResult {
 
       if (frame.accentuation?.prosodic_errors) {
         for (const error of frame.accentuation.prosodic_errors) {
-          const key = normaliseWord(error.word)
-          if (key.length === 0) continue
-          if (accentuationWordsRef.current.has(key)) continue
-          accentuationWordsRef.current.add(key)
-          accentuationAdds.push(key)
+          if (!error.word || error.word.trim().length === 0) continue
+          accentuationDelta += 1
           newEvents.push({
             kind: 'accentuation',
             frameIndex: frame.frame_index,
@@ -117,18 +103,20 @@ export function useFrameStrikes(): UseFrameStrikesResult {
 
       if (
         muletillaDelta === 0 &&
-        pronunciationAdds.length === 0 &&
-        accentuationAdds.length === 0
+        pronunciationDelta === 0 &&
+        accentuationDelta === 0
       ) {
         return
       }
 
       muletillaCountRef.current += muletillaDelta
+      pronunciationErrorCountRef.current += pronunciationDelta
+      accentuationErrorCountRef.current += accentuationDelta
       eventsRef.current = [...eventsRef.current, ...newEvents]
 
       setMuletillaCount(muletillaCountRef.current)
-      setPronunciationWordCount(pronunciationWordsRef.current.size)
-      setAccentuationWordCount(accentuationWordsRef.current.size)
+      setPronunciationErrorCount(pronunciationErrorCountRef.current)
+      setAccentuationErrorCount(accentuationErrorCountRef.current)
       setEvents(eventsRef.current)
     },
     [],
@@ -136,31 +124,31 @@ export function useFrameStrikes(): UseFrameStrikesResult {
 
   const reset = useCallback(() => {
     muletillaCountRef.current = 0
-    pronunciationWordsRef.current = new Set()
-    accentuationWordsRef.current = new Set()
+    pronunciationErrorCountRef.current = 0
+    accentuationErrorCountRef.current = 0
     eventsRef.current = []
     setMuletillaCount(0)
-    setPronunciationWordCount(0)
-    setAccentuationWordCount(0)
+    setPronunciationErrorCount(0)
+    setAccentuationErrorCount(0)
     setEvents([])
   }, [])
 
   const shouldStop =
     muletillaCount >= STRIKE_THRESHOLD ||
-    pronunciationWordCount >= STRIKE_THRESHOLD ||
-    accentuationWordCount >= STRIKE_THRESHOLD
+    pronunciationErrorCount >= STRIKE_THRESHOLD ||
+    accentuationErrorCount >= STRIKE_THRESHOLD
 
   const strikeCount = Math.max(
     muletillaCount,
-    pronunciationWordCount,
-    accentuationWordCount,
+    pronunciationErrorCount,
+    accentuationErrorCount,
   )
 
   return {
     strikeCount,
     muletillaCount,
-    pronunciationWordCount,
-    accentuationWordCount,
+    pronunciationErrorCount,
+    accentuationErrorCount,
     events,
     shouldStop,
     registerFrameResponse,
