@@ -281,3 +281,50 @@ features/live-session/
 - Ajuste del umbral de 55 / 5s / 3 strikes en tiempo de runtime (constantes en código).
 - Notificación al backend de los strikes individuales — solo se notifica el stop_reason al cierre.
 - Configurabilidad de las emociones disparadoras (constantes en código).
+
+## 14. Hotfix de grounding en la pantalla de resultados
+
+A partir del hotfix `live-evaluation-grounding`, la respuesta del composed Gemini
+trae tres campos nuevos efímeros que la `SessionSummaryScreen` renderiza:
+
+### 14.1 Tarjeta de transcripción
+
+Cuando `evaluation.transcript` viene poblado, la pantalla muestra una tarjeta
+arriba de los módulos con el texto transcripto por Gemini. Si la respuesta
+incluye `evaluation.muletillas.muletillas_positions[]`, cada ocurrencia se
+pinta sobre el transcript usando el átomo compartido
+`shared/ui/atoms/HighlightedTranscript`. Esto permite al usuario verificar a
+simple vista qué se interpretó como muletilla, igual que en el módulo standalone
+de muletillas (que ya consumía el mismo átomo antes del hotfix).
+
+### 14.2 Lista de errores prosódicos (acentuación)
+
+La tarjeta del módulo `accentuation` ahora renderiza `prosodic_errors[]` cuando
+viene poblado: una lista de palabras del transcript con la acentuación esperada
+y la observada, más una sugerencia accionable. Si la lista llega vacía, no se
+renderiza nada extra (el score y el feedback quedan como antes).
+
+### 14.3 Lista de errores fonémicos (pronunciación)
+
+La tarjeta del módulo `pronunciation` ahora renderiza `phoneme_errors[]`: una
+lista de palabras con el fonema afectado, el problema y la sugerencia. Misma
+lógica de empty-state.
+
+### 14.4 Compatibilidad
+
+Los tres campos son opcionales en los tipos de dominio
+(`MuletillaPosition`, `ProsodicError`, `PhonemeError`). Si una respuesta vieja
+(pre-hotfix) llega sin estos campos, los componentes nuevos se ocultan
+silenciosamente y el resto de la pantalla funciona igual. Esto evita romper el
+rollout si llegara a haber un build de frontend en una región sin el backend
+actualizado, aunque hoy ambos despliegues van acoplados al mismo commit.
+
+### 14.5 Por qué el átomo de transcript es compartido
+
+Antes del hotfix el `HighlightedTranscript` vivía en
+`features/muletillas/presentation/components/atoms/`. El hotfix lo movió a
+`shared/ui/atoms/HighlightedTranscript.tsx` con una interfaz neutral
+(`startChar`, `endChar`) y dos consumidores: la pantalla de muletillas
+standalone y la `SessionSummaryScreen` del módulo live. Cada consumidor mapea
+sus posiciones a la forma neutral en su call site (live mapea snake_case →
+camelCase ahí mismo).
