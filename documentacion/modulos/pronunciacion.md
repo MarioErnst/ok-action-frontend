@@ -2,121 +2,139 @@
 
 ## 1. Descripcion funcional
 
-El modulo de Pronunciacion guia al usuario en la lectura en voz alta de frases calibradas por
-nivel de dificultad. Para cada frase, el usuario graba su voz; el audio se envia al backend, que
-lo evalua con Gemini y devuelve puntajes de vocales, consonantes, fluidez e inteligibilidad junto
-con errores foneticos especificos. Al finalizar todas las frases, se presenta un resumen agregado.
+El modulo de Pronunciacion evalua la articulacion fonetica del usuario al leer frases en voz
+alta. Cada nivel (basico, intermedio, avanzado) tiene un conjunto distinto de frases con
+patrones foneticos crecientes. Las frases se obtienen del catalogo del backend
+(`GET /pronunciation/phrases?level=...`) en lugar de una lista hardcoded. El backend evalua
+cada frase con Gemini y devuelve los 4 sub-scores (vowel, consonant, fluency, intelligibility).
 
 ## 2. Flujo de usuario
 
-1. El usuario elige un nivel de dificultad: basico, intermedio o avanzado.
-2. El sistema carga las frases correspondientes y comienza la grabacion de la primera.
-3. Para cada frase: el usuario lee en voz alta y presiona "Terminar" (o espera el limite).
-4. El audio de cada frase se envia al backend de forma independiente; la evaluacion es asincrona.
-5. Al completar la ultima frase, la pagina espera a que lleguen todas las evaluaciones pendientes.
-6. Se presenta la pantalla de resultados con metricas agregadas y detalle por frase.
-7. El usuario puede reiniciar la sesion.
+1. El usuario accede a la pagina de Pronunciacion. Estado `idle`: ve la pantalla de seleccion
+   de nivel y, si tiene historial suficiente, la tarjeta "Tus frases más difíciles".
+2. Selecciona un nivel: el hook pasa a `loading` y trae las frases del catalogo.
+3. Si la carga falla o el catalogo esta vacio, vuelve a `idle` y muestra un mensaje.
+4. Si carga OK, pasa a `recording`. El usuario graba frase a frase, presionando "Siguiente"
+   para enviar el audio y avanzar.
+5. Los audios se envian asincronamente al backend; un contador trackea las pendientes.
+6. Al terminar todas las frases entra en `processing` hasta que el contador llega a 0.
+7. Se muestra la pantalla de resultados (`finished`). La sesion se persiste automaticamente
+   con `POST /pronunciation/sessions` incluyendo el desglose por frase (`phrase_index`,
+   `prompt_id`, 4 sub-scores), lo que alimenta el endpoint de insights.
 
 ## 3. Arquitectura del modulo
 
 ```
 src/features/pronunciation/
-  hooks/
-    usePronunciationSession.ts   logica de sesion: fases, grabacion, envio y agregacion
-  pages/
-    PronunciationPage.tsx        orquestador de vistas
-  components/organisms/
-    LevelSelectionScreen.tsx     seleccion de nivel
-    RecordingScreen.tsx          grabacion activa con indicador por frase
-    PronunciationResultsScreen.tsx  resultados agregados y por frase
+  domain/
+    PronunciationSession.ts                tipos del dominio (incluye promptId en
+                                           PhrasePronunciation)
   infrastructure/
-    dto/PronunciationDtos.ts     tipos que reflejan la respuesta HTTP del backend
-    mappers/pronunciationMapper.ts  conversion DTO → tipos de dominio
+    dto/PronunciationDtos.ts               DTOs (incluye PronunciationPhraseDto,
+                                           *PhraseEvaluationInputDto/OutputDto,
+                                           *WeakestPromptDto)
+    mappers/pronunciationMapper.ts         conversion DTO ↔ dominio; arma phrases[] en save
     repositories/HttpPronunciationRepository.ts  llamadas HTTP
-  services/
-    phrases.ts                   frases estaticas organizadas por nivel
-  types.ts                      PronunciationLevel, PhraseState, PhrasePronunciation, etc.
+  presentation/
+    hooks/
+      usePronunciationSession.ts           logica de sesion: fetch por nivel, fases,
+                                           grabacion, envio y agregacion
+      useWeakestPronunciationPrompts.ts    carga frases mas debiles (loading/ready/error)
+    pages/
+      PronunciationPage.tsx                orquestador con manejo de fase `loading`
+    components/
+      molecules/
+        PhraseCard.tsx                     card de cada frase en la lista
+        WeakestPhrasesCard.tsx             tarjeta "Tus frases más difíciles" (puro render)
+      organisms/
+        LevelSelectionScreen.tsx           seleccion de nivel + WeakestPhrasesCard montado
+        RecordingScreen.tsx                grabacion activa
+        PronunciationResultsScreen.tsx     resultados agregados y por frase
 ```
 
 ## 4. Hook principal: usePronunciationSession
 
 ### Fases de la sesion
 
-`idle` → `recording` → `processing` → `finished`
+`idle` → `loading` → `recording` → `processing` → `finished`
 
-- **idle**: estado inicial, esperando seleccion de nivel.
-- **recording**: el usuario graba frase a frase; cada `finishCurrentPhrase` detiene la grabacion
-  actual, envia el audio al backend de forma no bloqueante y, si hay mas frases, inicia la siguiente.
-- **processing**: todas las frases fueron grabadas; se espera a que `pendingEvaluationCount` llegue a 0.
-- **finished**: resultado disponible en `sessionResultRef.current`.
+- **idle**: pantalla de seleccion de nivel.
+- **loading**: tras pulsar un nivel, el hook hace fetch de las frases del catalogo. Si falla,
+  vuelve a `idle` con `catalogError` poblado.
+- **recording**: el usuario graba frase a frase.
+- **processing**: todas las frases enviadas; espera a `pendingEvaluationCount === 0`.
+- **finished**: resultado disponible.
+
+### Catalog fetch por nivel
+
+`startSession(level)` llama a `HttpPronunciationRepository.listPhrases(level)` antes de pasar
+a `recording`. Las frases del catalogo entran al estado del hook (`phrases: PronunciationPhrase[]`)
+y de ahi se construyen los `PhraseState`. El `id` UUID del catalogo se preserva como `phrase.id`
+y luego se envia como `prompt_id` en el save.
+
+### Tracking de promptId por frase
+
+Cuando `sendForEvaluation` envia el audio al `/evaluate`, pasa `currentPhrase.id` como
+`promptId` al mapper `toPhrasePronunciation(dto, promptId)`. El promptId queda en la entidad
+de dominio y `toSavePronunciationSessionDto` lo enumera en el array `phrases[]`.
 
 ### Grabacion de audio
 
 Utiliza el hook compartido `useAudioRecorder` (`shared/hooks/useAudioRecorder.ts`).
-Cada llamada a `startRecording` abre una nueva sesion de `MediaRecorder`; `stopRecording` devuelve
-un `Blob` con el audio completo de esa frase.
-
-### Envio y evaluacion asincrona
-
-`sendForEvaluation` llama a `HttpPronunciationRepository.evaluatePhrase` y actualiza el estado
-de la frase individualmente (uploading → evaluated | error). Un contador `pendingEvaluationCount`
-rastrrea cuantas evaluaciones estan en vuelo; cuando llega a 0 en fase `processing`, se calcula
-el resultado y se transiciona a `finished`.
-
-### Resultado agregado
-
-`buildSessionResult` promedia los puntajes de todas las frases evaluadas satisfactoriamente
-usando `averagePronunciationMetrics`. El feedback textual de resumen se determina por umbral:
-puntaje general >= 70 produce un mensaje positivo, menor genera un mensaje de mejora.
 
 ## 5. Capa de infraestructura
 
 ### DTO
 
-`PronunciationDtos.ts` define los tipos en snake_case que refleja la respuesta del backend:
-`overall_score`, `vowel_score`, `consonant_score`, `fluency_score`, `intelligibility_score`,
-`phoneme_errors` (array con `phoneme`, `word`, `actual_issue`, `suggestion`).
+`PronunciationDtos.ts` define:
+
+- `PronunciationPhraseDto`: `{ id, text, difficulty }` — devuelto por
+  `GET /pronunciation/phrases?level=`.
+- `PhraseEvaluationDto`: respuesta del `/evaluate`.
+- `PronunciationPhraseEvaluationInputDto`: lo que se envia en `phrases[]` al save.
+- `PronunciationPhraseEvaluationOutputDto`: lo que devuelve `GET /sessions/{id}/phrases`.
+- `PronunciationWeakestPromptDto`: respuesta de `/insights/weakest-prompts`.
 
 ### Mapper
 
-`toPhrasePronunciation` convierte el DTO al tipo de dominio `PhrasePronunciation`:
-- Renombra campos a camelCase.
-- Mapea el array `phoneme_errors` a `PhonemeError[]`.
-
-`averagePronunciationMetrics` calcula el promedio de metricas sobre un array de `PhrasePronunciation`.
+`toPhrasePronunciation(dto, promptId)` inyecta `promptId` en la entidad de dominio.
+`toSavePronunciationSessionDto(result)` arma el payload con `phrases[]`.
 
 ### Repository
 
-`HttpPronunciationRepository.evaluatePhrase` serializa el audio como `FormData` con los campos
-`audio` (Blob), `phrase_text` (string), `phrase_index` (number) y `level` (string).
-Hace `POST /api/pronunciation/evaluate` y devuelve el DTO deserializado.
+- `evaluatePhrase(audio, phrase_text, phrase_index, level)`: `POST /api/pronunciation/evaluate`.
+- `listPhrases(level)`: `GET /api/pronunciation/phrases?level=...`.
+- `saveSession(payload)`: `POST /api/pronunciation/sessions` con `phrases[]`.
+- `getSessionPhrases(id)`: `GET /api/pronunciation/sessions/{id}/phrases`.
+- `getWeakestPrompts(limit, minPracticeCount, level?)`: `GET /api/pronunciation/insights/weakest-prompts`.
 
 ## 6. Niveles de dificultad
 
-Definidos estaticamente en `services/phrases.ts`. Cada nivel tiene un conjunto de frases con
-distintos patrones foneticos:
+El backend siembra 6 frases por nivel en la tabla `prompts` (campo `difficulty`):
 
 - **basico**: frases cortas con fonemas de alta frecuencia.
-- **intermedio**: frases con combinaciones consonanticas mas complejas.
-- **avanzado**: frases con vibrantes multiples, grupos consononticos y entonacion variada.
+- **intermedio**: combinaciones consonanticas mas complejas.
+- **avanzado**: vibrantes multiples, grupos consonanticos densos.
+
+El frontend no decide que frases corresponden a cada nivel — solo pide al backend filtrando
+por `?level=`.
 
 ## 7. Tipos de dominio
 
 ```typescript
 type PronunciationLevel = 'basico' | 'intermedio' | 'avanzado'
 
-interface PhraseState {
-  phrase: { text: string; phonetic_focus?: string }
-  status: 'pending' | 'recording' | 'uploading' | 'evaluated' | 'error'
-  evaluation: PhrasePronunciation | null
+interface PronunciationPhrase {
+  id: string
+  text: string
+  level: PronunciationLevel
 }
 
 interface PhrasePronunciation {
-  overallScore: number
-  vowelScore: number
-  consonantScore: number
-  fluencyScore: number
-  intelligibilityScore: number
+  phraseText: string
+  phraseIndex: number
+  promptId: string
+  metrics: PronunciationMetrics
   feedback: string
   phonemeErrors: PhonemeError[]
 }
@@ -129,3 +147,9 @@ interface PronunciationSessionResult {
   timestamp: number
 }
 ```
+
+## 8. Pendientes
+
+- **Pantalla de detalle de sesion historica**: el endpoint `GET /sessions/{id}/phrases` ya
+  existe; cuando se construya el historial del modulo en el frontend, esa pantalla debe
+  renderizar el desglose por frase.

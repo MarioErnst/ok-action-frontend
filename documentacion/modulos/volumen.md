@@ -123,6 +123,16 @@ La pantalla de seleccion de preset esta encapsulada en el organism `PresetSelect
 `presets: LoudnessPreset[]` y `onSelect(preset: LoudnessPreset): void`. La pagina mantiene el
 estado `selectedPreset` y lo pasa a `useLoudnessCoach`; `PresetSelector` no conoce ese estado.
 
+### Persistencia del piso de ruido
+
+Cuando una sesion termina, `useLoudnessCoach` invoca `toSaveLoudnessSessionDto(metrics,
+presetId, noiseFloor)` y envia el resultado al backend con `HttpLoudnessRepository.saveSession`.
+El `noiseFloor` medido por `useVoiceMonitor` durante la fase `noise` de la calibracion se
+serializa como `noise_floor_db` (NULL si la calibracion no termino o devolvio `-Infinity`),
+correspondiendo a la columna `loudness_metrics.noise_floor_db` introducida por la migracion
+0008. Esto permite que el backend compare sesiones del mismo usuario entre distintos
+microfonos/entornos sin perder informacion del piso de ruido especifico de cada sesion.
+
 ## 8. Tipos de dominio
 
 ```typescript
