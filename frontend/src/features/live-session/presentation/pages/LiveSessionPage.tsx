@@ -69,7 +69,7 @@ export default function LiveSessionPage() {
     return (
       <main className="min-h-[100dvh] w-full bg-bg">
         <StoppedTransitionOverlay
-          reason={live.stopReason === 'auto_stop_emotion' ? 'emotion' : 'strikes'}
+          category={live.stopCategory}
           emotionLabel={live.emotionTriggerLabel ?? undefined}
         />
       </main>
