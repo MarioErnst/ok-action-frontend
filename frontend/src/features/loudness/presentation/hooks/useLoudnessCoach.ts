@@ -94,7 +94,7 @@ export default function useLoudnessCoach(
     const finished = calibrationPhase === 'idle' && metrics.durationMs > 0;
     if (finished && !sessionSavedRef.current) {
       sessionSavedRef.current = true;
-      const dto = toSaveLoudnessSessionDto(metrics, preset.presetId);
+      const dto = toSaveLoudnessSessionDto(metrics, preset.presetId, noiseFloor);
       HttpLoudnessRepository.saveSession(dto).catch((err) => {
         console.error('Error saving loudness session:', err);
       });
@@ -102,7 +102,7 @@ export default function useLoudnessCoach(
     if (!finished) {
       sessionSavedRef.current = false;
     }
-  }, [calibrationPhase, metrics, preset.presetId]);
+  }, [calibrationPhase, metrics, noiseFloor, preset.presetId]);
 
   return {
     band,
