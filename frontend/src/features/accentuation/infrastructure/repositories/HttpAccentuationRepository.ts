@@ -1,5 +1,6 @@
 import { apiRequest } from '../../../../api/client';
 import type {
+  AccentuationPhraseDto,
   AccentuationSessionDto,
   AccentuationSessionListItemDto,
   PhraseEvaluationDto,
@@ -24,6 +25,10 @@ async function evaluatePhrase(
 
 export const HttpAccentuationRepository = {
   evaluatePhrase,
+
+  async listPhrases(): Promise<AccentuationPhraseDto[]> {
+    return apiRequest<AccentuationPhraseDto[]>('/accentuation/phrases');
+  },
 
   async saveSession(data: SaveAccentuationSessionDto): Promise<AccentuationSessionDto> {
     return apiRequest<AccentuationSessionDto, SaveAccentuationSessionDto>(

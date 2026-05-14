@@ -5,6 +5,12 @@
 
 export type SessionStatusDto = 'active' | 'completed' | 'aborted';
 
+export interface AccentuationPhraseDto {
+  id: string;
+  text: string;
+  category: string;
+}
+
 export interface PhraseSpecificErrorDto {
   word: string;
   word_index?: number | null;
