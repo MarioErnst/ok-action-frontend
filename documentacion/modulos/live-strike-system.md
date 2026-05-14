@@ -328,3 +328,54 @@ Antes del hotfix el `HighlightedTranscript` vivía en
 standalone y la `SessionSummaryScreen` del módulo live. Cada consumidor mapea
 sus posiciones a la forma neutral en su call site (live mapea snake_case →
 camelCase ahí mismo).
+
+## 15. Hotfix por palabras en el strike system
+
+### 15.1 Nuevo criterio de strike
+
+`useFrameStrikes` ya no se dispara cuando un sub-score del frame baja de un
+umbral genérico. Ahora cuenta **palabras únicas con error** durante toda la
+sesión:
+
+| Categoría | Qué cuenta | Threshold |
+|---|---|---|
+| Muletillas | Cada ocurrencia detectada (suma de `count`) | 3 ocurrencias |
+| Pronunciación | Palabras únicas en `phoneme_errors[].word` (deduplicadas) | 3 palabras |
+| Acentuación | Palabras únicas en `prosodic_errors[].word` (deduplicadas) | 3 palabras |
+
+La sesión se autocorta cuando **cualquiera** de los tres contadores llega a 3.
+Son independientes: 2 muletillas + 2 errores de pronunciación no detienen.
+
+### 15.2 Normalización de palabras
+
+El hook normaliza cada palabra antes de meterla en el Set:
+`lowercase + trim + NFKD strip combining marks`. Mismo criterio que el backend
+muletillas (`_normalize_word` en `use_cases/muletillas/sessions.py`). Esto
+hace que `"Perro"`, `"perro"` y `"pérro"` cuenten como la misma palabra.
+
+### 15.3 StrikeEvent extendido
+
+`StrikeEvent` ahora carga campos opcionales accionables:
+
+- `word` (todas las categorías).
+- `phoneme` (pronunciación).
+- `expectedStress` (acentuación).
+- `actualIssue` y `suggestion` (pronunciación y acentuación).
+
+`StrikeFeedbackBody.WordErrorsPanel` (reemplaza al antiguo
+`ScoreThresholdPanel`) renderiza cada strike como:
+
+```
+palabra · fonema /rr/ o esperado PÁ-ja-ro    (timestamp)
+  cómo lo dijiste
+  cómo corregirlo
+```
+
+en lugar del `"Score parcial mínimo: 50"` genérico anterior.
+
+### 15.4 Compatibilidad de DTOs
+
+Los campos `phoneme_errors[]`, `prosodic_errors[]`, `muletillas_positions[]`
+y `transcript` en el frame DTO son opcionales. Si el backend devuelve un
+frame sin esos campos (pre-hotfix), el counter queda en 0 para esa categoría
+y no se cortan strikes — comportamiento seguro durante el rollout.
