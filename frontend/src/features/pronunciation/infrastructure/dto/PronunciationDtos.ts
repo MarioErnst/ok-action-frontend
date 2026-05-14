@@ -5,6 +5,12 @@
 
 export type SessionStatusDto = 'active' | 'completed' | 'aborted';
 
+export interface PronunciationPhraseDto {
+  id: string;
+  text: string;
+  difficulty: string;
+}
+
 export interface PhonemeErrorDto {
   phoneme: string;
   word: string;

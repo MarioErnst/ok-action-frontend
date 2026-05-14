@@ -1,6 +1,7 @@
 import { apiRequest } from '../../../../api/client'
 import type {
   PhraseEvaluationDto,
+  PronunciationPhraseDto,
   PronunciationSessionDto,
   PronunciationSessionListItemDto,
   SavePronunciationSessionDto,
@@ -26,6 +27,12 @@ async function evaluatePhrase(
 
 export const HttpPronunciationRepository = {
   evaluatePhrase,
+
+  async listPhrases(level: string): Promise<PronunciationPhraseDto[]> {
+    return apiRequest<PronunciationPhraseDto[]>(
+      `/pronunciation/phrases?level=${encodeURIComponent(level)}`,
+    )
+  },
 
   async saveSession(data: SavePronunciationSessionDto): Promise<PronunciationSessionDto> {
     return apiRequest<PronunciationSessionDto, SavePronunciationSessionDto>(
