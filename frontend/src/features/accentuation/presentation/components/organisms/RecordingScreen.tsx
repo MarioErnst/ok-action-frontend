@@ -19,6 +19,8 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
     recordingError,
     activeStream,
     totalPhrases,
+    catalogStatus,
+    catalogError,
     startSession,
     finishCurrentPhrase,
     resetSession,
@@ -28,6 +30,25 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
   if (phase === 'finished' && sessionResult) {
     onFinish(sessionResult);
     return null;
+  }
+
+  if (catalogStatus === 'loading') {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-6">
+        <div className="w-12 h-12 rounded-full border-4 border-surface-alt border-t-accent animate-spin" />
+        <p className="text-sm text-text-muted">Cargando frases...</p>
+      </div>
+    );
+  }
+
+  if (catalogStatus === 'error') {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-3 p-6">
+        <p className="text-center text-sm text-danger">
+          {catalogError ?? 'No se pudieron cargar las frases.'}
+        </p>
+      </div>
+    );
   }
 
   const currentPhrase = phraseStates[currentIndex]?.phrase;

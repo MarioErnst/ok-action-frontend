@@ -2,8 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toPhraseEvaluation, toSaveAccentuationSessionDto } from '../../infrastructure/mappers/accentuationMapper';
 import { HttpAccentuationRepository } from '../../infrastructure/repositories/HttpAccentuationRepository';
-import { ACCENTUATION_PHRASES } from '../../services/phrases';
+import type { AccentuationPhraseDto } from '../../infrastructure/dto/AccentuationDtos';
 import type {
+  AccentuationPhrase,
   AccentuationSessionResult,
   EvaluationMetrics,
   PhraseEvaluation,
@@ -12,9 +13,25 @@ import type {
 import useAudioRecorder from './useAudioRecorder';
 
 export type AccentuationPhase = 'idle' | 'recording' | 'processing' | 'finished';
+export type AccentuationCatalogStatus = 'loading' | 'ready' | 'error';
 
-function buildInitialPhraseStates(): PhraseState[] {
-  return ACCENTUATION_PHRASES.map((phrase) => ({
+const KNOWN_CATEGORIES = ['declarative', 'interrogative', 'exclamative'] as const;
+type KnownCategory = (typeof KNOWN_CATEGORIES)[number];
+
+function toAccentuationPhrase(dto: AccentuationPhraseDto): AccentuationPhrase {
+  // The catalog stores category as a free string; the domain type narrows it
+  // to the three accepted values. Anything else is forced to 'declarative'
+  // because category is purely visual today (no behavior depends on it).
+  const category: KnownCategory = (KNOWN_CATEGORIES as readonly string[]).includes(
+    dto.category,
+  )
+    ? (dto.category as KnownCategory)
+    : 'declarative';
+  return { id: dto.id, text: dto.text, category };
+}
+
+function buildPhraseStates(phrases: AccentuationPhrase[]): PhraseState[] {
+  return phrases.map((phrase) => ({
     phrase,
     status: 'pending',
     evaluation: null,
@@ -69,8 +86,11 @@ function buildSessionResult(phraseStates: PhraseState[]): AccentuationSessionRes
 export default function useAccentuationSession() {
   const [phase, setPhase] = useState<AccentuationPhase>('idle');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [phraseStates, setPhraseStates] = useState<PhraseState[]>(buildInitialPhraseStates);
+  const [phrases, setPhrases] = useState<AccentuationPhrase[]>([]);
+  const [phraseStates, setPhraseStates] = useState<PhraseState[]>([]);
   const [pendingEvaluationCount, setPendingEvaluationCount] = useState(0);
+  const [catalogStatus, setCatalogStatus] = useState<AccentuationCatalogStatus>('loading');
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const {
     isRecording,
@@ -83,6 +103,34 @@ export default function useAccentuationSession() {
 
   const sessionResultRef = useRef<AccentuationSessionResult | null>(null);
   const savedRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCatalogStatus('loading');
+    HttpAccentuationRepository.listPhrases()
+      .then((dtos) => {
+        if (cancelled) return;
+        const mapped = dtos.map(toAccentuationPhrase);
+        setPhrases(mapped);
+        setPhraseStates(buildPhraseStates(mapped));
+        setCatalogStatus(mapped.length === 0 ? 'error' : 'ready');
+        if (mapped.length === 0) {
+          setCatalogError('El catálogo de frases está vacío.');
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'No se pudieron cargar las frases. Reintenta más tarde.';
+        setCatalogError(message);
+        setCatalogStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (phase === 'processing' && pendingEvaluationCount === 0) {
@@ -137,10 +185,12 @@ export default function useAccentuationSession() {
   );
 
   const startSession = useCallback(async () => {
-    setPhraseStates(buildInitialPhraseStates());
+    if (catalogStatus !== 'ready') return;
+    setPhraseStates(buildPhraseStates(phrases));
     setCurrentIndex(0);
     setPendingEvaluationCount(0);
     sessionResultRef.current = null;
+    savedRef.current = false;
 
     await startRecording();
 
@@ -150,15 +200,16 @@ export default function useAccentuationSession() {
       ),
     );
     setPhase('recording');
-  }, [startRecording]);
+  }, [catalogStatus, phrases, startRecording]);
 
   const finishCurrentPhrase = useCallback(async () => {
     const audioBlob = await stopRecording();
-    const currentPhrase = ACCENTUATION_PHRASES[currentIndex];
+    const currentPhrase = phrases[currentIndex];
+    if (!currentPhrase) return;
 
     sendForEvaluation(audioBlob, currentIndex, currentPhrase.text);
 
-    const isLastPhrase = currentIndex >= ACCENTUATION_PHRASES.length - 1;
+    const isLastPhrase = currentIndex >= phrases.length - 1;
 
     if (isLastPhrase) {
       setPhase('processing');
@@ -175,17 +226,17 @@ export default function useAccentuationSession() {
         index === nextIndex ? { ...state, status: 'recording' } : state,
       ),
     );
-  }, [currentIndex, stopRecording, sendForEvaluation, startRecording]);
+  }, [currentIndex, phrases, stopRecording, sendForEvaluation, startRecording]);
 
   const resetSession = useCallback(() => {
     releaseResources();
-    setPhraseStates(buildInitialPhraseStates());
+    setPhraseStates(buildPhraseStates(phrases));
     setCurrentIndex(0);
     setPendingEvaluationCount(0);
     sessionResultRef.current = null;
     savedRef.current = false;
     setPhase('idle');
-  }, [releaseResources]);
+  }, [phrases, releaseResources]);
 
   return {
     phase,
@@ -194,7 +245,9 @@ export default function useAccentuationSession() {
     isRecording,
     recordingError,
     activeStream,
-    totalPhrases: ACCENTUATION_PHRASES.length,
+    totalPhrases: phrases.length,
+    catalogStatus,
+    catalogError,
     startSession,
     finishCurrentPhrase,
     resetSession,
