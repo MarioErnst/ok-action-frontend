@@ -1,11 +1,4 @@
-import { useEffect, useState } from 'react';
-import { HttpAccentuationRepository } from '../../../infrastructure/repositories/HttpAccentuationRepository';
-import type { AccentuationWeakestPromptDto } from '../../../infrastructure/dto/AccentuationDtos';
-
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'ready'; rows: AccentuationWeakestPromptDto[] }
-  | { status: 'error' };
+import useWeakestAccentuationPrompts from '../../hooks/useWeakestAccentuationPrompts';
 
 interface WeakestPhrasesCardProps {
   limit?: number;
@@ -13,34 +6,17 @@ interface WeakestPhrasesCardProps {
 }
 
 // Module documentation: documentacion/modulos/acentuacion.md (section 6).
-// Pulls /accentuation/insights/weakest-prompts and renders the prompts where
-// the user has the lowest historical avg score. Hidden when the user has no
-// eligible history (cold start) so the entry screen stays clean.
+// Pure presentational molecule that renders the prompts the user struggles
+// most with. Data fetching lives in useWeakestAccentuationPrompts so this
+// component stays at the molecule tier. Hidden when there is no eligible
+// history (cold start) to keep the entry screen clean.
 export default function WeakestPhrasesCard({
   limit = 3,
   minPracticeCount = 1,
 }: WeakestPhrasesCardProps) {
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
-
-  useEffect(() => {
-    let cancelled = false;
-    HttpAccentuationRepository.getWeakestPrompts(limit, minPracticeCount)
-      .then((rows) => {
-        if (cancelled) return;
-        setState({ status: 'ready', rows });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setState({ status: 'error' });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [limit, minPracticeCount]);
+  const state = useWeakestAccentuationPrompts(limit, minPracticeCount);
 
   if (state.status === 'loading' || state.status === 'error' || state.rows.length === 0) {
-    // Hide when there is no history yet. The card is meant to motivate
-    // focused practice, not to fill space on a fresh account.
     return null;
   }
 
@@ -50,9 +26,7 @@ export default function WeakestPhrasesCard({
         <h2 className="text-sm font-bold uppercase tracking-widest text-accent">
           Tus frases más difíciles
         </h2>
-        <span className="text-xs text-text-muted">
-          Promedio histórico
-        </span>
+        <span className="text-xs text-text-muted">Promedio histórico</span>
       </header>
       <ul className="flex flex-col gap-2">
         {state.rows.map((row) => (
