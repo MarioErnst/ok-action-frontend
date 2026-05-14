@@ -14,10 +14,14 @@ const clampPct = (value: number): number => {
   return Math.max(0, Math.min(100, Math.round(value)));
 };
 
-export function toPhraseEvaluation(dto: PhraseEvaluationDto): PhraseEvaluation {
+export function toPhraseEvaluation(
+  dto: PhraseEvaluationDto,
+  promptId: string,
+): PhraseEvaluation {
   return {
     phraseText: dto.phrase_text,
     phraseIndex: dto.phrase_index,
+    promptId,
     metrics: {
       overallScore: dto.overall_score,
       pronunciationScore: dto.pronunciation_score,
@@ -73,6 +77,14 @@ export function toSaveAccentuationSessionDto(
       stress_score: clampPct(result.metrics.stressAccuracyScore),
       phrases_count: phrasesCount,
     },
+    phrases: result.phraseEvaluations.map((evaluation) => ({
+      phrase_index: evaluation.phraseIndex,
+      prompt_id: evaluation.promptId,
+      pronunciation_score: clampPct(evaluation.metrics.pronunciationScore),
+      rhythm_score: clampPct(evaluation.metrics.rhythmScore),
+      intonation_score: clampPct(evaluation.metrics.intonationScore),
+      stress_score: clampPct(evaluation.metrics.stressAccuracyScore),
+    })),
     parent_id: parentId ?? null,
   };
 }

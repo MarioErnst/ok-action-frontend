@@ -153,7 +153,7 @@ export default function useAccentuationSession() {
   }, [phase]);
 
   const sendForEvaluation = useCallback(
-    (audioBlob: Blob, phraseIndex: number, phraseText: string) => {
+    (audioBlob: Blob, phraseIndex: number, phraseText: string, promptId: string) => {
       setPhraseStates((previous) =>
         previous.map((state, index) =>
           index === phraseIndex ? { ...state, status: 'uploading' } : state,
@@ -163,7 +163,7 @@ export default function useAccentuationSession() {
 
       HttpAccentuationRepository.evaluatePhrase(audioBlob, phraseText, phraseIndex)
         .then((dto) => {
-          const evaluation = toPhraseEvaluation(dto);
+          const evaluation = toPhraseEvaluation(dto, promptId);
           setPhraseStates((previous) =>
             previous.map((state, index) =>
               index === phraseIndex ? { ...state, status: 'evaluated', evaluation } : state,
@@ -207,7 +207,7 @@ export default function useAccentuationSession() {
     const currentPhrase = phrases[currentIndex];
     if (!currentPhrase) return;
 
-    sendForEvaluation(audioBlob, currentIndex, currentPhrase.text);
+    sendForEvaluation(audioBlob, currentIndex, currentPhrase.text, currentPhrase.id);
 
     const isLastPhrase = currentIndex >= phrases.length - 1;
 
