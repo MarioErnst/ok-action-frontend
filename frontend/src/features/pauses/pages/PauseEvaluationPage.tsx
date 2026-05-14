@@ -1,40 +1,14 @@
-import { useEffect, useState } from 'react';
 import usePauseDetection from '../hooks/usePauseDetection';
-import { HttpPauseRepository } from '../infrastructure/repositories/HttpPauseRepository';
+import usePauseRandomPrompt from '../hooks/usePauseRandomPrompt';
 import PauseRecordingScreen from '../components/organisms/PauseRecordingScreen';
 import PauseResultsScreen from '../components/organisms/PauseResultsScreen';
-import type { PausePrompt, PauseSessionResult } from '../types';
+import type { PauseSessionResult } from '../types';
 
 const PAUSE_SESSION_DURATION_MS = 20_000;
 
-type PromptState =
-  | { status: 'loading' }
-  | { status: 'ready'; prompt: PausePrompt }
-  | { status: 'error'; message: string };
-
 export default function PauseEvaluationPage() {
-  const [promptState, setPromptState] = useState<PromptState>({ status: 'loading' });
+  const promptState = usePauseRandomPrompt();
   const detection = usePauseDetection(PAUSE_SESSION_DURATION_MS);
-
-  useEffect(() => {
-    let cancelled = false;
-    HttpPauseRepository.getRandomPrompt()
-      .then((dto) => {
-        if (cancelled) return;
-        setPromptState({ status: 'ready', prompt: { id: dto.id, text: dto.text } });
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        const message =
-          error instanceof Error
-            ? error.message
-            : 'No se pudo cargar la consigna. Reintenta más tarde.';
-        setPromptState({ status: 'error', message });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   if (promptState.status === 'loading') {
     return (
