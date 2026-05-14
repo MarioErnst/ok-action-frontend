@@ -1,4 +1,5 @@
 import PauseMetricsSummary from '../molecules/PauseMetricsSummary';
+import { ModuleGuideLauncher } from '../../../journey';
 import { formatDuration } from '../../services/pauseFormatters';
 import { RecordingWaveform } from '../../../../shared/ui/molecules/RecordingWaveform';
 import type { PauseDetectionPhase, PauseMetrics } from '../../types';
@@ -37,9 +38,14 @@ export default function PauseRecordingScreen({
   return (
     <main className="min-h-[100dvh] bg-bg p-4 text-text md:p-6">
       <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
-        <header className="rounded-xl border border-border bg-surface p-5">
-          <p className="m-0 text-sm text-text-muted">Medicion de pausas</p>
-          <h1 className="m-0 mt-2 text-2xl font-bold text-text">Responde con claridad</h1>
+        <header className="rounded-xl border border-border bg-surface p-5" data-journey-id="pauses-intro">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="m-0 text-sm text-text-muted">Medicion de pausas</p>
+              <h1 className="m-0 mt-2 text-2xl font-bold text-text">Responde con claridad</h1>
+            </div>
+            {phase === 'idle' && <ModuleGuideLauncher guideId="pauses" />}
+          </div>
           <p className="m-0 mt-2 text-sm leading-relaxed text-text-muted">
             Mantente en silencio durante la calibracion y responde cuando comience la grabacion.
             Las pausas no son un error: aqui medimos ritmo, continuidad e intencion.

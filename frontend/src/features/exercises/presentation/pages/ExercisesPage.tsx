@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 
+import { ModuleGuideLauncher } from '../../../journey';
 import { NavIcon } from '../../../../shared/ui/atoms/NavIcon';
 import { NAV_ITEMS } from '../../../../shared/ui/config/navItems';
 
@@ -12,17 +13,17 @@ const MODULE_ITEMS = NAV_ITEMS.filter(
 
 const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/fonacion': 'Entrena la calidad y estabilidad de tu voz.',
-  '/pronunciacion': 'Practica y evalúa tu pronunciación con frases reales.',
-  '/acentuacion': 'Trabaja el énfasis y la acentuación correcta.',
+  '/pronunciacion': 'Practica y evalua tu pronunciacion con frases reales.',
+  '/acentuacion': 'Trabaja el enfasis y la acentuacion correcta.',
   '/volumen': 'Calibra y controla la intensidad de tu voz.',
-  '/pausas': 'Detecta silencios relevantes y aprende a usar pausas con intención.',
+  '/pausas': 'Detecta silencios relevantes y aprende a usar pausas con intencion.',
   '/muletillas': 'Identifica palabras de relleno que pueden debilitar tu mensaje.',
-  '/precision': 'Evalúa si tu respuesta mantiene claridad, foco y coherencia.',
+  '/precision': 'Evalua si tu respuesta mantiene claridad, foco y coherencia.',
   '/sesion-libre': 'Practica una respuesta completa con feedback integrado.',
   '/fluidez': 'Reduce trabas, repeticiones y reinicios al hablar.',
-  '/consistencia': 'Evalúa si mantienes ritmo, claridad, foco y seguridad.',
-  '/expresion-facial': 'Analiza tus expresiones faciales frente a cámara.',
-  '/expresion-corporal': 'Analiza postura, gestos, apertura y estabilidad frente a cámara.',
+  '/consistencia': 'Evalua si mantienes ritmo, claridad, foco y seguridad.',
+  '/expresion-facial': 'Analiza tus expresiones faciales frente a camara.',
+  '/expresion-corporal': 'Analiza postura, gestos, apertura y estabilidad frente a camara.',
   '/versatilidad-linguistica': 'Trabaja tu riqueza de vocabulario y variedad expresiva.',
 };
 
@@ -31,16 +32,21 @@ export const ExercisesPage = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto flex-1 w-full animate-fade-in relative z-10">
-      <header className="mb-6 md:mb-10 text-center md:text-left relative">
+      <header className="mb-6 md:mb-10 text-center md:text-left relative" data-journey-id="exercises-intro">
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
-        <p className="text-accent text-xs md:text-sm font-medium tracking-wider uppercase mb-2">Catálogo</p>
-        <h1 className="text-text text-3xl md:text-4xl font-extrabold tracking-tight">Ejercicios</h1>
-        <p className="text-text-muted mt-2 max-w-xl mx-auto md:mx-0 text-sm md:text-base">
-          Elige un módulo para empezar a entrenar. Cada uno mide y devuelve feedback específico sobre un aspecto de tu comunicación.
-        </p>
+        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-accent text-xs md:text-sm font-medium tracking-wider uppercase mb-2">Catalogo</p>
+            <h1 className="text-text text-3xl md:text-4xl font-extrabold tracking-tight">Ejercicios</h1>
+            <p className="text-text-muted mt-2 max-w-xl mx-auto md:mx-0 text-sm md:text-base">
+              Elige un modulo para empezar a entrenar. Cada uno mide y devuelve feedback especifico sobre un aspecto de tu comunicacion.
+            </p>
+          </div>
+          <ModuleGuideLauncher guideId="exercises" className="mx-auto md:mx-0" />
+        </div>
       </header>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6" data-journey-id="exercises-grid">
         {MODULE_ITEMS.map((item, i) => (
           <button
             key={item.to}
@@ -50,9 +56,7 @@ export const ExercisesPage = () => {
           >
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
 
-            <div
-              className="relative w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-surface to-surface-alt border border-white/5 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shadow-inner"
-            >
+            <div className="relative w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-surface to-surface-alt border border-white/5 flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shadow-inner">
               <div className="absolute inset-0 bg-accent/20 blur-xl rounded-full opacity-50 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300" />
               <NavIcon name={item.icon} active={false} size="lg" className="text-accent relative z-10" />
             </div>
@@ -84,3 +88,4 @@ export const ExercisesPage = () => {
     </div>
   );
 };
+

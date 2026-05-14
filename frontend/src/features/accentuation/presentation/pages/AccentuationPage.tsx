@@ -1,5 +1,6 @@
 // Full module documentation: documentacion/modulos/acentuacion.md
 import { useState } from 'react';
+import { ModuleGuideLauncher } from '../../../journey';
 import AccentuationResultsScreen from '../components/organisms/AccentuationResultsScreen';
 import RecordingScreen from '../components/organisms/RecordingScreen';
 import type { AccentuationSessionResult } from '../../domain/AccentuationSession';
@@ -24,8 +25,14 @@ export default function AccentuationPage() {
     <div className="flex-1 flex flex-col justify-center">
       {view === 'recording' && <RecordingScreen onFinish={handleSessionFinish} />}
       {view === 'results' && sessionResult && (
-        <AccentuationResultsScreen result={sessionResult} onReset={handleReset} />
+        <div data-journey-id="accentuation-results">
+          <div className="mx-auto flex w-full max-w-lg justify-end px-6 pt-4">
+            <ModuleGuideLauncher guideId="accentuation" />
+          </div>
+          <AccentuationResultsScreen result={sessionResult} onReset={handleReset} />
+        </div>
       )}
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+import { ModuleGuideLauncher } from '../../../../journey'
 import QuestionCard from '../molecules/QuestionCard'
 
 type Props = {
@@ -10,6 +11,10 @@ type Props = {
 export default function QuestionScreen({ question, onStartRecording, onLoadNew, isLoadingQuestion }: Props) {
   return (
     <div className="flex flex-col items-center gap-6 sm:gap-8 w-full max-w-lg mx-auto px-4 sm:px-0 animate-[fade-in_0.4s_ease-out]">
+      <div className="flex w-full justify-end" data-journey-id="muletillas-question">
+        <ModuleGuideLauncher guideId="muletillas" />
+      </div>
+
       <div className="text-center">
         <h2 className="text-[#F8FAFC] text-xl sm:text-2xl font-bold mb-2">
           Evaluacion de Muletillas

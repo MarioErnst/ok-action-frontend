@@ -1,4 +1,5 @@
 import { useAuthStore } from '../../../auth/presentation/store/authStore';
+import { ModuleGuideLauncher } from '../../../journey';
 import { ExerciseHistory } from '../components/organisms/ExerciseHistory';
 
 export const ProfilePage = () => {
@@ -6,10 +7,9 @@ export const ProfilePage = () => {
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto flex-1 flex flex-col animate-fade-in relative z-10 w-full gap-10">
-      {/* Glow effect behind header */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-64 h-64 bg-accent/10 blur-[80px] rounded-full pointer-events-none" />
       
-      <header className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8 pt-4 pb-2 relative">
+      <header className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8 pt-4 pb-2 relative" data-journey-id="profile-header">
         <div className="relative group cursor-pointer">
           <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)] bg-gradient-to-br from-surface to-surface-alt flex items-center justify-center relative z-10">
             <svg className="w-12 h-12 md:w-14 md:h-14 text-text-muted/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -27,12 +27,14 @@ export const ProfilePage = () => {
           <h1 className="text-3xl md:text-5xl font-extrabold text-text tracking-tight mb-2">{user?.fullName}</h1>
           <p className="text-text-muted text-sm md:text-base bg-surface-alt/50 px-4 py-1.5 rounded-full border border-white/5 inline-block">{user?.email}</p>
         </div>
+        <ModuleGuideLauncher guideId="profile" />
       </header>
 
-      <section>
+      <section data-journey-id="profile-history">
         <h2 className="text-2xl font-bold text-text mb-6 pl-2">Ejercicios realizados</h2>
         <ExerciseHistory />
       </section>
     </div>
   );
 };
+

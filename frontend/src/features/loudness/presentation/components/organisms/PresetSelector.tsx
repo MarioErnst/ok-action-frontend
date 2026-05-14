@@ -1,4 +1,5 @@
 // Full module documentation: documentacion/modulos/volumen.md
+import { ModuleGuideLauncher } from '../../../../journey';
 import type { LoudnessPreset } from '../../../domain/LoudnessSession';
 
 interface PresetSelectorProps {
@@ -12,15 +13,20 @@ export default function PresetSelector({ presets, onSelect }: PresetSelectorProp
   return (
     <main className="flex-1 flex flex-col justify-center p-4 md:p-6 pb-28 lg:pb-6 animate-fade-in relative z-10">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <header className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] relative overflow-hidden text-center md:text-left">
+        <header className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] relative overflow-hidden text-center md:text-left" data-journey-id="loudness-preset">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
-          <p className="m-0 text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-            Loudness coach
-          </p>
-          <h1 className="m-0 mt-2 text-3xl font-extrabold text-text">Selecciona un preset</h1>
-          <p className="m-0 mt-3 text-sm md:text-base leading-relaxed text-text-muted">
-            Elige el contexto de uso para calibrar los umbrales de volumen antes de comenzar la sesión.
-          </p>
+          <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="m-0 text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                Loudness coach
+              </p>
+              <h1 className="m-0 mt-2 text-3xl font-extrabold text-text">Selecciona un preset</h1>
+              <p className="m-0 mt-3 text-sm md:text-base leading-relaxed text-text-muted">
+                Elige el contexto de uso para calibrar los umbrales de volumen antes de comenzar la sesion.
+              </p>
+            </div>
+            <ModuleGuideLauncher guideId="loudness" />
+          </div>
         </header>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -54,3 +60,4 @@ export default function PresetSelector({ presets, onSelect }: PresetSelectorProp
     </main>
   );
 }
+
