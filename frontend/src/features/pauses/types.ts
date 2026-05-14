@@ -40,5 +40,6 @@ export interface PauseDetectionResult {
 }
 
 export interface PauseSessionResult extends PauseDetectionResult {
+  promptId: string;
   promptText: string;
 }
