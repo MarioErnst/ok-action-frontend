@@ -24,7 +24,7 @@ import { useEmotionStop } from './useEmotionStop'
 
 const MAX_SESSION_SECONDS = 300
 const CALIBRATION_MS = 2000
-const STOPPED_TRANSITION_MS = 2000
+const STOPPED_TRANSITION_MS = 5000
 const MAX_INFLIGHT_FRAMES = 3
 
 // Minimum samples required to compute a reliable facial baseline, matched
@@ -38,6 +38,15 @@ const MIN_FACIAL_BASELINE_SAMPLES = 45
 const FACIAL_CALIBRATION_CAP_MS = 10_000
 
 type StopReason = 'user_stop' | 'time_limit' | AutoStopReasonDto
+
+// Which of the four auto-stop counters actually fired. Used by the
+// stopped_transition overlay to render a specific copy ("dos muletillas",
+// "dos errores de pronunciación", etc.) instead of a generic message.
+export type StopCategory =
+  | 'muletillas'
+  | 'pronunciation'
+  | 'accentuation'
+  | 'emotion'
 
 const FRAME_AUDIO_MODULES: ReadonlyArray<LiveModule> = [
   'muletillas',
@@ -91,6 +100,12 @@ interface UseLiveSessionResult {
   facialEnabled: boolean
   strikeEvents: ReturnType<typeof useFrameStrikes>['events']
   stopReason: StopReason | null
+  // Specific category that triggered the auto-stop. Populated by the
+  // hook just before transitioning into stopped_transition so the
+  // overlay can render a copy that matches the actual cause (the three
+  // strike counters are independent and each one has its own message).
+  // Null when the session ended manually or by time_limit.
+  stopCategory: StopCategory | null
   emotionTriggerLabel: string | null
   recordingAudioUrl: string | null
   recordingDurationMs: number
@@ -158,6 +173,7 @@ export function useLiveSession(): UseLiveSessionResult {
   const [calibrationProgress, setCalibrationProgress] = useState(0)
   const [stopReason, setStopReason] = useState<StopReason | null>(null)
   const [emotionTriggerLabel, setEmotionTriggerLabel] = useState<string | null>(null)
+  const [stopCategory, setStopCategory] = useState<StopCategory | null>(null)
   const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null)
   const [recordingDurationMs, setRecordingDurationMs] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
@@ -308,6 +324,7 @@ export function useLiveSession(): UseLiveSessionResult {
     setIsRecording(false)
     setCalibrationProgress(0)
     setStopReason(null)
+    setStopCategory(null)
     setEmotionTriggerLabel(null)
     setRecordingAudioUrl(null)
     setRecordingDurationMs(0)
@@ -484,6 +501,7 @@ export function useLiveSession(): UseLiveSessionResult {
     setEvaluation(null)
     setLiveScore(null)
     setStopReason(null)
+    setStopCategory(null)
     setEmotionTriggerLabel(null)
     setRecordingAudioUrl(null)
     setRecordingDurationMs(0)
@@ -743,8 +761,27 @@ export function useLiveSession(): UseLiveSessionResult {
     if (!strikes.shouldStop) return
     if (phaseRef.current !== 'recording') return
     if (isStoppingRef.current) return
+    // The three strike counters are independent so the one that
+    // tripped the threshold first is the cause. We capture it here so
+    // the stopped_transition overlay can render a category-specific
+    // copy. Order checked muletillas → pronunciation → accentuation
+    // is arbitrary but stable: if two counters reach the threshold in
+    // the same render, the first listed wins.
+    if (strikes.muletillaCount >= 2) {
+      setStopCategory('muletillas')
+    } else if (strikes.pronunciationErrorCount >= 2) {
+      setStopCategory('pronunciation')
+    } else if (strikes.accentuationErrorCount >= 2) {
+      setStopCategory('accentuation')
+    }
     void triggerStop('auto_stop_strikes')
-  }, [strikes.shouldStop, triggerStop])
+  }, [
+    strikes.shouldStop,
+    strikes.muletillaCount,
+    strikes.pronunciationErrorCount,
+    strikes.accentuationErrorCount,
+    triggerStop,
+  ])
 
   useEffect(() => {
     if (!emotionStop.trigger) return
@@ -752,6 +789,7 @@ export function useLiveSession(): UseLiveSessionResult {
     if (isStoppingRef.current) return
     setEmotionTriggerLabel(EMOTION_LABEL[emotionStop.trigger.emotion] ?? 'malestar')
     setStopReason('auto_stop_emotion')
+    setStopCategory('emotion')
     // Persist the emotion for the feedback page in a derived field
     if (facialSummaryBuilderRef.current) {
       facialSummaryBuilderRef.current.feed(emotionStop.trigger.emotion)
@@ -824,6 +862,7 @@ export function useLiveSession(): UseLiveSessionResult {
     facialEnabled,
     strikeEvents: strikes.events,
     stopReason,
+    stopCategory,
     emotionTriggerLabel,
     recordingAudioUrl,
     recordingDurationMs,
