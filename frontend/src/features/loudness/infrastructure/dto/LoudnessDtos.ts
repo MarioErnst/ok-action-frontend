@@ -42,6 +42,7 @@ export interface LoudnessMetricsDto {
   high_pct: number;
   clipping_pct: number;
   peak_db: number;
+  noise_floor_db?: number | null;
 }
 
 export interface SaveLoudnessSessionDto {

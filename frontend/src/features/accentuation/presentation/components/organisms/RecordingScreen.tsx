@@ -5,6 +5,7 @@ import { StressedPhrase } from '../atoms/StressedPhrase';
 import AccentuationMetrics from '../molecules/AccentuationMetrics';
 import EvaluationFeedback from '../molecules/EvaluationFeedback';
 import PhraseCard from '../molecules/PhraseCard';
+import WeakestPhrasesCard from '../molecules/WeakestPhrasesCard';
 
 interface RecordingScreenProps {
   onFinish: (result: AccentuationSessionResult) => void;
@@ -19,6 +20,8 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
     recordingError,
     activeStream,
     totalPhrases,
+    catalogStatus,
+    catalogError,
     startSession,
     finishCurrentPhrase,
     resetSession,
@@ -28,6 +31,25 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
   if (phase === 'finished' && sessionResult) {
     onFinish(sessionResult);
     return null;
+  }
+
+  if (catalogStatus === 'loading') {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-6">
+        <div className="w-12 h-12 rounded-full border-4 border-surface-alt border-t-accent animate-spin" />
+        <p className="text-sm text-text-muted">Cargando frases...</p>
+      </div>
+    );
+  }
+
+  if (catalogStatus === 'error') {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-3 p-6">
+        <p className="text-center text-sm text-danger">
+          {catalogError ?? 'No se pudieron cargar las frases.'}
+        </p>
+      </div>
+    );
   }
 
   const currentPhrase = phraseStates[currentIndex]?.phrase;
@@ -49,11 +71,14 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
       </div>
 
       {phase === 'idle' && (
-        <div className="flex flex-col items-center gap-8 mt-4">
-          <div className="bg-surface/60 backdrop-blur-sm border border-border/50 p-6 rounded-3xl shadow-lg">
+        <div className="flex flex-col items-center gap-6 mt-4">
+          <div className="bg-surface/60 backdrop-blur-sm border border-border/50 p-6 rounded-3xl shadow-lg w-full">
             <p className="text-center text-text-muted leading-relaxed">
               Lee cada frase en voz alta. Intenta pronunciar con claridad y entonación natural.
             </p>
+          </div>
+          <div className="w-full">
+            <WeakestPhrasesCard />
           </div>
           <button
             type="button"

@@ -1,4 +1,5 @@
 import type { PronunciationLevel } from '../../../domain/PronunciationSession'
+import WeakestPhrasesCard from '../molecules/WeakestPhrasesCard'
 
 interface LevelCardProps {
   level: PronunciationLevel
@@ -58,6 +59,7 @@ export default function LevelSelectionScreen({ onLevelSelect }: LevelSelectionSc
           onSelect={onLevelSelect}
         />
       </div>
+      <WeakestPhrasesCard />
     </div>
   )
 }

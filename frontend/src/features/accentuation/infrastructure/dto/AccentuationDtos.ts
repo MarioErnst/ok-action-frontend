@@ -5,6 +5,12 @@
 
 export type SessionStatusDto = 'active' | 'completed' | 'aborted';
 
+export interface AccentuationPhraseDto {
+  id: string;
+  text: string;
+  category: string;
+}
+
 export interface PhraseSpecificErrorDto {
   word: string;
   word_index?: number | null;
@@ -34,11 +40,40 @@ export interface AccentuationMetricsDto {
   phrases_count: number;
 }
 
+export interface AccentuationPhraseEvaluationInputDto {
+  phrase_index: number;
+  prompt_id: string;
+  pronunciation_score: number;
+  rhythm_score: number;
+  intonation_score: number;
+  stress_score: number;
+}
+
 export interface SaveAccentuationSessionDto {
   started_at: string;
   ended_at: string;
   metrics: AccentuationMetricsDto;
+  phrases: AccentuationPhraseEvaluationInputDto[];
   parent_id?: string | null;
+}
+
+export interface AccentuationPhraseEvaluationOutputDto {
+  phrase_index: number;
+  prompt_id: string;
+  prompt_text: string;
+  prompt_category: string;
+  pronunciation_score: number;
+  rhythm_score: number;
+  intonation_score: number;
+  stress_score: number;
+}
+
+export interface AccentuationWeakestPromptDto {
+  prompt_id: string;
+  text: string;
+  category: string;
+  avg_score: number;
+  practice_count: number;
 }
 
 export interface AccentuationSessionDto {

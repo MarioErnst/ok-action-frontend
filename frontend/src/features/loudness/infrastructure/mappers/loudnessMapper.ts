@@ -35,6 +35,7 @@ const normalizeBandPercentages = (
 export const toSaveLoudnessSessionDto = (
   metrics: LoudnessMetrics,
   presetId: string,
+  noiseFloorDb: number | null,
   parentId?: string | null,
 ): SaveLoudnessSessionDto => {
   // Frontend tracks per-band time including silence; the backend metric
@@ -71,6 +72,11 @@ export const toSaveLoudnessSessionDto = (
       high_pct: normalized.high,
       clipping_pct: normalized.clipping,
       peak_db: metrics.peakDb,
+      // The voiceMonitor returns Number.NEGATIVE_INFINITY before calibration
+      // finishes; we send null in that case so the backend stores NULL
+      // instead of an invalid number.
+      noise_floor_db:
+        noiseFloorDb !== null && Number.isFinite(noiseFloorDb) ? noiseFloorDb : null,
     },
     parent_id: parentId ?? null,
   };

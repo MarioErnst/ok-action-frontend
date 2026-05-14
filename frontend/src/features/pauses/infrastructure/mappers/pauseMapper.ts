@@ -29,6 +29,7 @@ export function toSavePauseSessionDto(
       total_pause_ms: result.pauseMetrics.totalPauseDurationMs,
       longest_pause_ms: result.pauseMetrics.longestPauseMs,
       silence_pct: clampPct(result.pauseMetrics.silenceRatio * 100),
+      prompt_id: result.promptId,
     },
     parent_id: parentId ?? null,
   };
