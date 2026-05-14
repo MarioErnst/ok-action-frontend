@@ -150,10 +150,10 @@ export const StrikeFeedbackBody = ({
           <MuletillasPanel events={eventsByKind.muletilla} />
         )}
         {activeTab === 'accentuation' && (
-          <ScoreThresholdPanel kind="accentuation" events={eventsByKind.accentuation} />
+          <WordErrorsPanel kind="accentuation" events={eventsByKind.accentuation} />
         )}
         {activeTab === 'pronunciation' && (
-          <ScoreThresholdPanel kind="pronunciation" events={eventsByKind.pronunciation} />
+          <WordErrorsPanel kind="pronunciation" events={eventsByKind.pronunciation} />
         )}
         {activeTab === 'facial_expression' && (
           <FacialPanel evaluation={evaluation} />
@@ -215,7 +215,12 @@ function MuletillasPanel({ events }: { events: StrikeEvent[] }) {
   )
 }
 
-function ScoreThresholdPanel({
+// Renders each unique word the user got wrong in accentuation or
+// pronunciation. The strike counter deduplicates by normalised word, so
+// each row here corresponds to one distinct mistake reported by Gemini
+// (not one per frame). The actionable fields come from the per-word error
+// items in the frame Gemini response since the grounding hotfix.
+function WordErrorsPanel({
   kind,
   events,
 }: {
@@ -225,21 +230,43 @@ function ScoreThresholdPanel({
   if (events.length === 0) {
     return (
       <p className="text-sm text-text-muted">
-        No tuviste frames por debajo del umbral en {STRIKE_TAB_LABELS[kind]}.
+        No detectamos errores de {STRIKE_TAB_LABELS[kind].toLowerCase()} en la sesión.
       </p>
     )
   }
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-3">
       {events.map((ev, i) => (
         <li
-          key={`${kind}-${ev.frameIndex}-${i}`}
-          className="flex items-center justify-between bg-surface-alt rounded-xl px-3 py-2 text-sm"
+          key={`${kind}-${ev.word ?? ev.frameIndex}-${i}`}
+          className="flex flex-col gap-1 bg-surface-alt rounded-xl px-3 py-2 text-sm"
         >
-          <span className="text-text">{ev.detail}</span>
-          <span className="text-xs text-text-muted">
-            {formatRelative(ev.timestampMs)}
-          </span>
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="font-semibold text-text">
+              {ev.word ?? 'palabra desconocida'}
+              {kind === 'pronunciation' && ev.phoneme && (
+                <span className="text-text-muted font-normal">
+                  {' '}
+                  · fonema /{ev.phoneme}/
+                </span>
+              )}
+              {kind === 'accentuation' && ev.expectedStress && (
+                <span className="text-text-muted font-normal">
+                  {' '}
+                  · esperado {ev.expectedStress}
+                </span>
+              )}
+            </span>
+            <span className="text-xs text-text-muted whitespace-nowrap">
+              {formatRelative(ev.timestampMs)}
+            </span>
+          </div>
+          {ev.actualIssue && (
+            <span className="text-xs text-text-muted">{ev.actualIssue}</span>
+          )}
+          {ev.suggestion && (
+            <span className="text-xs text-text">{ev.suggestion}</span>
+          )}
         </li>
       ))}
     </ul>
