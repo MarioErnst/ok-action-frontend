@@ -1,4 +1,5 @@
 import useAccentuationSession from '../../hooks/useAccentuationSession';
+import { ModuleGuideLauncher } from '../../../../journey';
 import type { AccentuationSessionResult } from '../../../domain/AccentuationSession';
 import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform';
 import { StressedPhrase } from '../atoms/StressedPhrase';
@@ -57,7 +58,12 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
   const isProcessing = phase === 'processing';
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6 animate-fade-in relative z-10 pb-28">
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6 animate-fade-in relative z-10 pb-28" data-journey-id="accentuation-intro">
+      {phase === 'idle' && (
+        <div className="flex justify-end">
+          <ModuleGuideLauncher guideId="accentuation" />
+        </div>
+      )}
       <div className="flex flex-col items-center gap-2 relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-24 bg-accent/20 blur-[40px] rounded-full pointer-events-none" />
         <p className="text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">

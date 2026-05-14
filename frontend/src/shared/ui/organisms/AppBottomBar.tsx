@@ -3,6 +3,13 @@ import { NavLink } from 'react-router-dom'
 import { NavIcon } from '../atoms/NavIcon'
 import { NAV_ITEMS } from '../config/navItems'
 
+const JOURNEY_NAV_IDS: Record<string, string> = {
+  '/ejercicios': 'nav-exercises',
+  '/capsulas': 'nav-capsules',
+  '/sesion-libre': 'nav-live-session',
+  '/perfil': 'nav-profile',
+}
+
 export const AppBottomBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const centerItem = NAV_ITEMS.find(i => i.to === '/dashboard')
@@ -20,6 +27,7 @@ export const AppBottomBar = () => {
             key={item.to}
             to={item.to}
             end={item.end}
+            data-journey-id={JOURNEY_NAV_IDS[item.to]}
             onClick={() => setIsMenuOpen(false)}
             className="relative flex flex-col items-center justify-center flex-1 h-16 group active:scale-95 transition-transform duration-200"
           >
@@ -41,6 +49,7 @@ export const AppBottomBar = () => {
           <NavLink
             to={centerItem.to}
             end={centerItem.end}
+            data-journey-id={JOURNEY_NAV_IDS[centerItem.to]}
             onClick={() => setIsMenuOpen(false)}
             className="relative flex flex-col items-center justify-center -translate-y-4 z-10 mx-2"
           >
@@ -57,6 +66,7 @@ export const AppBottomBar = () => {
             key={item.to}
             to={item.to}
             end={item.end}
+            data-journey-id={JOURNEY_NAV_IDS[item.to]}
             onClick={() => setIsMenuOpen(false)}
             className="relative flex flex-col items-center justify-center flex-1 h-16 group active:scale-95 transition-transform duration-200"
           >
@@ -117,6 +127,7 @@ export const AppBottomBar = () => {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                data-journey-id={JOURNEY_NAV_IDS[item.to]}
                 onClick={() => setIsMenuOpen(false)}
                 className={({ isActive }) => `flex items-center gap-3 p-3 rounded-2xl transition-all ${isActive ? 'bg-accent/10 text-accent' : 'text-text hover:bg-surface-alt'}`}
               >

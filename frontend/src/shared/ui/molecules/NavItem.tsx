@@ -9,12 +9,14 @@ type NavItemProps = {
   label: string
   end?: boolean
   indicatorVariant?: 'vertical' | 'horizontal'
+  journeyId?: string
 }
 
-export const NavItem = ({ to, icon, label, end, indicatorVariant = 'vertical' }: NavItemProps) => (
+export const NavItem = ({ to, icon, label, end, indicatorVariant = 'vertical', journeyId }: NavItemProps) => (
   <NavLink
     to={to}
     end={end}
+    data-journey-id={journeyId}
     className={({ isActive }) =>
       `relative flex items-center gap-3 mx-2 px-4 py-2.5 rounded-xl transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
         isActive
