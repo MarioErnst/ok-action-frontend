@@ -14,6 +14,7 @@ export default function PronunciationPage() {
     isRecording,
     recordingError,
     activeStream,
+    catalogError,
     sessionResult,
     startSession,
     finishCurrentPhrase,
@@ -22,7 +23,21 @@ export default function PronunciationPage() {
 
   return (
     <div className="flex-1 flex flex-col justify-center">
-      {phase === 'idle' && <LevelSelectionScreen onLevelSelect={startSession} />}
+      {phase === 'idle' && (
+        <div className="flex flex-col gap-3">
+          <LevelSelectionScreen onLevelSelect={startSession} />
+          {catalogError && (
+            <p className="text-center text-sm text-danger px-4">{catalogError}</p>
+          )}
+        </div>
+      )}
+
+      {phase === 'loading' && (
+        <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-6">
+          <div className="w-12 h-12 rounded-full border-4 border-surface-alt border-t-accent animate-spin" />
+          <p className="text-sm text-text-muted">Cargando frases...</p>
+        </div>
+      )}
 
       {phase === 'finished' && sessionResult && (
         <PronunciationResultsScreen result={sessionResult} onReset={resetSession} />
