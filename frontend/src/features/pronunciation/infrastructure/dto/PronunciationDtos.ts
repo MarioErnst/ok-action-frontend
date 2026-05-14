@@ -39,11 +39,40 @@ export interface PronunciationMetricsDto {
   phrases_count: number;
 }
 
+export interface PronunciationPhraseEvaluationInputDto {
+  phrase_index: number;
+  prompt_id: string;
+  vowel_score: number;
+  consonant_score: number;
+  fluency_score: number;
+  intelligibility_score: number;
+}
+
 export interface SavePronunciationSessionDto {
   started_at: string;
   ended_at: string;
   metrics: PronunciationMetricsDto;
+  phrases: PronunciationPhraseEvaluationInputDto[];
   parent_id?: string | null;
+}
+
+export interface PronunciationPhraseEvaluationOutputDto {
+  phrase_index: number;
+  prompt_id: string;
+  prompt_text: string;
+  prompt_difficulty: string;
+  vowel_score: number;
+  consonant_score: number;
+  fluency_score: number;
+  intelligibility_score: number;
+}
+
+export interface PronunciationWeakestPromptDto {
+  prompt_id: string;
+  text: string;
+  difficulty: string;
+  avg_score: number;
+  practice_count: number;
 }
 
 export interface PronunciationSessionDto {
