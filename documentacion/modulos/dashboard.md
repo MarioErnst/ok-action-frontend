@@ -10,9 +10,16 @@ Tres bloques apilados verticalmente:
 
 1. **Greeting** — nombre del usuario activo (leído desde `useAuthStore`) y subtítulo explicativo.
 2. **Barra de filtros** — chips horizontales scrollables con los 12 módulos del `ModuleEnum` (más "Todos") y un selector segmentado de rango temporal (7d / 30d / 90d / Todo).
-3. **Dos `ChartCard`** apiladas:
+3. **Tres `ChartCard`** apiladas:
    - **Rendimiento**: `LineChart` con el `avg_score` diario.
    - **Tiempo diario**: `BarChart` con los minutos de práctica por día.
+   - **Tu punto de partida**: `InitialRadar` reutilizado del módulo `welcome`,
+     muestra los scores iniciales por módulo (la misma "araña" que ve el
+     usuario al abrir la app por primera vez). Se muestra siempre, no solo
+     en el primer login. El `ChartCard` envuelve al radar con
+     `overflow-hidden` para que el glow halo del componente
+     (`absolute inset-[-20%]`) no se escape del card y dispare scroll
+     lateral en móvil.
 
 El filtro de módulo y el rango son **estado local** del page (`useState`). Cambiarlos dispara un refetch del hook `useProfileTimeline`.
 
