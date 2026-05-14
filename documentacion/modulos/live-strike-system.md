@@ -359,6 +359,58 @@ una sola entrada `phoneme_errors[]` la mayoría de las veces, en la práctica
 el counter no se dispara de forma absurda — refleja con bastante fidelidad
 "el usuario tuvo N momentos distintos con errores".
 
+## 16. Diferenciación por módulos seleccionados
+
+`useLiveSession` orquesta el pipeline en función de qué módulos están
+activos. Dos flags derivadas se exponen:
+
+- `audioEnabled = selectedModules.some(m => m !== 'facial_expression')`
+- `facialEnabled = selectedModules.includes('facial_expression')`
+
+### 16.1 Solo audio (`muletillas` / `accentuation` / `pronunciation`, sin facial)
+
+- Se pide permiso al micrófono.
+- Se construye el grafo de audio (analyser).
+- Se calibra el noise floor (`CALIBRATION_MS`).
+- Se levanta `MediaRecorder` principal + `PauseDetector` + `FrameRecorder`.
+- No se carga `LiveFaceLoop` ni `FaceDetectionService` (lazy import nunca).
+- No se ejecuta `useEmotionStop.start()`.
+- La pantalla `CalibrationScreen` muestra "Calibrando audio — mantente en silencio".
+
+### 16.2 Solo facial (`facial_expression`)
+
+- **NO se pide permiso al micrófono.** `audioStreamRef` queda en `null`.
+- No se construye grafo de audio, no se calibra noise floor.
+- No hay `MediaRecorder` principal, no hay frames audio enviados a Gemini.
+- Se carga `LiveFaceLoop` y se enciende la cámara.
+- La calibración corre por **timer Y mínimo `MIN_FACIAL_BASELINE_SAMPLES = 45`
+  muestras de blendshape** (con cap `FACIAL_CALIBRATION_CAP_MS = 10s`).
+- La pantalla muestra "Calibrando cámara — mirá la cámara con cara neutral".
+- Al cierre el endpoint `audio-evaluation` recibe un blob vacío; el backend
+  hace short-circuit y no llama a Gemini (ver sección 12.5 del doc backend).
+- `emotionStop` corre normal y puede disparar `auto_stop_emotion`.
+
+### 16.3 Audio + facial mezclados
+
+- Se piden ambos permisos (mic + cámara).
+- Calibración: espera el `CALIBRATION_MS` del audio Y las 45 muestras
+  faciales (lo que tarde más, capeado a 10s). El `progress` mostrado al
+  usuario es el mínimo de los dos.
+- La pantalla muestra "Calibrando audio y cámara — mantente en silencio y
+  mirá la cámara con cara neutral".
+- Todos los pipelines corren en paralelo.
+
+### 16.4 Por qué la calibración pide 45 muestras faciales
+
+El módulo standalone `facial_expression` exige exactamente 45 muestras
+para construir su baseline (`CALIBRATION_SAMPLES = 45` en
+`useEmotionTracking`). Live antes solo respetaba el timer del audio
+(~2-3s) y a 15fps eso da ~30-45 muestras, sensible al jitter del modelo
+MediaPipe al cargar. Por debajo de 30 muestras la varianza del baseline
+es alta y el `SustainedDetector` empieza a clasificar emociones reales
+como "neutralidad" (porque la baseline absorbió cara no-neutral) o
+viceversa. El parche fue igualar la cantidad mínima a la del standalone.
+
 ### 15.3 StrikeEvent extendido
 
 `StrikeEvent` ahora carga campos opcionales accionables:
