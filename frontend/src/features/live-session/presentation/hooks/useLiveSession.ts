@@ -27,6 +27,16 @@ const CALIBRATION_MS = 2000
 const STOPPED_TRANSITION_MS = 2000
 const MAX_INFLIGHT_FRAMES = 3
 
+// Minimum samples required to compute a reliable facial baseline, matched
+// to the standalone facial_expression module (`CALIBRATION_SAMPLES = 45`
+// in useEmotionTracking). Live previously stopped calibration on the
+// audio timer alone, which sometimes yielded only ~15-20 face samples and
+// produced a noisy baseline that disabled the auto-stop on sustained
+// emotion. We hold the calibration open until both signals are ready, up
+// to a hard cap so we never spin forever.
+const MIN_FACIAL_BASELINE_SAMPLES = 45
+const FACIAL_CALIBRATION_CAP_MS = 10_000
+
 type StopReason = 'user_stop' | 'time_limit' | AutoStopReasonDto
 
 const FRAME_AUDIO_MODULES: ReadonlyArray<LiveModule> = [
@@ -478,29 +488,43 @@ export function useLiveSession(): UseLiveSessionResult {
     strikes.reset()
     emotionStop.reset()
 
+    // Decide which side of the pipeline we actually need based on the
+    // selected modules. If the user picked only facial_expression we
+    // skip the microphone, audio graph, noise calibration, audio
+    // recorder, pause detector and frame recorder entirely — none of
+    // them produce useful data for that case and asking for mic
+    // permission is a hostile UX when there is no audio analysis to do.
+    const hasAudioModule = selectedModules.some(
+      (m) => m !== 'facial_expression',
+    )
+
     // Open audio stream first. LiveFaceLoop opens its own camera
     // stream later when facial_expression is active; doing it
     // sequentially keeps the audio path the same as before so a
     // camera permission denial does not interfere with the audio
     // pipeline.
-    let audioStream: MediaStream
-    try {
-      audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch (exc) {
-      setError(exc instanceof Error ? exc.message : 'No se pudo acceder al micrófono')
-      return
-    }
-    audioStreamRef.current = audioStream
-    setActiveStream(audioStream)
+    let audioStream: MediaStream | null = null
+    let audioCtx: AudioContext | null = null
+    let analyser: AnalyserNode | null = null
+    if (hasAudioModule) {
+      try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      } catch (exc) {
+        setError(exc instanceof Error ? exc.message : 'No se pudo acceder al micrófono')
+        return
+      }
+      audioStreamRef.current = audioStream
+      setActiveStream(audioStream)
 
-    // Build audio graph shared between calibrator and pause detector.
-    const audioCtx = new AudioContext()
-    audioContextRef.current = audioCtx
-    const source = audioCtx.createMediaStreamSource(audioStream)
-    const analyser = audioCtx.createAnalyser()
-    analyser.fftSize = 2048
-    source.connect(analyser)
-    analyserRef.current = analyser
+      // Build audio graph shared between calibrator and pause detector.
+      audioCtx = new AudioContext()
+      audioContextRef.current = audioCtx
+      const source = audioCtx.createMediaStreamSource(audioStream)
+      analyser = audioCtx.createAnalyser()
+      analyser.fftSize = 2048
+      source.connect(analyser)
+      analyserRef.current = analyser
+    }
 
     // Open session row in BD so we have an id to attach frames to.
     let openResponse
@@ -566,23 +590,57 @@ export function useLiveSession(): UseLiveSessionResult {
 
     setPhase('calibrating')
 
-    // Calibration: short silence window with a UI progress tick. The
-    // calibrator and the progress interval run in parallel; the
-    // interval ends as soon as the calibrator resolves.
+    // Calibration: short window with a UI progress tick. Two parallel
+    // signals matter here:
+    //   - audio noise floor (if hasAudioModule): runs for CALIBRATION_MS.
+    //   - facial baseline samples (if facialEnabled): the face loop must
+    //     deliver at least MIN_FACIAL_BASELINE_SAMPLES blendshape ticks.
+    // We wait for the union of the two and only then transition to live.
+    // The progress bar is driven by the audio timer when audio is active,
+    // and by the sample count when only facial is active.
     const calibrationStartedAt = performance.now()
     const calibrationInterval = window.setInterval(() => {
       const elapsed = performance.now() - calibrationStartedAt
-      setCalibrationProgress(Math.min(1, elapsed / CALIBRATION_MS))
+      const audioProgress = hasAudioModule ? elapsed / CALIBRATION_MS : 1
+      const facialProgress = facialEnabled
+        ? baselineCountRef.current / MIN_FACIAL_BASELINE_SAMPLES
+        : 1
+      const progress = Math.min(audioProgress, facialProgress)
+      setCalibrationProgress(Math.min(1, progress))
     }, 50)
-    const noiseCalibration = await calibrateNoiseFloor(analyser, {
-      durationMs: CALIBRATION_MS,
-    })
+
+    let noiseCalibration: Awaited<ReturnType<typeof calibrateNoiseFloor>> | null = null
+    if (hasAudioModule && analyser) {
+      noiseCalibration = await calibrateNoiseFloor(analyser, {
+        durationMs: CALIBRATION_MS,
+      })
+    } else {
+      // Audio-free path: hold the calibration phase for the same baseline
+      // window so the facial loop has time to feed samples before we flip.
+      await new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS))
+    }
+
+    // If facial is active, keep the calibration phase open until we have
+    // enough blendshape samples for a reliable baseline. The hard cap
+    // ensures we never spin forever if the face loop misbehaves; if the
+    // cap fires we accept whatever we collected (or fall back to absolute
+    // scoring when samples == 0, same as before this fix).
+    if (facialEnabled) {
+      const facialDeadline = performance.now() + FACIAL_CALIBRATION_CAP_MS
+      while (
+        baselineCountRef.current < MIN_FACIAL_BASELINE_SAMPLES &&
+        performance.now() < facialDeadline
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 80))
+      }
+    }
+
     window.clearInterval(calibrationInterval)
     setCalibrationProgress(1)
 
     // Build the facial baseline from blendshapes accumulated during
     // calibration. If for any reason we did not collect any sample
-    // (camera failed to deliver frames within the window) we leave the
+    // (camera failed to deliver frames within the cap) we leave the
     // baseline empty: classify() then falls back to absolute scores,
     // which is the same behavior as before this fix and at least lets
     // the session continue.
@@ -595,39 +653,43 @@ export function useLiveSession(): UseLiveSessionResult {
     }
     facialPhaseRef.current = 'live'
 
-    // Start the full-audio recorder for the final composed evaluation.
-    const mime = pickMimeType()
-    const mainRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : {})
-    mainChunksRef.current = []
-    mainRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) mainChunksRef.current.push(event.data)
+    // Audio-only artifacts are created only when we have at least one
+    // audio module selected. When only facial is selected we skip the
+    // main recorder, pause detector and frame recorder entirely; the
+    // strike counter for facial is driven by the emotion classifier and
+    // does not need any of these.
+    if (hasAudioModule && audioStream && analyser && noiseCalibration) {
+      // Start the full-audio recorder for the final composed evaluation.
+      const mime = pickMimeType()
+      const mainRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : {})
+      mainChunksRef.current = []
+      mainRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) mainChunksRef.current.push(event.data)
+      }
+      mainRecorderRef.current = mainRecorder
+      mainRecorder.start()
+
+      // Pause detector + frame recorder for the strike pipeline.
+      const pauseDetector = new PauseDetector(analyser, noiseCalibration)
+      const frameRecorder = new FrameRecorder(audioStream)
+      pauseDetectorRef.current = pauseDetector
+      frameRecorderRef.current = frameRecorder
+
+      frameRecorder.start((event) => {
+        void submitFrame(event)
+      })
+
+      pauseDetector.start({
+        onPause: () => {
+          frameRecorder.cut('pause')
+          pauseDetector.resetFrameTimer()
+        },
+        onForceCut: () => {
+          frameRecorder.cut('force_cut')
+          pauseDetector.resetFrameTimer()
+        },
+      })
     }
-    mainRecorderRef.current = mainRecorder
-    mainRecorder.start()
-
-    // Pause detector + frame recorder for the strike pipeline. Frames
-    // only matter when at least one audio module is tildada; when only
-    // facial is selected we still keep the detector running but no
-    // frames will be submitted.
-    const pauseDetector = new PauseDetector(analyser, noiseCalibration)
-    const frameRecorder = new FrameRecorder(audioStream)
-    pauseDetectorRef.current = pauseDetector
-    frameRecorderRef.current = frameRecorder
-
-    frameRecorder.start((event) => {
-      void submitFrame(event)
-    })
-
-    pauseDetector.start({
-      onPause: () => {
-        frameRecorder.cut('pause')
-        pauseDetector.resetFrameTimer()
-      },
-      onForceCut: () => {
-        frameRecorder.cut('force_cut')
-        pauseDetector.resetFrameTimer()
-      },
-    })
 
     if (facialEnabled) {
       emotionStop.start(performance.now())
