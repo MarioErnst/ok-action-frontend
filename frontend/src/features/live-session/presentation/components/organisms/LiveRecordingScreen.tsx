@@ -15,6 +15,14 @@ interface Props {
   activeStream: MediaStream | null
   videoStream: MediaStream | null
   isRecording: boolean
+  // Whether at least one audio module is selected. Drives copy + the
+  // waveform area. We pass it explicitly instead of inferring from
+  // activeStream because activeStream can be null transiently even when
+  // audio modules are selected.
+  audioEnabled: boolean
+  // Whether facial_expression is selected. Drives the recording
+  // subtitle in flows without audio.
+  facialEnabled: boolean
   onEnd: () => void
 }
 
@@ -24,7 +32,9 @@ interface Props {
 // the list of modules being measured, and the end-session button.
 // When facial_expression is active, the camera preview lives at the
 // top so the user can see themselves while the classifier feeds the
-// emotion monitor in the background.
+// emotion monitor in the background. The waveform area is hidden when
+// no audio module is selected so the layout does not leave a flat
+// silent strip in the middle of the screen.
 export function LiveRecordingScreen({
   phase,
   selectedModules,
@@ -32,6 +42,8 @@ export function LiveRecordingScreen({
   activeStream,
   videoStream,
   isRecording,
+  audioEnabled,
+  facialEnabled,
   onEnd,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -92,13 +104,13 @@ export function LiveRecordingScreen({
       <div className="flex flex-col items-center gap-3 py-4 w-full">
         {isEvaluating ? (
           <div className="w-16 h-16 rounded-full border-4 border-border border-t-accent animate-spin" />
-        ) : (
+        ) : audioEnabled ? (
           <div className="w-full">
             <RecordingWaveform stream={activeStream} active={isRecording} height={56} />
           </div>
-        )}
+        ) : null}
         <p className="text-sm font-medium text-text-muted">
-          {isEvaluating ? 'Evaluando audio...' : 'Escuchando...'}
+          {pickStatusLabel({ isEvaluating, audioEnabled, facialEnabled })}
         </p>
       </div>
 
@@ -133,4 +145,23 @@ export function LiveRecordingScreen({
       </button>
     </div>
   )
+}
+
+function pickStatusLabel({
+  isEvaluating,
+  audioEnabled,
+  facialEnabled,
+}: {
+  isEvaluating: boolean
+  audioEnabled: boolean
+  facialEnabled: boolean
+}): string {
+  if (isEvaluating) {
+    if (audioEnabled && facialEnabled) return 'Evaluando audio y expresión...'
+    if (audioEnabled) return 'Evaluando audio...'
+    return 'Procesando expresión...'
+  }
+  if (audioEnabled && facialEnabled) return 'Escuchando y observando...'
+  if (audioEnabled) return 'Escuchando...'
+  return 'Observando tu expresión...'
 }

@@ -5,6 +5,8 @@ import { APP_OVERVIEW_GUIDE_ID, useJourneyStore } from '../../../journey';
 import { FILTER_LABELS } from '../../../profile/domain/ModuleLabels';
 import type { TimelineModuleFilter, TimeRange } from '../../../profile/domain/Timeline';
 import { useProfileTimeline } from '../../../profile/presentation/hooks/useProfileTimeline';
+import { INITIAL_SCORES } from '../../../welcome/domain/InitialScores';
+import { InitialRadar } from '../../../welcome/presentation/components/organisms/InitialRadar';
 import { ChartCard } from '../components/atoms/ChartCard';
 import { ModuleScrollChips } from '../components/molecules/ModuleScrollChips';
 import { TimeRangeSelector } from '../components/molecules/TimeRangeSelector';
@@ -99,6 +101,21 @@ export const DashboardPage = () => {
           ) : (
             <DailyTimeChart daily={data?.daily ?? []} />
           )}
+        </ChartCard>
+      </div>
+
+      {/* Initial baseline radar: the same component the welcome page shows
+          on first launch. Surfaces here so the dashboard always exposes the
+          per-module starting scores below the daily progress charts,
+          without forcing the user back to /bienvenida. Wrapped in its own
+          data-journey-id slot to keep the dashboard structure consistent
+          with the other chart blocks introduced by the contextual guides. */}
+      <div data-journey-id="dashboard-initial-radar">
+        <ChartCard
+          title="Tu punto de partida"
+          subtitle="Promedio inicial por módulo basado en tu primera sesión."
+        >
+          <InitialRadar dimensions={INITIAL_SCORES} />
         </ChartCard>
       </div>
     </div>

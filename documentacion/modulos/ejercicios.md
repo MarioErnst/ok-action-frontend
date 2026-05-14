@@ -56,3 +56,14 @@ Padding inferior `pb-24` para no chocar con la `AppBottomBar` en móvil.
 4. Agregar la descripción en `MODULE_DESCRIPTIONS` dentro de `ExercisesPage.tsx`.
 
 El catálogo se actualiza solo (lee `NAV_ITEMS`), pero la descripción de tarjeta requiere agregar la línea correspondiente en `MODULE_DESCRIPTIONS` para no quedar vacía.
+
+## Filtro por items de la bottom bar
+
+Los módulos que ya viven como acceso directo en la `AppBottomBar` móvil
+(`/dashboard`, `/capsulas`, `/sesion-libre`, `/perfil`, y la propia
+`/ejercicios`) se excluyen de la grilla para que el usuario no vea una
+tarjeta duplicada de algo a lo que llega con un tap desde cualquier
+pantalla. La lista se concentra en el `Set` `BOTTOM_BAR_ROUTES`; si en el
+futuro se agrega o quita un slot a la barra inferior, hay que actualizar
+ese set y el archivo `AppBottomBar.tsx` en el mismo commit para mantener
+el contrato sincronizado.

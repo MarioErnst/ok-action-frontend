@@ -1,6 +1,6 @@
 import type { MuletillasEvaluation } from '../../../domain/MuletillasSession'
+import { HighlightedTranscript } from '../../../../../shared/ui/atoms/HighlightedTranscript'
 import { ModuleGuideLauncher } from '../../../../journey'
-import { HighlightedTranscript } from '../atoms/HighlightedTranscript'
 import MuletillasDetail from '../molecules/MuletillasDetail'
 
 type Props = {

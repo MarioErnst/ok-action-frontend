@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/*
+ * Global safety net against horizontal scroll. Components with
+ * decorative absolute-positioned glows (inset-[-20%], translate-x
+ * decorations, etc.) can spill past their parent and push the body
+ * width on narrow viewports. overflow-x: clip is preferred over hidden
+ * because it does not create a new scroll container, so children that
+ * need to be scrollable (overflow-x-auto strips, modal scrolling lists)
+ * keep working. Vertical scroll stays unaffected.
+ */
+html,
+body {
+  overflow-x: clip;
+}
+
 @theme {
   /* Fondos */
   --color-bg: #0A0A0A;

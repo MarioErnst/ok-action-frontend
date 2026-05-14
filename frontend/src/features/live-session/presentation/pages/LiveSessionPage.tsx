@@ -42,7 +42,11 @@ export default function LiveSessionPage() {
   if (live.phase === 'calibrating') {
     return (
       <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center justify-center px-4">
-        <CalibrationScreen progress={live.calibrationProgress} />
+        <CalibrationScreen
+          progress={live.calibrationProgress}
+          audioEnabled={live.audioEnabled}
+          facialEnabled={live.facialEnabled}
+        />
       </main>
     )
   }
@@ -57,6 +61,8 @@ export default function LiveSessionPage() {
           activeStream={live.activeStream}
           videoStream={live.videoStream}
           isRecording={live.isRecording}
+          audioEnabled={live.audioEnabled}
+          facialEnabled={live.facialEnabled}
           onEnd={() => {
             void live.stop()
           }}
@@ -69,7 +75,7 @@ export default function LiveSessionPage() {
     return (
       <main className="min-h-[100dvh] w-full bg-bg">
         <StoppedTransitionOverlay
-          reason={live.stopReason === 'auto_stop_emotion' ? 'emotion' : 'strikes'}
+          category={live.stopCategory}
           emotionLabel={live.emotionTriggerLabel ?? undefined}
         />
       </main>
@@ -91,7 +97,7 @@ export default function LiveSessionPage() {
             evaluation={live.evaluation}
             liveScore={live.liveScore}
             selectedModules={live.selectedModules}
-            audioUrl={live.recordingAudioUrl}
+            audioUrl={live.audioEnabled ? live.recordingAudioUrl : null}
             estimatedDurationMs={live.recordingDurationMs}
             stopReason={live.stopReason}
             emotionLabel={live.emotionTriggerLabel ?? undefined}

@@ -1,3 +1,4 @@
+import { HighlightedTranscript } from '../../../../../shared/ui/atoms/HighlightedTranscript'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import type {
   AccentuationSection,
@@ -5,7 +6,10 @@ import type {
   FacialEmotionName,
   FacialExpressionSection,
   LiveModule,
+  MuletillaPosition,
   MuletillasSection,
+  PhonemeError,
+  ProsodicError,
   PronunciationSection,
 } from '../../../domain/LiveSession'
 
@@ -70,6 +74,13 @@ export function SessionSummaryScreen({
           Promedio de los módulos evaluados.
         </p>
       </div>
+
+      {evaluation.transcript && (
+        <TranscriptCard
+          transcript={evaluation.transcript}
+          positions={evaluation.muletillas?.muletillas_positions ?? []}
+        />
+      )}
 
       <div className="flex flex-col gap-4 w-full">
         {selectedModules.map((module) => (
@@ -261,7 +272,7 @@ function describeSection(
         { label: 'Acento', value: s.stress_score },
       ],
       feedback: s.feedback,
-      extra: null,
+      extra: <ProsodicErrorsList errors={s.prosodic_errors ?? []} />,
     }
   }
 
@@ -280,7 +291,7 @@ function describeSection(
         { label: 'Inteligibilidad', value: s.intelligibility_score },
       ],
       feedback: s.feedback,
-      extra: null,
+      extra: <PhonemeErrorsList errors={s.phoneme_errors ?? []} />,
     }
   }
 
@@ -325,4 +336,101 @@ function describeSection(
         </div>
       ) : null,
   }
+}
+
+interface TranscriptCardProps {
+  transcript: string
+  positions: MuletillaPosition[]
+}
+
+// Live composed responses (since the grounding hotfix) return the literal
+// transcript at the root. We surface it as a dedicated card above the
+// per-module cards so the user can compare against the actual recording and
+// see filler-word occurrences highlighted in place.
+function TranscriptCard({ transcript, positions }: TranscriptCardProps) {
+  // Map snake_case grounded positions to the shared atom's neutral shape.
+  // Filtering out occurrences whose substring does not match transcript is
+  // done inside HighlightedTranscript when out-of-bounds, so we only handle
+  // the field name translation here.
+  const ranges = positions.map((p) => ({
+    startChar: p.start_char,
+    endChar: p.end_char,
+  }))
+
+  return (
+    <div className="rounded-2xl border border-border/40 bg-surface/60 p-5 w-full">
+      <p className="text-xs font-bold uppercase tracking-widest text-accent mb-3">
+        Transcripción
+      </p>
+      <HighlightedTranscript
+        transcript={transcript}
+        positions={ranges}
+        className="text-sm text-text leading-relaxed"
+      />
+    </div>
+  )
+}
+
+interface ProsodicErrorsListProps {
+  errors: ProsodicError[]
+}
+
+function ProsodicErrorsList({ errors }: ProsodicErrorsListProps) {
+  if (errors.length === 0) return null
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-accent">
+        Acentos a revisar
+      </p>
+      <ul className="flex flex-col gap-2">
+        {errors.map((error, index) => (
+          <li
+            key={`${error.word}-${index}`}
+            className="rounded-xl bg-surface-alt px-3 py-2 text-sm flex flex-col gap-1"
+          >
+            <span className="font-semibold text-text">
+              {error.word}{' '}
+              <span className="text-text-muted font-normal">
+                · esperado: {error.expected_stress}
+              </span>
+            </span>
+            <span className="text-xs text-text-muted">{error.actual_issue}</span>
+            <span className="text-xs text-text">{error.suggestion}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+interface PhonemeErrorsListProps {
+  errors: PhonemeError[]
+}
+
+function PhonemeErrorsList({ errors }: PhonemeErrorsListProps) {
+  if (errors.length === 0) return null
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs font-bold uppercase tracking-widest text-accent">
+        Fonemas a corregir
+      </p>
+      <ul className="flex flex-col gap-2">
+        {errors.map((error, index) => (
+          <li
+            key={`${error.word}-${error.phoneme}-${index}`}
+            className="rounded-xl bg-surface-alt px-3 py-2 text-sm flex flex-col gap-1"
+          >
+            <span className="font-semibold text-text">
+              {error.word}{' '}
+              <span className="text-text-muted font-normal">
+                · fonema /{error.phoneme}/
+              </span>
+            </span>
+            <span className="text-xs text-text-muted">{error.actual_issue}</span>
+            <span className="text-xs text-text">{error.suggestion}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }

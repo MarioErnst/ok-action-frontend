@@ -7,9 +7,17 @@ import { NAV_ITEMS } from '../../../../shared/ui/config/navItems';
 // Catalog of every exercise module the user can launch. Lifted out of the
 // old DashboardPage so the dashboard can focus on progress charts and
 // this page becomes the canonical entry point to practice.
-const MODULE_ITEMS = NAV_ITEMS.filter(
-  (item) => item.to !== '/dashboard' && item.to !== '/perfil' && item.to !== '/ejercicios',
-);
+// Items already present in the mobile bottom bar (/dashboard, /capsulas,
+// /sesion-libre, /perfil) are excluded so the user does not see a
+// duplicate card for things he can reach with one tap from anywhere.
+const BOTTOM_BAR_ROUTES = new Set([
+  '/dashboard',
+  '/ejercicios',
+  '/capsulas',
+  '/sesion-libre',
+  '/perfil',
+]);
+const MODULE_ITEMS = NAV_ITEMS.filter((item) => !BOTTOM_BAR_ROUTES.has(item.to));
 
 const MODULE_DESCRIPTIONS: Record<string, string> = {
   '/fonacion': 'Entrena la calidad y estabilidad de tu voz.',

@@ -2,23 +2,30 @@ import { useCallback, useRef, useState } from 'react'
 import type { FrameEvaluationResponseDto } from '../../infrastructure/dto/FrameEvaluationDtos'
 import type { StrikeEvent } from '../../domain/StrikeEvent'
 
-// Strike rules agreed for the live session redesign:
-//   - Each muletilla detected in a frame adds its count to the global
-//     counter (no cap per frame).
-//   - If any of the four accentuation scores in a frame falls below
-//     STRIKE_LOW_SCORE_THRESHOLD, the frame contributes 1 strike (capped).
-//   - If any of the four pronunciation scores in a frame falls below
-//     STRIKE_LOW_SCORE_THRESHOLD, the frame contributes 1 strike (capped).
-//   - When the global counter reaches STRIKE_THRESHOLD, shouldStop turns
-//     true and the orchestrator initiates the auto-stop flow.
-// Counter and events are not rendered to the user during recording; they
-// only feed the stop decision and the post-stop feedback screen.
+// Strike rules (no-dedup variant, threshold 2):
+//
+//   - Muletillas: every detected occurrence adds to the counter. A frame
+//     reporting "eh × 3" contributes 3 strikes.
+//   - Pronunciation: every phoneme_errors[] item adds to the counter. No
+//     deduplication of any kind — the same mispronounced word repeated
+//     across frames keeps incrementing. The intent is to stop the user
+//     fast when they keep failing the same phoneme instead of giving
+//     them N "free" repeats of the same mistake.
+//   - Accentuation: same as pronunciation but on prosodic_errors[].
+//   - The session stops as soon as ANY of the three counters reaches the
+//     STRIKE_THRESHOLD. Counters are independent: 1 muletilla + 1
+//     pronunciation error does not stop the session.
+//
+// `strikeCount` (kept for backwards compatibility with consumers showing
+// "x/2") is the maximum of the three category counters.
 
-const STRIKE_THRESHOLD = 3
-const STRIKE_LOW_SCORE_THRESHOLD = 55
+const STRIKE_THRESHOLD = 2
 
 interface UseFrameStrikesResult {
   strikeCount: number
+  muletillaCount: number
+  pronunciationErrorCount: number
+  accentuationErrorCount: number
   events: StrikeEvent[]
   shouldStop: boolean
   registerFrameResponse: (frame: FrameEvaluationResponseDto) => void
@@ -26,15 +33,22 @@ interface UseFrameStrikesResult {
 }
 
 export function useFrameStrikes(): UseFrameStrikesResult {
-  const [strikeCount, setStrikeCount] = useState(0)
+  const [muletillaCount, setMuletillaCount] = useState(0)
+  const [pronunciationErrorCount, setPronunciationErrorCount] = useState(0)
+  const [accentuationErrorCount, setAccentuationErrorCount] = useState(0)
   const [events, setEvents] = useState<StrikeEvent[]>([])
-  const countRef = useRef(0)
+
+  const muletillaCountRef = useRef(0)
+  const pronunciationErrorCountRef = useRef(0)
+  const accentuationErrorCountRef = useRef(0)
   const eventsRef = useRef<StrikeEvent[]>([])
 
   const registerFrameResponse = useCallback(
     (frame: FrameEvaluationResponseDto) => {
       const newEvents: StrikeEvent[] = []
-      let delta = 0
+      let muletillaDelta = 0
+      let pronunciationDelta = 0
+      let accentuationDelta = 0
       const now = performance.now()
 
       if (frame.muletillas) {
@@ -49,64 +63,95 @@ export function useFrameStrikes(): UseFrameStrikesResult {
               word: item.word,
             })
           }
-          delta += item.count
+          muletillaDelta += item.count
         }
       }
 
-      if (frame.accentuation) {
-        const min = Math.min(
-          frame.accentuation.pronunciation_score,
-          frame.accentuation.rhythm_score,
-          frame.accentuation.intonation_score,
-          frame.accentuation.stress_score,
-        )
-        if (min < STRIKE_LOW_SCORE_THRESHOLD) {
-          newEvents.push({
-            kind: 'accentuation',
-            frameIndex: frame.frame_index,
-            timestampMs: now,
-            detail: `Score parcial mínimo: ${min}`,
-          })
-          delta += 1
-        }
-      }
-
-      if (frame.pronunciation) {
-        const min = Math.min(
-          frame.pronunciation.vowel_score,
-          frame.pronunciation.consonant_score,
-          frame.pronunciation.fluency_score,
-          frame.pronunciation.intelligibility_score,
-        )
-        if (min < STRIKE_LOW_SCORE_THRESHOLD) {
+      if (frame.pronunciation?.phoneme_errors) {
+        for (const error of frame.pronunciation.phoneme_errors) {
+          if (!error.word || error.word.trim().length === 0) continue
+          pronunciationDelta += 1
           newEvents.push({
             kind: 'pronunciation',
             frameIndex: frame.frame_index,
             timestampMs: now,
-            detail: `Score parcial mínimo: ${min}`,
+            detail: error.actual_issue,
+            word: error.word,
+            phoneme: error.phoneme,
+            actualIssue: error.actual_issue,
+            suggestion: error.suggestion,
           })
-          delta += 1
         }
       }
 
-      if (delta === 0 && newEvents.length === 0) return
+      if (frame.accentuation?.prosodic_errors) {
+        for (const error of frame.accentuation.prosodic_errors) {
+          if (!error.word || error.word.trim().length === 0) continue
+          accentuationDelta += 1
+          newEvents.push({
+            kind: 'accentuation',
+            frameIndex: frame.frame_index,
+            timestampMs: now,
+            detail: error.actual_issue,
+            word: error.word,
+            expectedStress: error.expected_stress,
+            actualIssue: error.actual_issue,
+            suggestion: error.suggestion,
+          })
+        }
+      }
 
-      countRef.current += delta
+      if (
+        muletillaDelta === 0 &&
+        pronunciationDelta === 0 &&
+        accentuationDelta === 0
+      ) {
+        return
+      }
+
+      muletillaCountRef.current += muletillaDelta
+      pronunciationErrorCountRef.current += pronunciationDelta
+      accentuationErrorCountRef.current += accentuationDelta
       eventsRef.current = [...eventsRef.current, ...newEvents]
-      setStrikeCount(countRef.current)
+
+      setMuletillaCount(muletillaCountRef.current)
+      setPronunciationErrorCount(pronunciationErrorCountRef.current)
+      setAccentuationErrorCount(accentuationErrorCountRef.current)
       setEvents(eventsRef.current)
     },
     [],
   )
 
   const reset = useCallback(() => {
-    countRef.current = 0
+    muletillaCountRef.current = 0
+    pronunciationErrorCountRef.current = 0
+    accentuationErrorCountRef.current = 0
     eventsRef.current = []
-    setStrikeCount(0)
+    setMuletillaCount(0)
+    setPronunciationErrorCount(0)
+    setAccentuationErrorCount(0)
     setEvents([])
   }, [])
 
-  const shouldStop = strikeCount >= STRIKE_THRESHOLD
+  const shouldStop =
+    muletillaCount >= STRIKE_THRESHOLD ||
+    pronunciationErrorCount >= STRIKE_THRESHOLD ||
+    accentuationErrorCount >= STRIKE_THRESHOLD
 
-  return { strikeCount, events, shouldStop, registerFrameResponse, reset }
+  const strikeCount = Math.max(
+    muletillaCount,
+    pronunciationErrorCount,
+    accentuationErrorCount,
+  )
+
+  return {
+    strikeCount,
+    muletillaCount,
+    pronunciationErrorCount,
+    accentuationErrorCount,
+    events,
+    shouldStop,
+    registerFrameResponse,
+    reset,
+  }
 }
