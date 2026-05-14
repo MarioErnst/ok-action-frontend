@@ -81,6 +81,14 @@ interface UseLiveSessionResult {
   // prompts or the lazy-loaded MediaPipe download are in flight.
   isStarting: boolean
   calibrationProgress: number
+  // Whether the current selection includes at least one audio-bearing
+  // module (anything other than facial_expression). Exposed so the
+  // calibration UI can adapt its copy and audio-only widgets can hide
+  // when only facial is active.
+  audioEnabled: boolean
+  // Whether the current selection includes facial_expression. Exposed
+  // alongside audioEnabled to drive the calibration copy.
+  facialEnabled: boolean
   strikeEvents: ReturnType<typeof useFrameStrikes>['events']
   stopReason: StopReason | null
   emotionTriggerLabel: string | null
@@ -795,6 +803,11 @@ export function useLiveSession(): UseLiveSessionResult {
   // consumer. The constant is exported via the hook surface for
   // future consumers (e.g., a debug overlay).
 
+  // Derived flags exposed for the CalibrationScreen + future audio-only
+  // widgets. Computed at render time so they reflect the latest
+  // selectedModules without an extra effect.
+  const audioEnabled = selectedModules.some((m) => m !== 'facial_expression')
+
   return {
     phase,
     selectedModules,
@@ -807,6 +820,8 @@ export function useLiveSession(): UseLiveSessionResult {
     isRecording,
     isStarting,
     calibrationProgress,
+    audioEnabled,
+    facialEnabled,
     strikeEvents: strikes.events,
     stopReason,
     emotionTriggerLabel,
