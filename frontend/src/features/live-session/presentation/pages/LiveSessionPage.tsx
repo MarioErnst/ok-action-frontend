@@ -55,6 +55,8 @@ export default function LiveSessionPage() {
           activeStream={live.activeStream}
           videoStream={live.videoStream}
           isRecording={live.isRecording}
+          audioEnabled={live.audioEnabled}
+          facialEnabled={live.facialEnabled}
           onEnd={() => {
             void live.stop()
           }}
@@ -86,7 +88,7 @@ export default function LiveSessionPage() {
             evaluation={live.evaluation}
             liveScore={live.liveScore}
             selectedModules={live.selectedModules}
-            audioUrl={live.recordingAudioUrl}
+            audioUrl={live.audioEnabled ? live.recordingAudioUrl : null}
             estimatedDurationMs={live.recordingDurationMs}
             stopReason={live.stopReason}
             emotionLabel={live.emotionTriggerLabel ?? undefined}
