@@ -36,10 +36,14 @@ function toPhonemeError(dto: PhonemeErrorDto): PhonemeError {
   };
 }
 
-export function toPhrasePronunciation(dto: PhraseEvaluationDto): PhrasePronunciation {
+export function toPhrasePronunciation(
+  dto: PhraseEvaluationDto,
+  promptId: string,
+): PhrasePronunciation {
   return {
     phraseText: dto.phrase_text,
     phraseIndex: dto.phrase_index,
+    promptId,
     metrics: toMetrics(dto),
     feedback: dto.feedback,
     phonemeErrors: dto.phoneme_errors.map(toPhonemeError),
@@ -89,6 +93,14 @@ export function toSavePronunciationSessionDto(
       intelligibility_score: clampPct(result.metrics.intelligibilityScore),
       phrases_count: phrasesCount,
     },
+    phrases: result.phraseEvaluations.map((evaluation) => ({
+      phrase_index: evaluation.phraseIndex,
+      prompt_id: evaluation.promptId,
+      vowel_score: clampPct(evaluation.metrics.vowelScore),
+      consonant_score: clampPct(evaluation.metrics.consonantScore),
+      fluency_score: clampPct(evaluation.metrics.fluencyScore),
+      intelligibility_score: clampPct(evaluation.metrics.intelligibilityScore),
+    })),
     parent_id: parentId ?? null,
   };
 }

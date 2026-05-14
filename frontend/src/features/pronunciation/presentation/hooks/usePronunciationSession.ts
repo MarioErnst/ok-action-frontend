@@ -89,7 +89,13 @@ export default function usePronunciationSession() {
   }, [phase, pendingEvaluationCount, phraseStates, currentLevel]);
 
   const sendForEvaluation = useCallback(
-    (audioBlob: Blob, phraseIndex: number, phraseText: string, level: PronunciationLevel) => {
+    (
+      audioBlob: Blob,
+      phraseIndex: number,
+      phraseText: string,
+      level: PronunciationLevel,
+      promptId: string,
+    ) => {
       setPhraseStates((previous) =>
         previous.map((state, index) =>
           index === phraseIndex ? { ...state, status: 'uploading' } : state,
@@ -99,7 +105,7 @@ export default function usePronunciationSession() {
 
       HttpPronunciationRepository.evaluatePhrase(audioBlob, phraseText, phraseIndex, level)
         .then((dto) => {
-          const evaluation = toPhrasePronunciation(dto);
+          const evaluation = toPhrasePronunciation(dto, promptId);
           setPhraseStates((previous) =>
             previous.map((state, index) =>
               index === phraseIndex ? { ...state, status: 'evaluated', evaluation } : state,
@@ -170,7 +176,13 @@ export default function usePronunciationSession() {
     const currentPhrase = phrases[currentIndex];
     if (!currentPhrase) return;
 
-    sendForEvaluation(audioBlob, currentIndex, currentPhrase.text, currentLevel);
+    sendForEvaluation(
+      audioBlob,
+      currentIndex,
+      currentPhrase.text,
+      currentLevel,
+      currentPhrase.id,
+    );
 
     const isLastPhrase = currentIndex >= phrases.length - 1;
 
