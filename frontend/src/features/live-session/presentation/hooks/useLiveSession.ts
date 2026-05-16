@@ -187,8 +187,6 @@ export function useLiveSession(): UseLiveSessionResult {
   const startedAtIsoRef = useRef<string | null>(null)
   const recordingStartedAtMsRef = useRef(0)
   const audioStreamRef = useRef<MediaStream | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
   const mainRecorderRef = useRef<MediaRecorder | null>(null)
   const mainChunksRef = useRef<Blob[]>([])
   const audioStreamerRef = useRef<LiveAudioStreamer | null>(null)
@@ -230,17 +228,6 @@ export function useLiveSession(): UseLiveSessionResult {
       clearInterval(elapsedTimerRef.current)
       elapsedTimerRef.current = null
     }
-  }, [])
-
-  const releaseAudioGraph = useCallback(async () => {
-    try {
-      await audioContextRef.current?.close()
-    } catch {
-      // Closing twice or after the context is already closed throws on
-      // some browsers; safe to ignore for tear-down.
-    }
-    audioContextRef.current = null
-    analyserRef.current = null
   }, [])
 
   const releaseStreams = useCallback(() => {
@@ -288,7 +275,6 @@ export function useLiveSession(): UseLiveSessionResult {
     faceLoopRef.current?.stop()
     faceLoopRef.current = null
     facialSummaryBuilderRef.current = null
-    void releaseAudioGraph()
     releaseStreams()
     if (recordingAudioUrl) {
       URL.revokeObjectURL(recordingAudioUrl)
@@ -321,7 +307,7 @@ export function useLiveSession(): UseLiveSessionResult {
     strikes.reset()
     emotionStop.reset()
     setPhase('selection')
-  }, [clearElapsedTimer, releaseAudioGraph, releaseStreams, recordingAudioUrl, strikes, emotionStop])
+  }, [clearElapsedTimer, releaseStreams, recordingAudioUrl, strikes, emotionStop])
 
   const toggleModule = useCallback((module: LiveModule) => {
     setSelectedModules((prev) =>
@@ -402,7 +388,6 @@ export function useLiveSession(): UseLiveSessionResult {
       faceLoopRef.current?.stop()
 
       const fullBlob = await stopMainRecorder()
-      await releaseAudioGraph()
       releaseStreams()
 
       const endedAt = performance.now()
@@ -429,7 +414,7 @@ export function useLiveSession(): UseLiveSessionResult {
 
       void runEvaluation(fullBlob, reason)
     },
-    [clearElapsedTimer, releaseAudioGraph, releaseStreams, stopMainRecorder, runEvaluation],
+    [clearElapsedTimer, releaseStreams, stopMainRecorder, runEvaluation],
   )
 
   const stop = useCallback(async () => {
@@ -496,7 +481,6 @@ export function useLiveSession(): UseLiveSessionResult {
         exc instanceof ApiError ? exc.message : 'No se pudo abrir la sesión live',
       )
       releaseStreams()
-      await releaseAudioGraph()
       return
     }
     sessionIdRef.current = openResponse.session_id
@@ -542,8 +526,7 @@ export function useLiveSession(): UseLiveSessionResult {
           exc instanceof Error ? exc.message : 'No se pudo activar la cámara',
         )
         releaseStreams()
-        await releaseAudioGraph()
-        return
+          return
       }
       faceLoopRef.current = loop
       setVideoStream(loop.getStream())
@@ -635,8 +618,7 @@ export function useLiveSession(): UseLiveSessionResult {
       if (!token) {
         setError('Sesión expirada. Volvé a iniciar sesión.')
         releaseStreams()
-        await releaseAudioGraph()
-        return
+          return
       }
       const socket = new LiveStreamSocket()
       socket.onStrike((dto) => {
@@ -662,8 +644,7 @@ export function useLiveSession(): UseLiveSessionResult {
           exc instanceof Error ? exc.message : 'No se pudo abrir la conexión en vivo',
         )
         releaseStreams()
-        await releaseAudioGraph()
-        return
+          return
       }
       liveSocketRef.current = socket
 
@@ -680,8 +661,7 @@ export function useLiveSession(): UseLiveSessionResult {
         await socket.close()
         liveSocketRef.current = null
         releaseStreams()
-        await releaseAudioGraph()
-        return
+          return
       }
     }
 
@@ -717,7 +697,6 @@ export function useLiveSession(): UseLiveSessionResult {
     strikes,
     emotionStop,
     triggerStop,
-    releaseAudioGraph,
     releaseStreams,
   ])
 
@@ -777,8 +756,7 @@ export function useLiveSession(): UseLiveSessionResult {
       void audioStreamerRef.current?.stop()
       void liveSocketRef.current?.close()
       faceLoopRef.current?.stop()
-      void releaseAudioGraph()
-      audioStreamRef.current?.getTracks().forEach((t) => t.stop())
+        audioStreamRef.current?.getTracks().forEach((t) => t.stop())
       audioStreamRef.current = null
       const orphan = sessionIdRef.current
       const currentPhase = phaseRef.current
@@ -793,7 +771,7 @@ export function useLiveSession(): UseLiveSessionResult {
       // Avoid duplicate work in callbacks once unmounted.
       sessionIdRef.current = null
     }
-  }, [clearElapsedTimer, releaseAudioGraph])
+  }, [clearElapsedTimer])
 
   // Map raw emotion names to the user-facing fragment used by the
   // feedback page. Surface the label only when the auto-stop reason is
