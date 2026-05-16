@@ -46,8 +46,8 @@ const FACIAL_CALIBRATION_CAP_MS = 10_000
 type StopReason = 'user_stop' | 'time_limit' | AutoStopReasonDto
 
 // Which of the four auto-stop counters actually fired. Used by the
-// stopped_transition overlay to render a specific copy ("dos muletillas",
-// "dos errores de pronunciación", etc.) instead of a generic message.
+// stopped_transition overlay to render a category-specific copy instead
+// of a generic message.
 export type StopCategory =
   | 'muletillas'
   | 'pronunciation'
@@ -447,10 +447,10 @@ export function useLiveSession(): UseLiveSessionResult {
 
     // Decide which side of the pipeline we actually need based on the
     // selected modules. If the user picked only facial_expression we
-    // skip the microphone, audio graph, noise calibration, audio
-    // recorder, pause detector and frame recorder entirely — none of
-    // them produce useful data for that case and asking for mic
-    // permission is a hostile UX when there is no audio analysis to do.
+    // skip the microphone, the streaming WS and the full-audio recorder
+    // entirely — none of them produce useful data for that case and
+    // asking for mic permission is a hostile UX when there is no audio
+    // analysis to do.
     const hasAudioModule = selectedModules.some(
       (m) => m !== 'facial_expression',
     )
@@ -534,15 +534,13 @@ export function useLiveSession(): UseLiveSessionResult {
 
     setPhase('calibrating')
 
-    // Calibration: short cosmetic window plus, when facial is on, a
-    // baseline accumulator for the emotion classifier.
-    //   - audio: holds the calibration phase for CALIBRATION_MS so the
-    //     user sees the same "preparing" UI as before. No noise floor
-    //     calibration is needed because the streaming pipeline does not
-    //     rely on a pause detector; Gemini Live has its own VAD.
-    //   - facial baseline (if facialEnabled): the face loop must deliver
-    //     at least MIN_FACIAL_BASELINE_SAMPLES blendshape ticks.
-    // We wait for the union of the two and only then transition to live.
+    // Calibration: a short cosmetic window so the user sees the same
+    // "preparing" UI as before, plus, when facial is on, an accumulator
+    // for the emotion classifier baseline. The streaming pipeline does
+    // not need noise calibration because Gemini Live has its own VAD,
+    // but we keep the visible window to match the established UX. We
+    // wait for the union of the two signals before transitioning to
+    // recording.
     const calibrationStartedAt = performance.now()
     const calibrationInterval = window.setInterval(() => {
       const elapsed = performance.now() - calibrationStartedAt
@@ -554,13 +552,7 @@ export function useLiveSession(): UseLiveSessionResult {
       setCalibrationProgress(Math.min(1, progress))
     }, 50)
 
-    if (hasAudioModule) {
-      await new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS))
-    } else {
-      // Audio-free path: hold the calibration phase for the same baseline
-      // window so the facial loop has time to feed samples before we flip.
-      await new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS))
-    }
+    await new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS))
 
     // If facial is active, keep the calibration phase open until we have
     // enough blendshape samples for a reliable baseline. The hard cap
