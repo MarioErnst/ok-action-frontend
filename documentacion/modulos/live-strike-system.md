@@ -68,8 +68,16 @@ Los archivos eliminados del flujo anterior:
      binario por la WS.
    - En paralelo sigue corriendo el MediaRecorder principal que graba el audio
      completo (webm/mp4) para el composed eval final.
+   - El orquestador llama `strikes.markRecordingStart(Date.now())` justo antes
+     de flipear a `recording`, anclando los timestamps de los strikes al
+     reloj de pared para que el feedback de audio los pueda mapear contra el
+     archivo grabado.
    - Cada `{type:"strike", category, word, transcript_snippet, severity, ...}`
      que llega se entrega a `useLiveStreamingStrikes.registerStrike`.
+   - Si la apertura del WS o el arranque del streamer fallan, un closure
+     `abortAudioPipeline()` detiene el MediaRecorder, cierra el socket si
+     existía y libera las tracks — la pantalla queda en estado de error sin
+     recursos colgando.
 5. El effect que mira `strikes.shouldStop` dispara `triggerStop('auto_stop_strikes')`
    en cuanto cualquier counter llega a 1. La WS se cierra y el audio completo se
    sube al composed-eval (`POST /live/sessions/:id/audio-evaluation`) para
@@ -96,6 +104,9 @@ type ServerMessage =
 
 `transcript_snippet` es la evidencia que el modelo escuchó. El backend ya
 descarta tool calls sin snippet, así que el cliente no vuelve a filtrar.
+`received_at_ms` viaja como epoch milisegundo de wall-clock; el hook lo
+resta contra el `Date.now()` capturado al inicio de la grabación para
+producir un offset coherente dentro del audio del usuario.
 
 ### Client -> Server
 
