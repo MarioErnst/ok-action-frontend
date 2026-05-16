@@ -41,22 +41,21 @@ export const StoppedTransitionOverlay = ({
   )
 }
 
-// One-line detail explaining which counter fired. Strikes copy mirrors
-// the threshold currently configured in useFrameStrikes (2 events). If
-// we ever raise the threshold, update this copy or wire the actual
-// count through props.
+// One-line detail explaining which counter fired. The streaming
+// pipeline cuts on the first valid tool call per category, so the copy
+// reflects a single event instead of an accumulator.
 function pickDetailCopy(
   category: StopCategory | null,
   emotionLabel?: string,
 ): string {
   if (category === 'muletillas') {
-    return 'Acumulaste dos muletillas en poco tiempo.'
+    return 'Apareció una muletilla en tu discurso.'
   }
   if (category === 'pronunciation') {
-    return 'Cometiste dos errores de pronunciación seguidos.'
+    return 'Detectamos un error de pronunciación.'
   }
   if (category === 'accentuation') {
-    return 'Cometiste dos errores de acentuación.'
+    return 'Detectamos un error de acentuación.'
   }
   if (category === 'emotion') {
     return `Mantuviste una expresión de ${emotionLabel ?? 'malestar'} por demasiado tiempo.`
