@@ -11,21 +11,27 @@ import type {
 import type { FacialSummaryPayload } from '../../domain/FacialSummary'
 import type { RawEmotionName } from '../../domain/EmotionTrigger'
 import type { AutoStopReasonDto } from '../../infrastructure/dto/LiveSessionDtos'
-import type { FrameModuleDto } from '../../infrastructure/dto/FrameEvaluationDtos'
-import type { AudioFrameEvent } from '../../services/audioFraming/frameRecorder'
+import type { LiveStreamModule } from '../../infrastructure/dto/LiveStreamDtos'
+import { strikeFromDto } from '../../domain/StreamingEvent'
 import { HttpLiveSessionRepository } from '../../infrastructure/repositories/HttpLiveSessionRepository'
-import { calibrateNoiseFloor } from '../../services/audioFraming/noiseCalibrator'
-import { PauseDetector } from '../../services/audioFraming/pauseDetector'
-import { FrameRecorder } from '../../services/audioFraming/frameRecorder'
+import { LiveAudioStreamer } from '../../services/liveStreaming/audioStreamer'
+import { LiveStreamSocket } from '../../services/liveStreaming/liveStreamSocket'
 import { FacialSummaryBuilder } from '../../services/emotionMonitor/facialSummaryBuilder'
 import { LiveFaceLoop, type BlendshapeBaseline } from '../../services/emotionMonitor/liveFaceLoop'
-import { useFrameStrikes } from './useFrameStrikes'
+import { useLiveStreamingStrikes } from './useLiveStreamingStrikes'
 import { useEmotionStop } from './useEmotionStop'
 
 const MAX_SESSION_SECONDS = 300
 const CALIBRATION_MS = 2000
 const STOPPED_TRANSITION_MS = 5000
-const MAX_INFLIGHT_FRAMES = 3
+
+// The streaming pipeline talks to muletillas, pronunciation and
+// accentuation tools. facial_expression stays 100% client-side.
+const LIVE_STREAM_MODULES: ReadonlyArray<LiveStreamModule> = [
+  'muletillas',
+  'pronunciation',
+  'accentuation',
+]
 
 // Minimum samples required to compute a reliable facial baseline, matched
 // to the standalone facial_expression module (`CALIBRATION_SAMPLES = 45`
@@ -47,12 +53,6 @@ export type StopCategory =
   | 'pronunciation'
   | 'accentuation'
   | 'emotion'
-
-const FRAME_AUDIO_MODULES: ReadonlyArray<LiveModule> = [
-  'muletillas',
-  'accentuation',
-  'pronunciation',
-]
 
 const EMOTION_LABEL: Record<RawEmotionName, string> = {
   happy: 'felicidad',
@@ -98,7 +98,7 @@ interface UseLiveSessionResult {
   // Whether the current selection includes facial_expression. Exposed
   // alongside audioEnabled to drive the calibration copy.
   facialEnabled: boolean
-  strikeEvents: ReturnType<typeof useFrameStrikes>['events']
+  strikeEvents: ReturnType<typeof useLiveStreamingStrikes>['events']
   stopReason: StopReason | null
   // Specific category that triggered the auto-stop. Populated by the
   // hook just before transitioning into stopped_transition so the
@@ -179,7 +179,7 @@ export function useLiveSession(): UseLiveSessionResult {
   const [isStarting, setIsStarting] = useState(false)
 
   const facialEnabled = selectedModules.includes('facial_expression')
-  const strikes = useFrameStrikes()
+  const strikes = useLiveStreamingStrikes()
   const emotionStop = useEmotionStop({ enabled: facialEnabled })
 
   // Refs for long-lived resources that should not trigger renders.
@@ -191,24 +191,18 @@ export function useLiveSession(): UseLiveSessionResult {
   const analyserRef = useRef<AnalyserNode | null>(null)
   const mainRecorderRef = useRef<MediaRecorder | null>(null)
   const mainChunksRef = useRef<Blob[]>([])
-  const pauseDetectorRef = useRef<PauseDetector | null>(null)
-  const frameRecorderRef = useRef<FrameRecorder | null>(null)
+  const audioStreamerRef = useRef<LiveAudioStreamer | null>(null)
+  const liveSocketRef = useRef<LiveStreamSocket | null>(null)
   const faceLoopRef = useRef<LiveFaceLoop | null>(null)
   const facialSummaryBuilderRef = useRef<FacialSummaryBuilder | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const inFlightFramesRef = useRef(0)
-  const evaluatedSoFarSecondsRef = useRef(0)
   const isStoppingRef = useRef(false)
   // Guard against double-firing start(): the CTA disable flips
   // through state which is async, so a fast double tap can still
   // reach start() twice. The ref gives us a synchronous check that
   // works no matter the render scheduling.
   const isStartingRef = useRef(false)
-  // Single AbortController per session that fires on triggerStop, so
-  // in-flight evaluate-frame requests do not land on the backend after
-  // the session row is already aborted/completed (those would 422).
-  const frameAbortRef = useRef<AbortController | null>(null)
   const selectedModulesRef = useRef<LiveModule[]>([])
   const phaseRef = useRef<LiveSessionPhase>('selection')
   const stopReasonRef = useRef<StopReason | null>(null)
@@ -287,10 +281,10 @@ export function useLiveSession(): UseLiveSessionResult {
       clearTimeout(transitionTimeoutRef.current)
       transitionTimeoutRef.current = null
     }
-    pauseDetectorRef.current?.stop()
-    pauseDetectorRef.current = null
-    void frameRecorderRef.current?.stop()
-    frameRecorderRef.current = null
+    void audioStreamerRef.current?.stop()
+    audioStreamerRef.current = null
+    void liveSocketRef.current?.close()
+    liveSocketRef.current = null
     faceLoopRef.current?.stop()
     faceLoopRef.current = null
     facialSummaryBuilderRef.current = null
@@ -305,16 +299,12 @@ export function useLiveSession(): UseLiveSessionResult {
     recordingStartedAtMsRef.current = 0
     mainChunksRef.current = []
     mainRecorderRef.current = null
-    inFlightFramesRef.current = 0
-    evaluatedSoFarSecondsRef.current = 0
     isStoppingRef.current = false
     stopReasonRef.current = null
     facialPhaseRef.current = 'calibrating'
     baselineSumRef.current = new Map()
     baselineCountRef.current = 0
     finalBaselineRef.current = null
-    frameAbortRef.current?.abort()
-    frameAbortRef.current = null
 
     setSelectedModules([])
     setElapsedSeconds(0)
@@ -338,45 +328,6 @@ export function useLiveSession(): UseLiveSessionResult {
       prev.includes(module) ? prev.filter((m) => m !== module) : [...prev, module],
     )
   }, [])
-
-  // Submits one cut frame to the backend. Drops frames silently when
-  // either no audio modules are tildados, the in-flight queue is
-  // saturated, or the request errors out. Strike state only updates
-  // when a frame round-trips successfully.
-  const submitFrame = useCallback(
-    async (event: AudioFrameEvent) => {
-      const sessionId = sessionIdRef.current
-      if (!sessionId) return
-      const audioModules = selectedModulesRef.current.filter((m): m is FrameModuleDto =>
-        FRAME_AUDIO_MODULES.includes(m),
-      )
-      if (audioModules.length === 0) return
-      if (inFlightFramesRef.current >= MAX_INFLIGHT_FRAMES) return
-      inFlightFramesRef.current++
-      evaluatedSoFarSecondsRef.current = Math.max(
-        evaluatedSoFarSecondsRef.current,
-        Math.floor(event.startMsRelative / 1000),
-      )
-      try {
-        const response = await HttpLiveSessionRepository.evaluateFrame(
-          sessionId,
-          event.blob,
-          event.frameIndex,
-          audioModules,
-          evaluatedSoFarSecondsRef.current,
-          frameAbortRef.current?.signal,
-        )
-        strikes.registerFrameResponse(response)
-      } catch {
-        // Frame loss tolerated: the counter just stays the same and the
-        // next frame will land in 5 to 8 seconds. AbortError (from the
-        // stop watcher) and 502 (Gemini timeout) both land here.
-      } finally {
-        inFlightFramesRef.current--
-      }
-    },
-    [strikes],
-  )
 
   const runEvaluation = useCallback(
     async (audioBlob: Blob, reason: StopReason) => {
@@ -442,14 +393,12 @@ export function useLiveSession(): UseLiveSessionResult {
       stopReasonRef.current = reason
 
       clearElapsedTimer()
-      // Abort any evaluate-frame requests that are still in flight so
-      // they do not 422 on the backend after the session row has been
-      // closed by the finalize call below.
-      frameAbortRef.current?.abort()
-      pauseDetectorRef.current?.stop()
-      pauseDetectorRef.current = null
-      await frameRecorderRef.current?.stop()
-      frameRecorderRef.current = null
+      // Close the streaming pipeline so the Gemini WS does not keep
+      // billing audio after the user stopped.
+      await audioStreamerRef.current?.stop()
+      audioStreamerRef.current = null
+      await liveSocketRef.current?.close()
+      liveSocketRef.current = null
       faceLoopRef.current?.stop()
 
       const fullBlob = await stopMainRecorder()
@@ -508,9 +457,6 @@ export function useLiveSession(): UseLiveSessionResult {
     setCalibrationProgress(0)
     isStoppingRef.current = false
     stopReasonRef.current = null
-    inFlightFramesRef.current = 0
-    evaluatedSoFarSecondsRef.current = 0
-    frameAbortRef.current = new AbortController()
     strikes.reset()
     emotionStop.reset()
 
@@ -530,8 +476,6 @@ export function useLiveSession(): UseLiveSessionResult {
     // camera permission denial does not interfere with the audio
     // pipeline.
     let audioStream: MediaStream | null = null
-    let audioCtx: AudioContext | null = null
-    let analyser: AnalyserNode | null = null
     if (hasAudioModule) {
       try {
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -541,15 +485,6 @@ export function useLiveSession(): UseLiveSessionResult {
       }
       audioStreamRef.current = audioStream
       setActiveStream(audioStream)
-
-      // Build audio graph shared between calibrator and pause detector.
-      audioCtx = new AudioContext()
-      audioContextRef.current = audioCtx
-      const source = audioCtx.createMediaStreamSource(audioStream)
-      analyser = audioCtx.createAnalyser()
-      analyser.fftSize = 2048
-      source.connect(analyser)
-      analyserRef.current = analyser
     }
 
     // Open session row in BD so we have an id to attach frames to.
@@ -616,14 +551,15 @@ export function useLiveSession(): UseLiveSessionResult {
 
     setPhase('calibrating')
 
-    // Calibration: short window with a UI progress tick. Two parallel
-    // signals matter here:
-    //   - audio noise floor (if hasAudioModule): runs for CALIBRATION_MS.
-    //   - facial baseline samples (if facialEnabled): the face loop must
-    //     deliver at least MIN_FACIAL_BASELINE_SAMPLES blendshape ticks.
+    // Calibration: short cosmetic window plus, when facial is on, a
+    // baseline accumulator for the emotion classifier.
+    //   - audio: holds the calibration phase for CALIBRATION_MS so the
+    //     user sees the same "preparing" UI as before. No noise floor
+    //     calibration is needed because the streaming pipeline does not
+    //     rely on a pause detector; Gemini Live has its own VAD.
+    //   - facial baseline (if facialEnabled): the face loop must deliver
+    //     at least MIN_FACIAL_BASELINE_SAMPLES blendshape ticks.
     // We wait for the union of the two and only then transition to live.
-    // The progress bar is driven by the audio timer when audio is active,
-    // and by the sample count when only facial is active.
     const calibrationStartedAt = performance.now()
     const calibrationInterval = window.setInterval(() => {
       const elapsed = performance.now() - calibrationStartedAt
@@ -635,11 +571,8 @@ export function useLiveSession(): UseLiveSessionResult {
       setCalibrationProgress(Math.min(1, progress))
     }, 50)
 
-    let noiseCalibration: Awaited<ReturnType<typeof calibrateNoiseFloor>> | null = null
-    if (hasAudioModule && analyser) {
-      noiseCalibration = await calibrateNoiseFloor(analyser, {
-        durationMs: CALIBRATION_MS,
-      })
+    if (hasAudioModule) {
+      await new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS))
     } else {
       // Audio-free path: hold the calibration phase for the same baseline
       // window so the facial loop has time to feed samples before we flip.
@@ -681,11 +614,12 @@ export function useLiveSession(): UseLiveSessionResult {
 
     // Audio-only artifacts are created only when we have at least one
     // audio module selected. When only facial is selected we skip the
-    // main recorder, pause detector and frame recorder entirely; the
-    // strike counter for facial is driven by the emotion classifier and
-    // does not need any of these.
-    if (hasAudioModule && audioStream && analyser && noiseCalibration) {
+    // main recorder and the streaming pipeline entirely; the strike
+    // counter for facial is driven by the emotion classifier.
+    if (hasAudioModule && audioStream) {
       // Start the full-audio recorder for the final composed evaluation.
+      // This is the same recording that gets uploaded at session end so
+      // the composed eval can score the entire session.
       const mime = pickMimeType()
       const mainRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : {})
       mainChunksRef.current = []
@@ -695,26 +629,60 @@ export function useLiveSession(): UseLiveSessionResult {
       mainRecorderRef.current = mainRecorder
       mainRecorder.start()
 
-      // Pause detector + frame recorder for the strike pipeline.
-      const pauseDetector = new PauseDetector(analyser, noiseCalibration)
-      const frameRecorder = new FrameRecorder(audioStream)
-      pauseDetectorRef.current = pauseDetector
-      frameRecorderRef.current = frameRecorder
-
-      frameRecorder.start((event) => {
-        void submitFrame(event)
+      // Open the WS to the backend supervisor (which talks to Gemini
+      // Live) and the PCM streamer that pumps audio into it.
+      const token = localStorage.getItem('auth_token')
+      if (!token) {
+        setError('Sesión expirada. Volvé a iniciar sesión.')
+        releaseStreams()
+        await releaseAudioGraph()
+        return
+      }
+      const socket = new LiveStreamSocket()
+      socket.onStrike((dto) => {
+        if (isStoppingRef.current) return
+        strikes.registerStrike(strikeFromDto(dto))
       })
-
-      pauseDetector.start({
-        onPause: () => {
-          frameRecorder.cut('pause')
-          pauseDetector.resetFrameTimer()
-        },
-        onForceCut: () => {
-          frameRecorder.cut('force_cut')
-          pauseDetector.resetFrameTimer()
-        },
+      socket.onClose(({ code, reason }) => {
+        // Only treat as an error if the close happened mid-recording
+        // and the user did not already stop. A user-initiated stop
+        // closes the socket as part of the teardown path.
+        if (phaseRef.current === 'recording' && !isStoppingRef.current) {
+          console.warn('Live socket closed unexpectedly', code, reason)
+        }
       })
+      try {
+        await socket.open({
+          sessionId: openResponse.session_id,
+          modules: LIVE_STREAM_MODULES.slice(),
+          token,
+        })
+      } catch (exc) {
+        setError(
+          exc instanceof Error ? exc.message : 'No se pudo abrir la conexión en vivo',
+        )
+        releaseStreams()
+        await releaseAudioGraph()
+        return
+      }
+      liveSocketRef.current = socket
+
+      const streamer = new LiveAudioStreamer()
+      audioStreamerRef.current = streamer
+      try {
+        await streamer.start(audioStream, (chunk) => {
+          socket.sendAudio(chunk)
+        })
+      } catch (exc) {
+        setError(
+          exc instanceof Error ? exc.message : 'No se pudo iniciar el streaming de audio',
+        )
+        await socket.close()
+        liveSocketRef.current = null
+        releaseStreams()
+        await releaseAudioGraph()
+        return
+      }
     }
 
     if (facialEnabled) {
@@ -748,7 +716,6 @@ export function useLiveSession(): UseLiveSessionResult {
     facialEnabled,
     strikes,
     emotionStop,
-    submitFrame,
     triggerStop,
     releaseAudioGraph,
     releaseStreams,
@@ -766,12 +733,13 @@ export function useLiveSession(): UseLiveSessionResult {
     // the stopped_transition overlay can render a category-specific
     // copy. Order checked muletillas → pronunciation → accentuation
     // is arbitrary but stable: if two counters reach the threshold in
-    // the same render, the first listed wins.
-    if (strikes.muletillaCount >= 2) {
+    // the same render, the first listed wins. With the streaming
+    // pipeline the threshold is 1 — a single valid tool call cuts.
+    if (strikes.muletillaCount >= 1) {
       setStopCategory('muletillas')
-    } else if (strikes.pronunciationErrorCount >= 2) {
+    } else if (strikes.pronunciationErrorCount >= 1) {
       setStopCategory('pronunciation')
-    } else if (strikes.accentuationErrorCount >= 2) {
+    } else if (strikes.accentuationErrorCount >= 1) {
       setStopCategory('accentuation')
     }
     void triggerStop('auto_stop_strikes')
@@ -806,8 +774,8 @@ export function useLiveSession(): UseLiveSessionResult {
       if (transitionTimeoutRef.current) {
         clearTimeout(transitionTimeoutRef.current)
       }
-      pauseDetectorRef.current?.stop()
-      void frameRecorderRef.current?.stop()
+      void audioStreamerRef.current?.stop()
+      void liveSocketRef.current?.close()
       faceLoopRef.current?.stop()
       void releaseAudioGraph()
       audioStreamRef.current?.getTracks().forEach((t) => t.stop())
