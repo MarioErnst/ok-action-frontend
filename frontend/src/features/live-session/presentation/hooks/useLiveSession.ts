@@ -670,6 +670,11 @@ export function useLiveSession(): UseLiveSessionResult {
     }
 
     recordingStartedAtMsRef.current = performance.now()
+    // The strikes hook anchors timestamps to wall-clock time because the
+    // supervisor sends received_at_ms as an epoch millisecond. We hand
+    // it Date.now() at the recording start so per-event timestamps come
+    // out relative to the audio file the user will eventually replay.
+    strikes.markRecordingStart(Date.now())
     setElapsedSeconds(0)
     setIsRecording(true)
     setPhase('recording')

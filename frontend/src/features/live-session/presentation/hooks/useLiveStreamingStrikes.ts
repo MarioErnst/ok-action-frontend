@@ -31,6 +31,11 @@ interface UseLiveStreamingStrikesResult {
   accentuationErrorCount: number
   events: StrikeEvent[]
   shouldStop: boolean
+  // Anchor the strike timestamps to the recording start so the feedback
+  // page can mark events on the audio timeline. Caller invokes this once
+  // recording begins; if it is never called, timestamps fall back to the
+  // raw wall-clock delta which still preserves ordering.
+  markRecordingStart: (epochMs: number) => void
   registerStrike: (event: StreamingStrikeEvent) => void
   reset: () => void
 }
@@ -46,13 +51,18 @@ export function useLiveStreamingStrikes(): UseLiveStreamingStrikesResult {
   const pronunciationErrorCountRef = useRef(0)
   const accentuationErrorCountRef = useRef(0)
   const eventsRef = useRef<StrikeEvent[]>([])
-  const sessionStartedAtRef = useRef<number | null>(null)
+  // Wall-clock epoch (ms) of the recording start. Both this and
+  // event.receivedAtMs are wall-clock so the subtraction gives the
+  // offset inside the recorded audio.
+  const recordingStartedAtRef = useRef<number | null>(null)
+
+  const markRecordingStart = useCallback((epochMs: number) => {
+    recordingStartedAtRef.current = epochMs
+  }, [])
 
   const registerStrike = useCallback((event: StreamingStrikeEvent) => {
-    if (sessionStartedAtRef.current === null) {
-      sessionStartedAtRef.current = performance.now()
-    }
-    const relativeMs = Math.max(0, event.receivedAtMs - sessionStartedAtRef.current)
+    const anchor = recordingStartedAtRef.current ?? event.receivedAtMs
+    const relativeMs = Math.max(0, event.receivedAtMs - anchor)
 
     let mappedKind: StrikeEvent['kind']
     if (event.category === 'muletillas') {
@@ -90,7 +100,7 @@ export function useLiveStreamingStrikes(): UseLiveStreamingStrikesResult {
     pronunciationErrorCountRef.current = 0
     accentuationErrorCountRef.current = 0
     eventsRef.current = []
-    sessionStartedAtRef.current = null
+    recordingStartedAtRef.current = null
     setMuletillaCount(0)
     setPronunciationErrorCount(0)
     setAccentuationErrorCount(0)
@@ -108,6 +118,7 @@ export function useLiveStreamingStrikes(): UseLiveStreamingStrikesResult {
     accentuationErrorCount,
     events,
     shouldStop,
+    markRecordingStart,
     registerStrike,
     reset,
   }
