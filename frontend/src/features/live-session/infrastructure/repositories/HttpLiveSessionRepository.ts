@@ -10,14 +10,11 @@ import type {
   LiveSessionListItemDto,
   StartSessionResponseDto,
 } from '../dto/LiveSessionDtos'
-import type {
-  FrameEvaluationResponseDto,
-  FrameModuleDto,
-} from '../dto/FrameEvaluationDtos'
 
-// Live composition is HTTP-only: the WebSocket multi-dim orchestrator is
-// gone. Each component module session is attached to a live root via
-// parent_id when its create call accepts it.
+// Live composition lifecycle uses plain HTTP; the in-session strike
+// pipeline runs over a separate WebSocket handled by LiveStreamSocket.
+// Each component module session attaches to a live root via parent_id
+// when its create call accepts it.
 export const HttpLiveSessionRepository = {
   async startSession(): Promise<StartSessionResponseDto> {
     return apiRequest<StartSessionResponseDto>('/live/sessions', {
@@ -88,33 +85,4 @@ export const HttpLiveSessionRepository = {
     )
   },
 
-  // Multipart upload of a 5-8 second audio fragment for in-session
-  // strike detection. modules is sent as repeated form fields. The
-  // backend returns the per-module response sections that drive the
-  // strike counter. Failures (502, timeout) are propagated so the
-  // caller can simply drop the frame from the counter.
-  async evaluateFrame(
-    sessionId: string,
-    audio: Blob,
-    frameIndex: number,
-    modules: FrameModuleDto[],
-    evaluatedSoFarSeconds: number,
-    signal?: AbortSignal,
-  ): Promise<FrameEvaluationResponseDto> {
-    const form = new FormData()
-    const filename = `frame-${sessionId}-${frameIndex}.${
-      audio.type.includes('mp4') ? 'mp4' : 'webm'
-    }`
-    form.append('audio', audio, filename)
-    form.append('frame_index', String(frameIndex))
-    form.append('evaluated_so_far_seconds', String(evaluatedSoFarSeconds))
-    for (const module of modules) {
-      form.append('modules', module)
-    }
-
-    return apiRequest<FrameEvaluationResponseDto, FormData>(
-      `/live/sessions/${sessionId}/evaluate-frame`,
-      { method: 'POST', body: form, signal },
-    )
-  },
 }
