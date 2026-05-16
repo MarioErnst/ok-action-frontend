@@ -1,11 +1,10 @@
 # Modulo de Sesion Libre — Frontend
 
-> El rediseño con sistema de strikes (calibración inicial, frames con detección
-> de pausas, evaluación por frame con corte automático a los 3 errores
-> acumulados, y corte por expresión facial sostenida) vive en
-> [`live-strike-system.md`](./live-strike-system.md). Este archivo describe
-> el modelo de pantalla y el flujo de alto nivel; los detalles de framing,
-> emoción y persistencia van en el documento del strike system.
+> El strike system corre sobre WebSocket directo a Gemini Live con function
+> tools (umbral 1 strike por categoría). El detalle del pipeline de streaming
+> vive en [`live-strike-system.md`](./live-strike-system.md). Este archivo
+> describe el modelo de pantalla y el flujo de alto nivel; los servicios de
+> audio streaming, WS y persistencia están documentados allí.
 
 ## 1. Descripcion funcional
 
