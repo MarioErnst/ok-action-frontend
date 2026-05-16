@@ -30,8 +30,19 @@ const JOURNEY_NAV_IDS: Record<string, string> = {
   '/perfil': 'nav-profile',
 }
 
-const findItem = (path: string): NavItemConfig | undefined =>
-  NAV_ITEMS.find((item) => item.to === path)
+// Mobile bottom-bar labels override the shared NAV_ITEMS labels so the
+// desktop sidebar and the exercises grid keep their original wording.
+const LABEL_OVERRIDES: Record<string, string> = {
+  '/ejercicios': 'Diagnóstico',
+  '/sesion-libre': 'Sala de ensayo',
+}
+
+const findItem = (path: string): NavItemConfig | undefined => {
+  const item = NAV_ITEMS.find((entry) => entry.to === path)
+  if (!item) return undefined
+  const override = LABEL_OVERRIDES[path]
+  return override ? { ...item, label: override } : item
+}
 
 export const AppBottomBar = () => {
   const left1 = findItem(ROUTE_BY_SLOT.left1)
