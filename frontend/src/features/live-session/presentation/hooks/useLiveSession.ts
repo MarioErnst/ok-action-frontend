@@ -64,16 +64,6 @@ const EMOTION_LABEL: Record<RawEmotionName, string> = {
   neutral: 'neutralidad',
 }
 
-const RAW_TO_FACIAL: Record<RawEmotionName, FacialEmotionName> = {
-  happy: 'happy',
-  sad: 'sad',
-  angry: 'angry',
-  surprise: 'surprised',
-  fear: 'fearful',
-  disgust: 'disgusted',
-  neutral: 'neutral',
-}
-
 interface UseLiveSessionResult {
   phase: LiveSessionPhase
   selectedModules: LiveModule[]
@@ -779,13 +769,8 @@ export function useLiveSession(): UseLiveSessionResult {
     }
   }, [stopReason])
 
-  // Helper map for callers reading emotion names by raw key — keeps
-  // the mapping in one place even though it currently sees no external
-  // consumer. The constant is exported via the hook surface for
-  // future consumers (e.g., a debug overlay).
-
-  // Derived flags exposed for the CalibrationScreen + future audio-only
-  // widgets. Computed at render time so they reflect the latest
+  // Derived flag exposed for the CalibrationScreen and audio-only
+  // widgets. Computed at render time so it reflects the latest
   // selectedModules without an extra effect.
   const audioEnabled = selectedModules.some((m) => m !== 'facial_expression')
 
@@ -816,6 +801,3 @@ export function useLiveSession(): UseLiveSessionResult {
   }
 }
 
-// Re-export the per-emotion label map so feedback UI can render the
-// emotion that triggered an auto_stop_emotion in user-facing Spanish.
-export { EMOTION_LABEL, RAW_TO_FACIAL }
