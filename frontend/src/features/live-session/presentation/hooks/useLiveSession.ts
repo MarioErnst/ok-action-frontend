@@ -594,13 +594,37 @@ export function useLiveSession(): UseLiveSessionResult {
       mainRecorderRef.current = mainRecorder
       mainRecorder.start()
 
+      // If anything below fails we have to roll back what we already
+      // started — the recorder, the WS, the streamer — so an early
+      // return does not leave the page with running resources.
+      const abortAudioPipeline = async () => {
+        if (mainRecorderRef.current && mainRecorderRef.current.state !== 'inactive') {
+          try {
+            mainRecorderRef.current.stop()
+          } catch {
+            // already stopped
+          }
+        }
+        mainRecorderRef.current = null
+        mainChunksRef.current = []
+        if (audioStreamerRef.current) {
+          await audioStreamerRef.current.stop()
+          audioStreamerRef.current = null
+        }
+        if (liveSocketRef.current) {
+          await liveSocketRef.current.close()
+          liveSocketRef.current = null
+        }
+        releaseStreams()
+      }
+
       // Open the WS to the backend supervisor (which talks to Gemini
       // Live) and the PCM streamer that pumps audio into it.
       const token = localStorage.getItem('auth_token')
       if (!token) {
         setError('Sesión expirada. Volvé a iniciar sesión.')
-        releaseStreams()
-          return
+        await abortAudioPipeline()
+        return
       }
       const socket = new LiveStreamSocket()
       socket.onStrike((dto) => {
@@ -625,8 +649,8 @@ export function useLiveSession(): UseLiveSessionResult {
         setError(
           exc instanceof Error ? exc.message : 'No se pudo abrir la conexión en vivo',
         )
-        releaseStreams()
-          return
+        await abortAudioPipeline()
+        return
       }
       liveSocketRef.current = socket
 
@@ -640,10 +664,8 @@ export function useLiveSession(): UseLiveSessionResult {
         setError(
           exc instanceof Error ? exc.message : 'No se pudo iniciar el streaming de audio',
         )
-        await socket.close()
-        liveSocketRef.current = null
-        releaseStreams()
-          return
+        await abortAudioPipeline()
+        return
       }
     }
 
