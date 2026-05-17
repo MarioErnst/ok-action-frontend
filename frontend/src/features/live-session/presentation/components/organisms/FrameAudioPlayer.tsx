@@ -106,9 +106,8 @@ export const FrameAudioPlayer = ({
             durationMs > 0 ? (event.timestampMs / durationMs) * 100 : 0
           return (
             <StrikeMarker
-              key={`${event.kind}-${event.frameIndex}-${i}`}
+              key={`${event.kind}-${event.timestampMs}-${i}`}
               positionPct={positionPct}
-              kind={event.kind}
               label={event.detail}
               onClick={() => seekToMs(event.timestampMs)}
             />

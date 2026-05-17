@@ -58,10 +58,6 @@ export function useLiveStreamingStrikes(): UseLiveStreamingStrikesResult {
 
     const strike: StrikeEvent = {
       kind: 'muletilla',
-      // No frame correlation in streaming. Keep the field present for
-      // backward compatibility with the feedback UI that uses it as a
-      // stable key. Nothing in the tree reads frameIndex semantically.
-      frameIndex: 0,
       timestampMs: relativeMs,
       detail: event.transcriptSnippet || event.word,
       severity: event.severity,
