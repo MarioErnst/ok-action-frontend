@@ -40,6 +40,12 @@ export class LiveStreamSocket {
   private strikeHandler: StrikeHandler | null = null
   private closeHandler: CloseHandler | null = null
   private endSent = false
+  // Profile timestamps so the dev console can show end-to-end latency
+  // without external instrumentation. Stay as console.debug so the
+  // production console (info+) stays clean.
+  private openStartedAt = 0
+  private firstChunkSentAt = 0
+  private firstStrikeAt = 0
 
   onStrike(handler: StrikeHandler): void {
     this.strikeHandler = handler
@@ -59,6 +65,10 @@ export class LiveStreamSocket {
     ws.binaryType = 'arraybuffer'
     this.ws = ws
     this.endSent = false
+    this.openStartedAt = performance.now()
+    this.firstChunkSentAt = 0
+    this.firstStrikeAt = 0
+    console.debug('[live-stream] socket.open started')
 
     return new Promise<void>((resolve, reject) => {
       const timeoutHandle = window.setTimeout(() => {
@@ -97,11 +107,26 @@ export class LiveStreamSocket {
         if (parsed.type === 'ready') {
           readyReceived = true
           window.clearTimeout(timeoutHandle)
+          console.debug(
+            '[live-stream] ready received',
+            Math.round(performance.now() - this.openStartedAt),
+            'ms after open',
+          )
           resolve()
           return
         }
 
         if (parsed.type === 'strike') {
+          if (this.firstStrikeAt === 0) {
+            this.firstStrikeAt = performance.now()
+            console.debug(
+              '[live-stream] first strike received',
+              this.firstChunkSentAt > 0
+                ? Math.round(this.firstStrikeAt - this.firstChunkSentAt)
+                : '?',
+              'ms after first chunk',
+            )
+          }
           this.strikeHandler?.(parsed as unknown as StrikeMessageDto)
           return
         }
@@ -141,6 +166,10 @@ export class LiveStreamSocket {
     const copy = new ArrayBuffer(chunk.byteLength)
     new Uint8Array(copy).set(chunk)
     ws.send(copy)
+    if (this.firstChunkSentAt === 0) {
+      this.firstChunkSentAt = performance.now()
+      console.debug('[live-stream] first audio chunk sent')
+    }
   }
 
   async close(): Promise<void> {
