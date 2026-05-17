@@ -58,30 +58,51 @@ Los archivos eliminados del flujo anterior:
    - Si hay al menos un módulo de audio, pide el mic, abre `POST /live/sessions`
      y guarda el `session_id`.
    - Si hay facial, inicializa `LiveFaceLoop` + acumulador de baseline.
-3. Fase `calibrating` (2 segundos cosméticos para audio + tiempo necesario para
-   baseline facial). El streaming hacia Gemini no inicia todavía.
+   - Si hay audio, **construye `LiveStreamSocket`** y dispara `socket.open()` —
+     pero NO espera el ready acá. La promesa se guarda para esperarla en la
+     fase siguiente, en paralelo con la calibración.
+3. Fase `calibrating`: la UI espera el `Promise.all` de tres señales:
+   - **2 segundos cosméticos** (ventana visible para el usuario).
+   - **Ready del WS + chunk de silencio de 300 ms (`WARMUP_SILENCE_MS`)**: al
+     recibir `{type:"ready"}` el socket envía `buildSilencePcm(300)` para sacar
+     al modelo Gemini Live de su cold-start antes de que llegue audio real.
+   - **Baseline facial** (si `expresion-facial` está activa).
 4. Fase `recording`:
-   - Crea `LiveStreamSocket` y abre la WS. La WS recibe `{type:"start", modules}`
-     con la unión `muletillas`, `pronunciation`, `accentuation`.
-   - Tras `{type:"ready"}`, arranca `LiveAudioStreamer` que toma el MediaStream
-     y emite chunks PCM 16 kHz cada 100 ms. Cada chunk se envía como frame
-     binario por la WS.
-   - En paralelo sigue corriendo el MediaRecorder principal que graba el audio
-     completo (webm/mp4) para el composed eval final.
-   - El orquestador llama `strikes.markRecordingStart(Date.now())` justo antes
-     de flipear a `recording`, anclando los timestamps de los strikes al
-     reloj de pared para que el feedback de audio los pueda mapear contra el
-     archivo grabado.
+   - Adopta el `preWarmedSocket` ya abierto en `liveSocketRef`.
+   - Arranca el `MediaRecorder` principal que graba el audio completo
+     (webm/mp4) para el composed eval final.
+   - Arranca `LiveAudioStreamer` sobre el MediaStream; cada chunk PCM 16 kHz
+     (cada 100 ms) sale por el socket ya tibio.
+   - Llama `strikes.markRecordingStart(Date.now())`, anclando los timestamps
+     de los strikes al reloj de pared para mapearlos contra el audio grabado.
    - Cada `{type:"strike", category, word, transcript_snippet, severity, ...}`
      que llega se entrega a `useLiveStreamingStrikes.registerStrike`.
-   - Si la apertura del WS o el arranque del streamer fallan, un closure
-     `abortAudioPipeline()` detiene el MediaRecorder, cierra el socket si
-     existía y libera las tracks — la pantalla queda en estado de error sin
-     recursos colgando.
+   - Si el `streamer.start` falla, un closure `abortAudioPipeline()` detiene
+     MediaRecorder, cierra el socket y libera las tracks — la pantalla queda
+     en estado de error sin recursos colgando.
 5. El effect que mira `strikes.shouldStop` dispara `triggerStop('auto_stop_strikes')`
    en cuanto cualquier counter llega a 1. La WS se cierra y el audio completo se
    sube al composed-eval (`POST /live/sessions/:id/audio-evaluation`) para
    persistir las hijas con sus scores finales.
+
+### Pre-warm y métricas de cold start
+
+Google no documenta los números de cold start del modelo Live, pero la
+comunidad reporta de 500 ms a varios segundos para la primera respuesta
+útil. Al abrir la WS y enviar un chunk de silencio durante la calibración,
+el modelo entra en estado de streaming mientras el usuario aún ve la UI de
+"preparando", de modo que el primer chunk de habla real llega tibio.
+
+El cliente WS emite tres `console.debug` para que se pueda medir end-to-end
+sin telemetría adicional:
+
+- `[live-stream] socket.open started`
+- `[live-stream] ready received N ms after open`
+- `[live-stream] first audio chunk sent`
+- `[live-stream] first strike received N ms after first chunk`
+
+Quedan en `console.debug` (oculto por default en producción si el nivel de
+log es info+) para no contaminar la consola del usuario.
 
 ## 4. Wire format
 
