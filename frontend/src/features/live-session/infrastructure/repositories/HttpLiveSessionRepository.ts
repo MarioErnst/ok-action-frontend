@@ -78,6 +78,12 @@ export const HttpLiveSessionRepository = {
       // simplest contract.
       form.append('facial_summary', JSON.stringify(request.facialSummary))
     }
+    if (request.phonationSummary) {
+      form.append('phonation_summary', JSON.stringify(request.phonationSummary))
+    }
+    if (request.loudnessSummary) {
+      form.append('loudness_summary', JSON.stringify(request.loudnessSummary))
+    }
 
     return apiRequest<ComposedAudioEvaluationResponseDto, FormData>(
       `/live/sessions/${sessionId}/audio-evaluation`,

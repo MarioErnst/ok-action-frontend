@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ApiError } from '../../../../api/client'
+import useVoiceMonitor from '../../../../shared/hooks/useVoiceMonitor'
+import type { LoudnessConfig } from '../../../loudness/domain/LoudnessSession'
 import type { LoudnessPresetDto } from '../../../loudness/infrastructure/dto/LoudnessDtos'
 import { HttpLoudnessRepository } from '../../../loudness/infrastructure/repositories/HttpLoudnessRepository'
+import { useLiveLoudness } from './useLiveLoudness'
+import { useLivePhonation } from './useLivePhonation'
 import type {
   ComposedEvaluation,
   FacialEmotionName,
@@ -53,8 +57,13 @@ type StopReason = 'user_stop' | 'time_limit' | AutoStopReasonDto
 
 // Which auto-stop counter actually fired. Used by the
 // stopped_transition overlay to render a category-specific copy.
-// Pronunciation and accentuation no longer trigger live auto-stops.
-export type StopCategory = 'muletillas' | 'emotion'
+// Pronunciation and accentuation no longer trigger live auto-stops;
+// phonation and loudness joined the set in feature/live_phonation_loudness.
+export type StopCategory =
+  | 'muletillas'
+  | 'emotion'
+  | 'loudness'
+  | 'phonation'
 
 const EMOTION_LABEL: Record<RawEmotionName, string> = {
   happy: 'felicidad',
@@ -110,6 +119,14 @@ interface UseLiveSessionResult {
   // preset once fetched.
   selectedLoudnessPresetId: string | null
   selectLoudnessPreset: (presetId: string) => void
+  // Live-state surfaced from the new client-side hooks so the
+  // recording screen can render the meters without re-importing them.
+  phonationEnabled: boolean
+  loudnessEnabled: boolean
+  phonationCurrentHz: number | null
+  phonationBreaksInWindow: number
+  loudnessCurrentBand: ReturnType<typeof useLiveLoudness>['currentBand']
+  loudnessClippingStreakMs: number
   start: () => Promise<void>
   stop: () => Promise<void>
   reset: () => void
@@ -187,8 +204,63 @@ export function useLiveSession(): UseLiveSessionResult {
   >(null)
 
   const facialEnabled = selectedModules.includes('facial_expression')
+  const phonationEnabled = selectedModules.includes('phonation')
+  const loudnessEnabled = selectedModules.includes('loudness')
+  // The voice monitor stays up when either client-side audio module is
+  // active. start() reads this to decide whether to plug the monitor
+  // into the shared MediaStream.
+  const voiceMeterEnabled = phonationEnabled || loudnessEnabled
+
   const strikes = useLiveStreamingStrikes()
   const emotionStop = useEmotionStop({ enabled: facialEnabled })
+
+  // The voice monitor consumes the MediaStream we already opened for
+  // muletillas streaming. We pass it via externalStream so the shared
+  // hook does not prompt the mic a second time. The monitor's noise
+  // floor is captured into local state so the loudness classifier
+  // (which depends on it) can react when calibration completes.
+  const [voiceNoiseFloor, setVoiceNoiseFloor] = useState<number | null>(null)
+  const voiceStreamRef = useRef<MediaStream | null>(null)
+  const voiceMonitor = useVoiceMonitor({
+    externalStream: voiceStreamRef.current,
+    onNoiseFloorReady: setVoiceNoiseFloor,
+  })
+
+  // Loudness config used by the live classifier. We adopt a fixed
+  // conservative voice baseline (noise floor + 25 dB) instead of the
+  // standalone module's voice baseline calibration step — that
+  // assumes the alumno can read aloud, which contradicts the live
+  // session's free-speech premise. The error margin is acceptable
+  // because the band is wide; if it turns out tight we can introduce
+  // a proper voice baseline step in a follow-up.
+  const loudnessConfig: LoudnessConfig | null = useMemo(() => {
+    if (!loudnessEnabled || voiceNoiseFloor === null) return null
+    const preset = loudnessPresets.find(
+      (p) => p.id === selectedLoudnessPresetId,
+    ) ?? loudnessPresets[0]
+    if (!preset) return null
+    const assumedVoiceBaseline = voiceNoiseFloor + 25
+    return {
+      presetId: preset.id,
+      label: preset.label,
+      description: preset.description ?? '',
+      silenceOffsetDb: preset.silence_offset_db,
+      tooLowCeilingDbfs: assumedVoiceBaseline + preset.low_offset_db,
+      optimalCeilingDbfs: assumedVoiceBaseline + preset.optimal_offset_db,
+      clipThresholdDbfs: preset.clip_threshold_db,
+    }
+  }, [loudnessEnabled, voiceNoiseFloor, loudnessPresets, selectedLoudnessPresetId])
+
+  const livePhonation = useLivePhonation({
+    frames: voiceMonitor.frames,
+    enabled: phonationEnabled,
+  })
+  const liveLoudness = useLiveLoudness({
+    frames: voiceMonitor.frames,
+    noiseFloor: voiceNoiseFloor ?? voiceMonitor.noiseFloor,
+    config: loudnessConfig,
+    enabled: loudnessEnabled,
+  })
 
   // Refs for long-lived resources that should not trigger renders.
   const sessionIdRef = useRef<string | null>(null)
@@ -314,8 +386,19 @@ export function useLiveSession(): UseLiveSessionResult {
     setRecordingDurationMs(0)
     strikes.reset()
     emotionStop.reset()
+    livePhonation.reset()
+    liveLoudness.reset()
+    setVoiceNoiseFloor(null)
     setPhase('selection')
-  }, [clearElapsedTimer, releaseStreams, recordingAudioUrl, strikes, emotionStop])
+  }, [
+    clearElapsedTimer,
+    releaseStreams,
+    recordingAudioUrl,
+    strikes,
+    emotionStop,
+    livePhonation,
+    liveLoudness,
+  ])
 
   const toggleModule = useCallback((module: LiveModule) => {
     setSelectedModules((prev) =>
@@ -339,17 +422,33 @@ export function useLiveSession(): UseLiveSessionResult {
         facialSummary = built ?? undefined
       }
 
+      const phonationSummary = selectedModulesRef.current.includes('phonation')
+        ? livePhonation.summary() ?? undefined
+        : undefined
+
+      const loudnessSummary = selectedModulesRef.current.includes('loudness')
+        ? liveLoudness.summary() ?? undefined
+        : undefined
+
       try {
         const evalResponse = await HttpLiveSessionRepository.evaluateAudio(sessionId, {
           audio: audioBlob,
           modules: selectedModulesRef.current,
           startedAt: startedAtIso,
           facialSummary,
+          phonationSummary,
+          loudnessSummary,
         })
 
         const composed: ComposedEvaluation = { ...evalResponse.evaluation }
         if (facialSummary) {
           composed.facial_expression = buildFacialSection(facialSummary)
+        }
+        if (phonationSummary) {
+          composed.phonation = phonationSummary
+        }
+        if (loudnessSummary) {
+          composed.loudness = loudnessSummary
         }
         setEvaluation(composed)
 
@@ -358,7 +457,11 @@ export function useLiveSession(): UseLiveSessionResult {
             ? 'auto_stop_strikes'
             : reason === 'auto_stop_emotion'
               ? 'auto_stop_emotion'
-              : null
+              : reason === 'auto_stop_loudness'
+                ? 'auto_stop_loudness'
+                : reason === 'auto_stop_phonation'
+                  ? 'auto_stop_phonation'
+                  : null
         const finalize = await HttpLiveSessionRepository.finalizeSession(sessionId, autoStopReason)
         setLiveScore(finalize.score)
 
@@ -393,6 +496,11 @@ export function useLiveSession(): UseLiveSessionResult {
       audioStreamerRef.current = null
       await liveSocketRef.current?.close()
       liveSocketRef.current = null
+      // Stop the shared voice monitor without releasing the mic (the
+      // orchestrator owns the stream and releases it via releaseStreams
+      // below).
+      await voiceMonitor.stop()
+      voiceStreamRef.current = null
       faceLoopRef.current?.stop()
 
       const fullBlob = await stopMainRecorder()
@@ -409,7 +517,11 @@ export function useLiveSession(): UseLiveSessionResult {
       setRecordingAudioUrl(url)
       setRecordingDurationMs(recordingMs)
 
-      const isAuto = reason === 'auto_stop_strikes' || reason === 'auto_stop_emotion'
+      const isAuto =
+        reason === 'auto_stop_strikes' ||
+        reason === 'auto_stop_emotion' ||
+        reason === 'auto_stop_loudness' ||
+        reason === 'auto_stop_phonation'
       if (isAuto) {
         setPhase('stopped_transition')
         transitionTimeoutRef.current = setTimeout(() => {
@@ -478,6 +590,14 @@ export function useLiveSession(): UseLiveSessionResult {
       }
       audioStreamRef.current = audioStream
       setActiveStream(audioStream)
+      // Hand the same stream to the shared voice monitor so phonation /
+      // loudness pipelines do not request a second mic prompt. The
+      // monitor starts here (still in pre-calibration) so it has time
+      // to read its 3 s of silence before we transition to recording.
+      if (voiceMeterEnabled) {
+        voiceStreamRef.current = audioStream
+        await voiceMonitor.start()
+      }
     }
 
     // Open session row in BD so we have an id to attach frames to.
@@ -775,6 +895,26 @@ export function useLiveSession(): UseLiveSessionResult {
     void triggerStop('auto_stop_emotion')
   }, [emotionStop.trigger, triggerStop])
 
+  // Phonation auto-stop. Fires when the rolling break counter crosses
+  // the threshold defined inside the hook (5 breaks in 10 s today).
+  useEffect(() => {
+    if (!livePhonation.shouldStop) return
+    if (phaseRef.current !== 'recording') return
+    if (isStoppingRef.current) return
+    setStopCategory('phonation')
+    void triggerStop('auto_stop_phonation')
+  }, [livePhonation.shouldStop, triggerStop])
+
+  // Loudness auto-stop. Fires when the user has been continuously
+  // clipping for the threshold time (3 s today).
+  useEffect(() => {
+    if (!liveLoudness.shouldStop) return
+    if (phaseRef.current !== 'recording') return
+    if (isStoppingRef.current) return
+    setStopCategory('loudness')
+    void triggerStop('auto_stop_loudness')
+  }, [liveLoudness.shouldStop, triggerStop])
+
   // Tear-down on unmount: stop loops, release resources, and best-
   // effort abandon any still-open session so we do not leak active
   // rows in BD.
@@ -865,6 +1005,12 @@ export function useLiveSession(): UseLiveSessionResult {
     loudnessPresets,
     selectedLoudnessPresetId,
     selectLoudnessPreset: setSelectedLoudnessPresetId,
+    phonationEnabled,
+    loudnessEnabled,
+    phonationCurrentHz: livePhonation.currentHz,
+    phonationBreaksInWindow: livePhonation.breaksInWindow,
+    loudnessCurrentBand: liveLoudness.currentBand,
+    loudnessClippingStreakMs: liveLoudness.clippingStreakMs,
     toggleModule,
     start,
     stop,
