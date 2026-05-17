@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ApiError } from '../../../../api/client'
+import type { LoudnessPresetDto } from '../../../loudness/infrastructure/dto/LoudnessDtos'
+import { HttpLoudnessRepository } from '../../../loudness/infrastructure/repositories/HttpLoudnessRepository'
 import type {
   ComposedEvaluation,
   FacialEmotionName,
@@ -100,6 +102,14 @@ interface UseLiveSessionResult {
   recordingAudioUrl: string | null
   recordingDurationMs: number
   toggleModule: (module: LiveModule) => void
+  // Loudness presets fetched on mount. Empty array while loading or
+  // when the user has none.
+  loudnessPresets: LoudnessPresetDto[]
+  // Preset id currently selected for the live loudness module. Null
+  // while the presets are still loading; defaults to the global
+  // preset once fetched.
+  selectedLoudnessPresetId: string | null
+  selectLoudnessPreset: (presetId: string) => void
   start: () => Promise<void>
   stop: () => Promise<void>
   reset: () => void
@@ -167,6 +177,14 @@ export function useLiveSession(): UseLiveSessionResult {
   const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null)
   const [recordingDurationMs, setRecordingDurationMs] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
+  // Loudness presets fetched once on mount so the DimensionSelector can
+  // render the dropdown when the user tildas loudness. The hook owns
+  // the fetch (instead of the selector) so the chosen preset travels
+  // with the rest of the session state into start() and the summary.
+  const [loudnessPresets, setLoudnessPresets] = useState<LoudnessPresetDto[]>([])
+  const [selectedLoudnessPresetId, setSelectedLoudnessPresetId] = useState<
+    string | null
+  >(null)
 
   const facialEnabled = selectedModules.includes('facial_expression')
   const strikes = useLiveStreamingStrikes()
@@ -795,6 +813,30 @@ export function useLiveSession(): UseLiveSessionResult {
     }
   }, [stopReason])
 
+  // Fetch the loudness presets once on mount. The dropdown in
+  // DimensionSelector renders as "loading..." while the request is in
+  // flight; if it fails the user can still start a session that
+  // doesn't include loudness, or retry by reloading the page.
+  useEffect(() => {
+    let cancelled = false
+    HttpLoudnessRepository.listPresets()
+      .then((presets) => {
+        if (cancelled) return
+        setLoudnessPresets(presets)
+        if (presets.length > 0) {
+          const fallback =
+            presets.find((preset) => preset.is_default) ?? presets[0]
+          setSelectedLoudnessPresetId((current) => current ?? fallback.id)
+        }
+      })
+      .catch((exc) => {
+        console.warn('Failed to load loudness presets:', exc)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Derived flag exposed for the CalibrationScreen and audio-only
   // widgets. Computed at render time so it reflects the latest
   // selectedModules without an extra effect.
@@ -820,6 +862,9 @@ export function useLiveSession(): UseLiveSessionResult {
     emotionTriggerLabel,
     recordingAudioUrl,
     recordingDurationMs,
+    loudnessPresets,
+    selectedLoudnessPresetId,
+    selectLoudnessPreset: setSelectedLoudnessPresetId,
     toggleModule,
     start,
     stop,

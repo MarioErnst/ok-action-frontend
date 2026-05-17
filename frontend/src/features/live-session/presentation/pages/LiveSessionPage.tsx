@@ -32,6 +32,9 @@ export default function LiveSessionPage() {
             }}
             isStartDisabled={live.selectedModules.length === 0}
             isStarting={live.isStarting}
+            loudnessPresets={live.loudnessPresets}
+            selectedLoudnessPresetId={live.selectedLoudnessPresetId}
+            onSelectLoudnessPreset={live.selectLoudnessPreset}
           />
         </div>
         {live.error && <ErrorBanner message={live.error} />}
