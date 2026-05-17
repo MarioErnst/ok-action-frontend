@@ -38,10 +38,9 @@ const STOPPED_TRANSITION_MS = 5000
 const WARMUP_SILENCE_MS = 300
 
 // The streaming pipeline only forwards muletillas to the backend.
-// Pronunciation and accentuation are still selectable in the live
-// session (and they appear as composed-eval children at session end)
-// but they no longer fire a real-time corten — only muletillas do.
-// facial_expression stays 100% client-side via useEmotionStop.
+// The other live modules (phonation, loudness, facial_expression)
+// run 100% client-side: phonation/loudness through the AudioWorklet
+// pitch+dB stream, facial_expression through useEmotionStop.
 const LIVE_STREAM_MODULES: ReadonlyArray<LiveStreamModule> = ['muletillas']
 
 // Minimum samples required to compute a reliable facial baseline, matched
@@ -206,7 +205,7 @@ export function useLiveSession(): UseLiveSessionResult {
   const [recordingDurationMs, setRecordingDurationMs] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
   // Loudness presets fetched once on mount so the DimensionSelector can
-  // render the dropdown when the user tildas loudness. The hook owns
+  // render the dropdown when the user selects loudness. The hook owns
   // the fetch (instead of the selector) so the chosen preset travels
   // with the rest of the session state into start() and the summary.
   const [loudnessPresets, setLoudnessPresets] = useState<LoudnessPresetDto[]>([])
@@ -627,7 +626,7 @@ export function useLiveSession(): UseLiveSessionResult {
     startedAtIsoRef.current = openResponse.started_at
 
     // Lazy-load and start the face loop when facial_expression is
-    // tildada. The session id is already open at this point so emotion
+    // selected. The session id is already open at this point so emotion
     // ticks can start feeding the summary builder without a race.
     //
     // During the 'calibrating' phase the loop emits RAW blendshapes

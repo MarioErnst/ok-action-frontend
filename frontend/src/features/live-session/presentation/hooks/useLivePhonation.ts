@@ -32,8 +32,8 @@ interface UseLivePhonationOptions {
   // Frames coming from the shared voice monitor. The hook reads them
   // in order and assumes they arrive in chronological order.
   frames: AudioFrame[]
-  // When false the hook does nothing (used when the user did not tilde
-  // the phonation module — avoids running the math).
+  // When false the hook does nothing (used when the phonation module
+  // was not selected — avoids running the math).
   enabled: boolean
 }
 

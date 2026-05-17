@@ -17,7 +17,7 @@ interface Props {
   isStarting?: boolean
   // Loudness presets fetched once on mount by the parent. Empty array
   // means we are still loading or the user has none; in that case the
-  // dropdown shows a fallback hint when loudness is tildado.
+  // dropdown shows a fallback hint when loudness is selected.
   loudnessPresets: LoudnessPresetDto[]
   // Currently chosen preset id when loudness is selected. Null when
   // loudness is not selected or the user has not picked one yet (in
