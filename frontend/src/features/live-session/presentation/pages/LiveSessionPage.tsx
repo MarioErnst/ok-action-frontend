@@ -66,6 +66,12 @@ export default function LiveSessionPage() {
           isRecording={live.isRecording}
           audioEnabled={live.audioEnabled}
           facialEnabled={live.facialEnabled}
+          phonationEnabled={live.phonationEnabled}
+          loudnessEnabled={live.loudnessEnabled}
+          phonationCurrentHz={live.phonationCurrentHz}
+          phonationBreaksInWindow={live.phonationBreaksInWindow}
+          loudnessCurrentBand={live.loudnessCurrentBand}
+          loudnessClippingStreakMs={live.loudnessClippingStreakMs}
           onEnd={() => {
             void live.stop()
           }}
