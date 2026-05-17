@@ -1,16 +1,14 @@
 import { HighlightedTranscript } from '../../../../../shared/ui/atoms/HighlightedTranscript'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import type {
-  AccentuationSection,
   ComposedEvaluation,
   FacialEmotionName,
   FacialExpressionSection,
   LiveModule,
+  LoudnessSection,
   MuletillaPosition,
   MuletillasSection,
-  PhonemeError,
-  ProsodicError,
-  PronunciationSection,
+  PhonationSection,
 } from '../../../domain/LiveSession'
 
 interface Props {
@@ -221,8 +219,8 @@ function describeSection(
   module: LiveModule,
   section:
     | MuletillasSection
-    | AccentuationSection
-    | PronunciationSection
+    | PhonationSection
+    | LoudnessSection
     | FacialExpressionSection,
 ): SectionDescription {
   if (module === 'muletillas') {
@@ -258,40 +256,38 @@ function describeSection(
     }
   }
 
-  if (module === 'accentuation') {
-    const s = section as AccentuationSection
-    const main = Math.round(
-      (s.pronunciation_score + s.rhythm_score + s.intonation_score + s.stress_score) / 4,
-    )
+  if (module === 'phonation') {
+    const s = section as PhonationSection
     return {
-      mainScore: main,
+      mainScore: s.stability_score,
       subScores: [
-        { label: 'Pronunciación', value: s.pronunciation_score },
-        { label: 'Ritmo', value: s.rhythm_score },
-        { label: 'Entonación', value: s.intonation_score },
-        { label: 'Acento', value: s.stress_score },
+        { label: 'Estabilidad', value: s.stability_score },
+        { label: 'Hz promedio', value: Math.round(s.avg_hz) },
+        { label: 'Saltos', value: s.breaks_count },
       ],
-      feedback: s.feedback,
-      extra: <ProsodicErrorsList errors={s.prosodic_errors ?? []} />,
+      feedback:
+        s.breaks_count === 0
+          ? 'No detectamos saltos bruscos de frecuencia: tu voz se mantuvo estable.'
+          : `Detectamos ${s.breaks_count} salto${s.breaks_count === 1 ? '' : 's'} de frecuencia durante la sesión.`,
+      extra: null,
     }
   }
 
-  if (module === 'pronunciation') {
-    const s = section as PronunciationSection
-    const main = Math.round(
-      (s.vowel_score + s.consonant_score + s.fluency_score + s.intelligibility_score) /
-        4,
-    )
+  if (module === 'loudness') {
+    const s = section as LoudnessSection
     return {
-      mainScore: main,
+      mainScore: s.optimal_pct,
       subScores: [
-        { label: 'Vocales', value: s.vowel_score },
-        { label: 'Consonantes', value: s.consonant_score },
-        { label: 'Fluidez', value: s.fluency_score },
-        { label: 'Inteligibilidad', value: s.intelligibility_score },
+        { label: 'Óptimo', value: s.optimal_pct },
+        { label: 'Bajo', value: s.low_pct },
+        { label: 'Alto', value: s.high_pct },
+        { label: 'Clipping', value: s.clipping_pct },
       ],
-      feedback: s.feedback,
-      extra: <PhonemeErrorsList errors={s.phoneme_errors ?? []} />,
+      feedback:
+        s.clipping_pct > 0
+          ? `Te saturaste el ${s.clipping_pct}% de la sesión. Probá alejarte un poco del micrófono o bajar el volumen de tu voz.`
+          : `Estuviste en banda óptima el ${s.optimal_pct}% del tiempo.`,
+      extra: null,
     }
   }
 
@@ -371,66 +367,3 @@ function TranscriptCard({ transcript, positions }: TranscriptCardProps) {
   )
 }
 
-interface ProsodicErrorsListProps {
-  errors: ProsodicError[]
-}
-
-function ProsodicErrorsList({ errors }: ProsodicErrorsListProps) {
-  if (errors.length === 0) return null
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-accent">
-        Acentos a revisar
-      </p>
-      <ul className="flex flex-col gap-2">
-        {errors.map((error, index) => (
-          <li
-            key={`${error.word}-${index}`}
-            className="rounded-xl bg-surface-alt px-3 py-2 text-sm flex flex-col gap-1"
-          >
-            <span className="font-semibold text-text">
-              {error.word}{' '}
-              <span className="text-text-muted font-normal">
-                · esperado: {error.expected_stress}
-              </span>
-            </span>
-            <span className="text-xs text-text-muted">{error.actual_issue}</span>
-            <span className="text-xs text-text">{error.suggestion}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-interface PhonemeErrorsListProps {
-  errors: PhonemeError[]
-}
-
-function PhonemeErrorsList({ errors }: PhonemeErrorsListProps) {
-  if (errors.length === 0) return null
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-xs font-bold uppercase tracking-widest text-accent">
-        Fonemas a corregir
-      </p>
-      <ul className="flex flex-col gap-2">
-        {errors.map((error, index) => (
-          <li
-            key={`${error.word}-${error.phoneme}-${index}`}
-            className="rounded-xl bg-surface-alt px-3 py-2 text-sm flex flex-col gap-1"
-          >
-            <span className="font-semibold text-text">
-              {error.word}{' '}
-              <span className="text-text-muted font-normal">
-                · fonema /{error.phoneme}/
-              </span>
-            </span>
-            <span className="text-xs text-text-muted">{error.actual_issue}</span>
-            <span className="text-xs text-text">{error.suggestion}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
