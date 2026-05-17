@@ -1,189 +1,148 @@
 # Sistema de Strikes en Sesión Live — Frontend
 
-A partir de la branch `feature/live_corten` (mayo 2026), el strike system del
-flujo Sesión Live (`/sesion-libre`) corre sobre un WebSocket directo al backend
-que orquesta Gemini Live (function calling). Las muletillas, errores de
-pronunciación y errores de acentuación se detectan casi en tiempo real y cortan
-la sesión al **primer** evento válido. La expresión facial sigue evaluándose
-100% en cliente con MediaPipe.
+A partir de la branch `feature/live_assemblyai_muletillas` (mayo 2026), el
+único módulo que dispara corten en vivo desde el WebSocket es **muletillas**,
+detectadas por **AssemblyAI Universal-3 Pro Streaming** + matcher de diccionario
+español en el backend. Pronunciación y acentuación siguen en la sesión live
+pero su evaluación corre al cierre via composed-eval; ya no provocan corten
+en tiempo real. Expresión facial sigue con su propio corten client-side via
+MediaPipe.
 
-Este archivo cubre los cambios frontend. El detalle del lado backend vive en el
-mismo archivo del repo `ok-action-backend`.
+Este archivo cubre los cambios frontend; el lado backend vive en el mismo
+nombre en `ok-action-backend/documentacion/modulos/live-strike-system.md`.
 
-## 1. Cambios respecto al pipeline anterior
+## 1. Cambios respecto a la versión anterior (Gemini Live)
 
-| Aspecto | Antes (HTTP por frame) | Ahora (WebSocket continuo) |
+| Aspecto | Anterior (`feature/live_corten` con Gemini) | Ahora (`feature/live_assemblyai_muletillas`) |
 |---|---|---|
-| Transporte | `POST /live/sessions/:id/evaluate-frame` con blob webm/mp4 de 5-8s | `WS /live/sessions/:id/stream` con chunks PCM 16k mono cada 100ms |
-| Modelo | `gemini-2.5-flash` con response_schema | `gemini-live-2.5-flash-native-audio` con function tools |
-| Detección | Polling por frame con scores 0-100 + listas | Tool call por error con `transcript_snippet` requerido |
-| Umbral strike | 2 strikes por categoría | 1 strike por categoría (corten inmediato) |
-| Calibración de ruido | Sí (`noiseCalibrator.ts`) | No (Gemini Live tiene VAD propio) |
-| Detector de pausas | Sí (`pauseDetector.ts`) | No (idem) |
-| Recorder de frames | Sí (`frameRecorder.ts`) | No (streamer PCM continuo) |
-| Persistencia en vivo | Ninguna | Ninguna (composed-eval al cierre sigue siendo fuente única) |
+| Motor backend | Gemini Live + function tools | AssemblyAI streaming + dictionary matcher |
+| Módulos con strike en vivo | muletillas, pronunciation, accentuation | **solo muletillas** |
+| Riesgo de alucinación | Sí, el modelo inventaba muletillas | No, el matcher solo emite si la palabra aparece literal |
+| Umbral strike | 1 | 1 (sin cambios) |
+| Latencia | ~2 s vía pulser de activity | ~1-2 s vía turn final natural |
+| Cleanup obligatorio | `Terminate` Gemini | `Terminate` AssemblyAI (idéntica criticidad) |
 
 ## 2. Estructura de directorios
+
+Sin cambios estructurales — el árbol es el mismo que cuando se introdujo el
+streaming en `feature/live_corten`. Lo que cambia es la narrowing de tipos y
+la simplificación del strike counter:
 
 ```
 src/features/live-session/
 ├── domain/
-│   └── StreamingEvent.ts                NUEVO: tipos para strikes recibidos por WS
+│   └── StreamingEvent.ts                tipos para strikes recibidos por WS
 ├── infrastructure/
-│   ├── dto/LiveStreamDtos.ts            NUEVO: contrato WS server -> client
-│   └── repositories/HttpLiveSessionRepository.ts (sin evaluateFrame)
+│   ├── dto/LiveStreamDtos.ts            contrato WS server → client
+│   └── repositories/HttpLiveSessionRepository.ts
 ├── services/
 │   ├── liveStreaming/
-│   │   ├── audioStreamer.ts             NUEVO: PCM 16k mono con AudioWorklet / fallback ScriptProcessor
-│   │   └── liveStreamSocket.ts          NUEVO: cliente WS
-│   └── emotionMonitor/                  intacto, sigue siendo client-side
+│   │   ├── audioStreamer.ts             PCM 16k mono via AudioWorklet
+│   │   └── liveStreamSocket.ts          cliente WS
+│   └── emotionMonitor/                  intacto, client-side
 └── presentation/
     └── hooks/
-        ├── useLiveStreamingStrikes.ts   NUEVO: counter con threshold 1
-        └── useLiveSession.ts            ajustado: usa los dos nuevos servicios
+        ├── useLiveStreamingStrikes.ts   counter único de muletillas
+        └── useLiveSession.ts            LIVE_STREAM_MODULES = ['muletillas']
 ```
 
-Los archivos eliminados del flujo anterior:
-- `services/audioFraming/frameRecorder.ts`
-- `services/audioFraming/pauseDetector.ts`
-- `services/audioFraming/noiseCalibrator.ts`
-- `presentation/hooks/useFrameStrikes.ts`
-- `infrastructure/dto/FrameEvaluationDtos.ts`
+## 3. Tipos narrowed
 
-## 3. Pipeline en vivo
+`LiveStreamModule` quedó como literal único:
 
-1. Usuario tilda módulos en `DimensionSelector` (muletillas, pronunciación,
-   acentuación, expresión facial).
-2. Click en "Comenzar" dispara `useLiveSession.start()`:
-   - Si hay al menos un módulo de audio, pide el mic, abre `POST /live/sessions`
-     y guarda el `session_id`.
-   - Si hay facial, inicializa `LiveFaceLoop` + acumulador de baseline.
-   - Si hay audio, **construye `LiveStreamSocket`** y dispara `socket.open()` —
-     pero NO espera el ready acá. La promesa se guarda para esperarla en la
-     fase siguiente, en paralelo con la calibración.
-3. Fase `calibrating`: la UI espera el `Promise.all` de tres señales:
-   - **2 segundos cosméticos** (ventana visible para el usuario).
-   - **Ready del WS + chunk de silencio de 300 ms (`WARMUP_SILENCE_MS`)**: al
-     recibir `{type:"ready"}` el socket envía `buildSilencePcm(300)` para sacar
-     al modelo Gemini Live de su cold-start antes de que llegue audio real.
-   - **Baseline facial** (si `expresion-facial` está activa).
+```ts
+export type LiveStreamModule = 'muletillas'
+```
+
+Esto fuerza a cada consumidor a saber que cualquier strike WS es siempre una
+muletilla. `StreamingStrikeCategory` derivado queda igual.
+
+`StopCategory` en `useLiveSession.ts`:
+
+```ts
+export type StopCategory = 'muletillas' | 'emotion'
+```
+
+`useLiveStreamingStrikes` expone solo `muletillaCount` (más `events`,
+`shouldStop`, `markRecordingStart`, `registerStrike`, `reset`).
+
+## 4. Pipeline en vivo
+
+1. Usuario tilda módulos en `DimensionSelector`. Cualquier combinación es
+   válida; muletillas + pron/acc/facial solo determina qué evalúa el
+   composed-eval al cierre.
+2. `useLiveSession.start()`:
+   - Si hay módulo de audio, abre micrófono + `POST /live/sessions` + arranca
+     `LiveFaceLoop` si facial está activo.
+   - **Pre-warm**: construye `LiveStreamSocket` y dispara `socket.open()` en
+     paralelo a la calibración (sigue valiendo el mismo patrón anti
+     cold-start, ahora aplicado al WS de AssemblyAI vía nuestro backend).
+3. Fase `calibrating`: union del timer cosmético + facial baseline + ready
+   WS + chunk de silencio de warmup.
 4. Fase `recording`:
-   - Adopta el `preWarmedSocket` ya abierto en `liveSocketRef`.
-   - Arranca el `MediaRecorder` principal que graba el audio completo
-     (webm/mp4) para el composed eval final.
-   - Arranca `LiveAudioStreamer` sobre el MediaStream; cada chunk PCM 16 kHz
-     (cada 100 ms) sale por el socket ya tibio.
-   - Llama `strikes.markRecordingStart(Date.now())`, anclando los timestamps
-     de los strikes al reloj de pared para mapearlos contra el audio grabado.
-   - Cada `{type:"strike", category, word, transcript_snippet, severity, ...}`
-     que llega se entrega a `useLiveStreamingStrikes.registerStrike`.
-   - Si el `streamer.start` falla, un closure `abortAudioPipeline()` detiene
-     MediaRecorder, cierra el socket y libera las tracks — la pantalla queda
-     en estado de error sin recursos colgando.
-5. El effect que mira `strikes.shouldStop` dispara `triggerStop('auto_stop_strikes')`
-   en cuanto cualquier counter llega a 1. La WS se cierra y el audio completo se
-   sube al composed-eval (`POST /live/sessions/:id/audio-evaluation`) para
-   persistir las hijas con sus scores finales.
+   - `MediaRecorder` graba el audio completo para el composed-eval del cierre.
+   - `LiveAudioStreamer` emite PCM 16k mono cada 100 ms al `liveStreamSocket`.
+   - Cada `{type: "strike", category: "muletillas", word, transcript_snippet,
+     severity, received_at_ms}` que llega es entregado a
+     `useLiveStreamingStrikes.registerStrike`.
+   - `strikes.markRecordingStart(Date.now())` se llama justo antes del flip
+     a `recording` para anclar los timestamps al audio grabado.
+5. El effect `strikes.shouldStop` dispara `triggerStop('auto_stop_strikes')`
+   al primer strike. La WS se cierra (mandando `end` para que el supervisor
+   pueda terminar la sesión AssemblyAI limpia) y el audio se sube al
+   composed-eval.
 
-### Pre-warm y métricas de cold start
+## 5. Wire format
 
-Google no documenta los números de cold start del modelo Live, pero la
-comunidad reporta de 500 ms a varios segundos para la primera respuesta
-útil. Al abrir la WS y enviar un chunk de silencio durante la calibración,
-el modelo entra en estado de streaming mientras el usuario aún ve la UI de
-"preparando", de modo que el primer chunk de habla real llega tibio.
-
-El cliente WS emite tres `console.debug` para que se pueda medir end-to-end
-sin telemetría adicional:
-
-- `[live-stream] socket.open started`
-- `[live-stream] ready received N ms after open`
-- `[live-stream] first audio chunk sent`
-- `[live-stream] first strike received N ms after first chunk`
-
-Quedan en `console.debug` (oculto por default en producción si el nivel de
-log es info+) para no contaminar la consola del usuario.
-
-## 4. Wire format
-
-### Server -> Client (JSON)
+### Server → Client (JSON)
 
 ```ts
 type ServerMessage =
   | { type: 'ready' }
   | {
       type: 'strike'
-      category: 'muletillas' | 'pronunciation' | 'accentuation'
+      category: 'muletillas'
       word: string
       transcript_snippet: string
-      severity: 'low' | 'medium' | 'high'
+      severity: 'low'   // por ahora siempre 'low'; el campo queda por extensibilidad
       received_at_ms: number
     }
   | { type: 'session_ended' }
   | { type: 'error', reason: string }
 ```
 
-`transcript_snippet` es la evidencia que el modelo escuchó. El backend ya
-descarta tool calls sin snippet, así que el cliente no vuelve a filtrar.
-`received_at_ms` viaja como epoch milisegundo de wall-clock; el hook lo
-resta contra el `Date.now()` capturado al inicio de la grabación para
-producir un offset coherente dentro del audio del usuario.
+`received_at_ms` es epoch wall-clock. El hook lo resta contra el `Date.now()`
+capturado al inicio de la grabación para producir un offset coherente dentro
+del audio del usuario.
 
-### Client -> Server
+### Client → Server
 
-- Frame binario `Uint8Array` con PCM16 little-endian 16 kHz mono. El streamer
-  los emite cada 100 ms.
-- Texto JSON `{type:"start", modules:[...]}` al abrir.
-- Texto JSON `{type:"end"}` al cerrar voluntariamente.
+- Frame binario `Uint8Array` con PCM16 little-endian 16 kHz mono cada 100 ms.
+- JSON `{type: "start", modules: ["muletillas"]}` al abrir.
+- JSON `{type: "end"}` al cerrar voluntariamente.
 
-## 5. Streaming de audio
-
-`LiveAudioStreamer` resamplea el output del micrófono (típicamente 44.1/48 kHz)
-a 16 kHz mono y cuantiza a PCM16. Usa AudioWorklet cuando el navegador lo
-soporta (iOS Safari 14.5+, Android Chrome, desktop). En navegadores que no
-exponen `audioWorklet.addModule` cae automáticamente a `ScriptProcessorNode`,
-deprecado pero funcional.
-
-El graph se mantiene vivo conectándose a un `GainNode` con gain 0 enlazado al
-destination, patrón estándar para evitar que el browser garbage-collectee el
-processor.
-
-## 6. Threshold 1 y razón del cambio
-
-- El backend ya aplica filtros (transcript_snippet mínimo, severity normalizada)
-  antes de emitir un strike. Cualquier evento que llega al cliente es ya un
-  positivo confiable.
-- Pedagógicamente, el corten tiene valor sólo si el alumno asocia el error con
-  su acción inmediata. Latencia error→corten cae de 5-15 s a ~500 ms-1.5 s.
-- Falsos positivos: aceptamos el riesgo. Si pasan a ser un problema, el primer
-  ajuste será filtrar `severity === 'low'` en el hook antes de hacer "shouldStop".
-
-## 7. Lo que no cambió
+## 6. Lo que no cambió
 
 - `LiveSessionPage` y los organismos (`DimensionSelector`,
-  `LiveRecordingScreen`, `SessionSummaryScreen`,
-  `StoppedTransitionOverlay`, `StrikeFeedbackBody`) siguen igual visualmente.
-- `useEmotionStop` (corten por expresión facial sostenida) intacto. Sigue siendo
-  client-side puro.
-- Composed eval final (`HttpLiveSessionRepository.evaluateAudio`) intacto.
-  Sigue siendo la única fuente de verdad para BD.
+  `LiveRecordingScreen`, `SessionSummaryScreen`, `StoppedTransitionOverlay`,
+  `StrikeFeedbackBody`) siguen visualmente igual.
+- `useEmotionStop` (corten por expresión facial sostenida) intacto.
+- Composed-eval final (`HttpLiveSessionRepository.evaluateAudio`) intacto.
 - Modules standalone (fonación, volumen, pausas, precisión, versatilidad,
-  fluidez, consistencia) no se tocan.
+  fluidez, consistencia) sin cambios.
+- Pre-warm + métricas debug del `LiveStreamSocket` se mantienen.
 
-## 8. Responsive y multiplataforma
+## 7. Responsive y multiplataforma
 
-- `AudioWorkletNode` requiere iOS 14.5+. Fallback automático a
-  `ScriptProcessorNode` para iOS Safari viejo.
-- El stream se abre solo cuando el usuario aprieta "Comenzar" (gesture del
-  usuario, requisito de `AudioContext` en iOS).
-- WS sobre WSS en producción (regla del entorno; `VITE_WS_URL` configura el
-  host).
-- Touch targets 44×44, 100dvh, `playsInline` en `<video>` ya cumplidos en
-  `LiveRecordingScreen` y no se tocan.
+Sin cambios — la capa de captura de audio es la misma:
+- `AudioWorkletNode` con fallback `ScriptProcessorNode` para iOS Safari viejo.
+- Stream solo se abre con gesture del usuario al apretar "Comenzar".
+- WS sobre WSS en producción.
+- Touch targets 44×44, 100dvh, `playsInline` en `<video>` ya cumplidos.
 
-## 9. Pendientes
+## 8. Pendientes
 
-- Tests del hook `useLiveStreamingStrikes` con un mock de eventos.
-- Indicador visual sutil cuando el WS se reconecta (hoy se loguea a consola y
-  la UI no avisa; nadie está midiendo reconexiones en producción todavía).
-- Filtro opcional de severidad si los falsos positivos suben.
+- Métricas reales de falsos positivos en sesiones de prueba con audio
+  espontáneo.
+- Si los counters de pron/acc se necesitan en el frontend para algún
+  componente futuro, agregarlos via composed-eval response (no via WS).
