@@ -14,7 +14,7 @@ import type { AutoStopReasonDto } from '../../infrastructure/dto/LiveSessionDtos
 import type { LiveStreamModule } from '../../infrastructure/dto/LiveStreamDtos'
 import { strikeFromDto } from '../../domain/StreamingEvent'
 import { HttpLiveSessionRepository } from '../../infrastructure/repositories/HttpLiveSessionRepository'
-import { LiveAudioStreamer } from '../../services/liveStreaming/audioStreamer'
+import { LiveAudioStreamer, buildSilencePcm } from '../../services/liveStreaming/audioStreamer'
 import { LiveStreamSocket } from '../../services/liveStreaming/liveStreamSocket'
 import { FacialSummaryBuilder } from '../../services/emotionMonitor/facialSummaryBuilder'
 import { LiveFaceLoop, type BlendshapeBaseline } from '../../services/emotionMonitor/liveFaceLoop'
@@ -24,6 +24,11 @@ import { useEmotionStop } from './useEmotionStop'
 const MAX_SESSION_SECONDS = 300
 const CALIBRATION_MS = 2000
 const STOPPED_TRANSITION_MS = 5000
+// Pad of digital silence pushed through the WS right after `ready` to
+// warm up the Live model before the user starts speaking. Anything
+// between 200-500 ms is enough in practice to skip the first-token
+// cold-start spike.
+const WARMUP_SILENCE_MS = 300
 
 // The streaming pipeline talks to muletillas, pronunciation and
 // accentuation tools. facial_expression stays 100% client-side.
@@ -522,15 +527,53 @@ export function useLiveSession(): UseLiveSessionResult {
       setVideoStream(loop.getStream())
     }
 
+    // Pre-warm the live streaming WS in parallel with the calibration
+    // window. Gemini Live has a cold-start the first time it sees
+    // audio for a fresh session; opening the WS now and pushing a
+    // short silence chunk hides that latency behind the 2 s calibration
+    // UI the user is already watching. By the time we flip to
+    // 'recording', the model is in streaming state and the first real
+    // chunk lands warm.
+    let preWarmedSocket: LiveStreamSocket | null = null
+    let socketReadyPromise: Promise<void> | null = null
+    let authToken: string | null = null
+    if (hasAudioModule) {
+      authToken = localStorage.getItem('auth_token')
+      if (!authToken) {
+        setError('Sesión expirada. Volvé a iniciar sesión.')
+        releaseStreams()
+        return
+      }
+      const socket = new LiveStreamSocket()
+      socket.onStrike((dto) => {
+        if (isStoppingRef.current) return
+        strikes.registerStrike(strikeFromDto(dto))
+      })
+      socket.onClose(({ code, reason }) => {
+        if (phaseRef.current === 'recording' && !isStoppingRef.current) {
+          console.warn('Live socket closed unexpectedly', code, reason)
+        }
+      })
+      preWarmedSocket = socket
+      socketReadyPromise = socket
+        .open({
+          sessionId: openResponse.session_id,
+          modules: LIVE_STREAM_MODULES.slice(),
+          token: authToken,
+        })
+        .then(() => {
+          socket.sendAudio(buildSilencePcm(WARMUP_SILENCE_MS))
+        })
+    }
+
     setPhase('calibrating')
 
     // Calibration: a short cosmetic window so the user sees the same
-    // "preparing" UI as before, plus, when facial is on, an accumulator
-    // for the emotion classifier baseline. The streaming pipeline does
-    // not need noise calibration because Gemini Live has its own VAD,
-    // but we keep the visible window to match the established UX. We
-    // wait for the union of the two signals before transitioning to
-    // recording.
+    // "preparing" UI as before, plus the facial baseline accumulator
+    // when facial is on, plus the WS pre-warm above. The streaming
+    // pipeline does not need noise calibration because Gemini Live has
+    // its own VAD, but we keep the visible window so the WS handshake
+    // and warmup silence land while the user is still being prepared.
     const calibrationStartedAt = performance.now()
     const calibrationInterval = window.setInterval(() => {
       const elapsed = performance.now() - calibrationStartedAt
@@ -542,7 +585,22 @@ export function useLiveSession(): UseLiveSessionResult {
       setCalibrationProgress(Math.min(1, progress))
     }, 50)
 
-    await new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS))
+    try {
+      await Promise.all(
+        [
+          new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS)),
+          socketReadyPromise,
+        ].filter((p): p is Promise<unknown> => p !== null),
+      )
+    } catch (exc) {
+      window.clearInterval(calibrationInterval)
+      setError(
+        exc instanceof Error ? exc.message : 'No se pudo abrir la conexión en vivo',
+      )
+      await preWarmedSocket?.close()
+      releaseStreams()
+      return
+    }
 
     // If facial is active, keep the calibration phase open until we have
     // enough blendshape samples for a reliable baseline. The hard cap
@@ -581,7 +639,12 @@ export function useLiveSession(): UseLiveSessionResult {
     // audio module selected. When only facial is selected we skip the
     // main recorder and the streaming pipeline entirely; the strike
     // counter for facial is driven by the emotion classifier.
-    if (hasAudioModule && audioStream) {
+    if (hasAudioModule && audioStream && preWarmedSocket) {
+      // The WS was opened and warmed during the calibration window. We
+      // adopt it into the long-lived ref so triggerStop / reset / the
+      // unmount cleanup can close it like any other resource.
+      liveSocketRef.current = preWarmedSocket
+
       // Start the full-audio recorder for the final composed evaluation.
       // This is the same recording that gets uploaded at session end so
       // the composed eval can score the entire session.
@@ -594,9 +657,8 @@ export function useLiveSession(): UseLiveSessionResult {
       mainRecorderRef.current = mainRecorder
       mainRecorder.start()
 
-      // If anything below fails we have to roll back what we already
-      // started — the recorder, the WS, the streamer — so an early
-      // return does not leave the page with running resources.
+      // If the streamer fails to come up we still have to roll back the
+      // recorder and the already-open WS so nothing leaks.
       const abortAudioPipeline = async () => {
         if (mainRecorderRef.current && mainRecorderRef.current.state !== 'inactive') {
           try {
@@ -618,47 +680,11 @@ export function useLiveSession(): UseLiveSessionResult {
         releaseStreams()
       }
 
-      // Open the WS to the backend supervisor (which talks to Gemini
-      // Live) and the PCM streamer that pumps audio into it.
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        setError('Sesión expirada. Volvé a iniciar sesión.')
-        await abortAudioPipeline()
-        return
-      }
-      const socket = new LiveStreamSocket()
-      socket.onStrike((dto) => {
-        if (isStoppingRef.current) return
-        strikes.registerStrike(strikeFromDto(dto))
-      })
-      socket.onClose(({ code, reason }) => {
-        // Only treat as an error if the close happened mid-recording
-        // and the user did not already stop. A user-initiated stop
-        // closes the socket as part of the teardown path.
-        if (phaseRef.current === 'recording' && !isStoppingRef.current) {
-          console.warn('Live socket closed unexpectedly', code, reason)
-        }
-      })
-      try {
-        await socket.open({
-          sessionId: openResponse.session_id,
-          modules: LIVE_STREAM_MODULES.slice(),
-          token,
-        })
-      } catch (exc) {
-        setError(
-          exc instanceof Error ? exc.message : 'No se pudo abrir la conexión en vivo',
-        )
-        await abortAudioPipeline()
-        return
-      }
-      liveSocketRef.current = socket
-
       const streamer = new LiveAudioStreamer()
       audioStreamerRef.current = streamer
       try {
         await streamer.start(audioStream, (chunk) => {
-          socket.sendAudio(chunk)
+          preWarmedSocket.sendAudio(chunk)
         })
       } catch (exc) {
         setError(
