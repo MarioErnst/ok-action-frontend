@@ -41,21 +41,16 @@ export const StoppedTransitionOverlay = ({
   )
 }
 
-// One-line detail explaining which counter fired. The streaming
-// pipeline cuts on the first valid tool call per category, so the copy
-// reflects a single event instead of an accumulator.
+// One-line detail explaining which auto-stop fired. Today only
+// muletillas and emotion drive the live corten; pronunciation and
+// accentuation are evaluated by composed-eval at session end and do
+// not show up here.
 function pickDetailCopy(
   category: StopCategory | null,
   emotionLabel?: string,
 ): string {
   if (category === 'muletillas') {
     return 'Apareció una muletilla en tu discurso.'
-  }
-  if (category === 'pronunciation') {
-    return 'Detectamos un error de pronunciación.'
-  }
-  if (category === 'accentuation') {
-    return 'Detectamos un error de acentuación.'
   }
   if (category === 'emotion') {
     return `Mantuviste una expresión de ${emotionLabel ?? 'malestar'} por demasiado tiempo.`
