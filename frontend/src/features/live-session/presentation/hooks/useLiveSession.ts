@@ -30,13 +30,12 @@ const STOPPED_TRANSITION_MS = 5000
 // cold-start spike.
 const WARMUP_SILENCE_MS = 300
 
-// The streaming pipeline talks to muletillas, pronunciation and
-// accentuation tools. facial_expression stays 100% client-side.
-const LIVE_STREAM_MODULES: ReadonlyArray<LiveStreamModule> = [
-  'muletillas',
-  'pronunciation',
-  'accentuation',
-]
+// The streaming pipeline only forwards muletillas to the backend.
+// Pronunciation and accentuation are still selectable in the live
+// session (and they appear as composed-eval children at session end)
+// but they no longer fire a real-time corten — only muletillas do.
+// facial_expression stays 100% client-side via useEmotionStop.
+const LIVE_STREAM_MODULES: ReadonlyArray<LiveStreamModule> = ['muletillas']
 
 // Minimum samples required to compute a reliable facial baseline, matched
 // to the standalone facial_expression module (`CALIBRATION_SAMPLES = 45`
@@ -50,14 +49,10 @@ const FACIAL_CALIBRATION_CAP_MS = 10_000
 
 type StopReason = 'user_stop' | 'time_limit' | AutoStopReasonDto
 
-// Which of the four auto-stop counters actually fired. Used by the
-// stopped_transition overlay to render a category-specific copy instead
-// of a generic message.
-export type StopCategory =
-  | 'muletillas'
-  | 'pronunciation'
-  | 'accentuation'
-  | 'emotion'
+// Which auto-stop counter actually fired. Used by the
+// stopped_transition overlay to render a category-specific copy.
+// Pronunciation and accentuation no longer trigger live auto-stops.
+export type StopCategory = 'muletillas' | 'emotion'
 
 const EMOTION_LABEL: Record<RawEmotionName, string> = {
   happy: 'felicidad',
@@ -742,28 +737,13 @@ export function useLiveSession(): UseLiveSessionResult {
     if (!strikes.shouldStop) return
     if (phaseRef.current !== 'recording') return
     if (isStoppingRef.current) return
-    // The three strike counters are independent so the one that
-    // tripped the threshold first is the cause. We capture it here so
-    // the stopped_transition overlay can render a category-specific
-    // copy. Order checked muletillas → pronunciation → accentuation
-    // is arbitrary but stable: if two counters reach the threshold in
-    // the same render, the first listed wins. With the streaming
-    // pipeline the threshold is 1 — a single valid tool call cuts.
-    if (strikes.muletillaCount >= 1) {
-      setStopCategory('muletillas')
-    } else if (strikes.pronunciationErrorCount >= 1) {
-      setStopCategory('pronunciation')
-    } else if (strikes.accentuationErrorCount >= 1) {
-      setStopCategory('accentuation')
-    }
+    // Only muletillas drive the live auto-stop. The threshold is 1 —
+    // a single muletilla cuts because AssemblyAI returns a verbatim
+    // transcript that the backend matched against a fixed dictionary,
+    // so every strike is grounded in something the user actually said.
+    setStopCategory('muletillas')
     void triggerStop('auto_stop_strikes')
-  }, [
-    strikes.shouldStop,
-    strikes.muletillaCount,
-    strikes.pronunciationErrorCount,
-    strikes.accentuationErrorCount,
-    triggerStop,
-  ])
+  }, [strikes.shouldStop, strikes.muletillaCount, triggerStop])
 
   useEffect(() => {
     if (!emotionStop.trigger) return
