@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
-import type { ComposedEvaluation, LiveModule } from '../../../domain/LiveSession'
+import type {
+  ComposedEvaluation,
+  LiveModule,
+  LoudnessSection,
+  PhonationSection,
+} from '../../../domain/LiveSession'
 import type { StrikeEvent } from '../../../domain/StrikeEvent'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import { ModuleTabPill } from '../molecules/ModuleTabPill'
@@ -12,15 +17,24 @@ interface StrikeFeedbackBodyProps {
   selectedModules: LiveModule[]
   audioUrl: string | null
   estimatedDurationMs: number
-  stopReason: 'auto_stop_strikes' | 'auto_stop_emotion'
+  stopReason:
+    | 'auto_stop_strikes'
+    | 'auto_stop_emotion'
+    | 'auto_stop_loudness'
+    | 'auto_stop_phonation'
   emotionLabel?: string
 }
 
-// Tabs available on the post-stop feedback panel. The strike-driven
-// detail tab is only `muletilla` (pron/acc moved to composed-eval at
-// session end and surface in `summary`). `facial_expression` keeps its
-// own tab for the per-emotion breakdown when the module was selected.
-type FeedbackTab = 'summary' | 'muletilla' | 'facial_expression'
+// Tabs available on the post-stop feedback panel. Each detail tab is
+// rendered only when its module was selected. `summary` is always
+// present and lists which modules produced data so the user has a
+// single-glance overview.
+type FeedbackTab =
+  | 'summary'
+  | 'muletilla'
+  | 'facial_expression'
+  | 'phonation'
+  | 'loudness'
 
 const formatRelative = (ms: number): string => {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000))
@@ -60,6 +74,12 @@ export const StrikeFeedbackBody = ({
         count: muletillaEvents.length,
       })
     }
+    if (selectedModules.includes('phonation')) {
+      out.push({ id: 'phonation', label: LIVE_MODULE_LABELS.phonation })
+    }
+    if (selectedModules.includes('loudness')) {
+      out.push({ id: 'loudness', label: LIVE_MODULE_LABELS.loudness })
+    }
     if (selectedModules.includes('facial_expression')) {
       out.push({ id: 'facial_expression', label: LIVE_MODULE_LABELS.facial_expression })
     }
@@ -68,12 +88,7 @@ export const StrikeFeedbackBody = ({
 
   const [activeTab, setActiveTab] = useState<FeedbackTab>('summary')
 
-  const reasonHeadline =
-    stopReason === 'auto_stop_strikes'
-      ? 'Detuvimos la sesión por errores acumulados'
-      : `Detuvimos la sesión por una emoción sostenida${
-          emotionLabel ? ` (${emotionLabel})` : ''
-        }`
+  const reasonHeadline = pickReasonHeadline(stopReason, emotionLabel)
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -119,12 +134,38 @@ export const StrikeFeedbackBody = ({
         {activeTab === 'muletilla' && (
           <MuletillasPanel events={muletillaEvents} />
         )}
+        {activeTab === 'phonation' && (
+          <PhonationPanel section={evaluation?.phonation ?? null} />
+        )}
+        {activeTab === 'loudness' && (
+          <LoudnessPanel section={evaluation?.loudness ?? null} />
+        )}
         {activeTab === 'facial_expression' && (
           <FacialPanel evaluation={evaluation} />
         )}
       </div>
     </div>
   )
+}
+
+function pickReasonHeadline(
+  stopReason: StrikeFeedbackBodyProps['stopReason'],
+  emotionLabel: string | undefined,
+): string {
+  switch (stopReason) {
+    case 'auto_stop_strikes':
+      return 'Detuvimos la sesión por errores acumulados'
+    case 'auto_stop_emotion':
+      return `Detuvimos la sesión por una emoción sostenida${
+        emotionLabel ? ` (${emotionLabel})` : ''
+      }`
+    case 'auto_stop_loudness':
+      return 'Detuvimos la sesión por volumen saturado sostenido'
+    case 'auto_stop_phonation':
+      return 'Detuvimos la sesión por saltos de frecuencia repetidos'
+    default:
+      return 'Detuvimos la sesión'
+  }
 }
 
 function SummaryPanel({
@@ -176,6 +217,85 @@ function MuletillasPanel({ events }: { events: StrikeEvent[] }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+function PhonationPanel({ section }: { section: PhonationSection | null }) {
+  if (!section) {
+    return (
+      <p className="text-sm text-text-muted">
+        No alcanzamos a medir la fonación: probá grabar de nuevo hablando en
+        un tono sostenido.
+      </p>
+    )
+  }
+  const rows = [
+    { label: 'Estabilidad', value: `${section.stability_score}/100` },
+    { label: 'Hz promedio', value: `${Math.round(section.avg_hz)} Hz` },
+    { label: 'Saltos de frecuencia', value: `${section.breaks_count}` },
+  ]
+  return (
+    <ul className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+      {rows.map((row) => (
+        <li
+          key={row.label}
+          className="flex flex-col items-center bg-surface-alt rounded-xl px-3 py-2"
+        >
+          <span className="text-base font-bold text-text">{row.value}</span>
+          <span className="text-xs text-text-muted text-center">
+            {row.label}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function LoudnessPanel({ section }: { section: LoudnessSection | null }) {
+  if (!section) {
+    return (
+      <p className="text-sm text-text-muted">
+        No alcanzamos a medir el volumen. Asegurate de tener el micrófono
+        habilitado.
+      </p>
+    )
+  }
+  const bands: Array<{
+    label: string
+    pct: number
+    tone: string
+  }> = [
+    { label: 'Bajo', pct: section.low_pct, tone: 'bg-warning/70' },
+    { label: 'Óptimo', pct: section.optimal_pct, tone: 'bg-success' },
+    { label: 'Alto', pct: section.high_pct, tone: 'bg-warning' },
+    { label: 'Saturado', pct: section.clipping_pct, tone: 'bg-danger' },
+  ]
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-2 text-sm">
+        {bands.map((band) => (
+          <li
+            key={band.label}
+            className="flex items-center gap-3 bg-surface-alt rounded-xl px-3 py-2"
+          >
+            <span className="w-16 text-text">{band.label}</span>
+            <div className="relative flex-1 h-2 rounded-full bg-surface overflow-hidden">
+              <div
+                className={`h-full ${band.tone}`}
+                style={{ width: `${band.pct}%` }}
+              />
+            </div>
+            <span className="w-12 text-right text-xs text-text-muted">
+              {band.pct}%
+            </span>
+          </li>
+        ))}
+      </ul>
+      <div className="flex items-center justify-between text-xs text-text-muted">
+        <span>Pico</span>
+        <span>{Math.round(section.peak_db * 10) / 10} dB</span>
+      </div>
+    </div>
   )
 }
 

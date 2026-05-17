@@ -41,10 +41,11 @@ export const StoppedTransitionOverlay = ({
   )
 }
 
-// One-line detail explaining which auto-stop fired. Today only
-// muletillas and emotion drive the live corten; pronunciation and
-// accentuation are evaluated by composed-eval at session end and do
-// not show up here.
+// One-line detail explaining which auto-stop fired. Live corten is
+// triggered today by muletillas, sustained emotion, sustained clipping
+// (loudness) and rapid pitch breaks (phonation). Pronunciation and
+// accentuation moved to composed-eval at session end and do not show
+// up here.
 function pickDetailCopy(
   category: StopCategory | null,
   emotionLabel?: string,
@@ -54,6 +55,12 @@ function pickDetailCopy(
   }
   if (category === 'emotion') {
     return `Mantuviste una expresión de ${emotionLabel ?? 'malestar'} por demasiado tiempo.`
+  }
+  if (category === 'loudness') {
+    return 'Tu volumen se mantuvo saturado por demasiado tiempo.'
+  }
+  if (category === 'phonation') {
+    return 'Detectamos saltos bruscos de frecuencia en tu voz.'
   }
   return 'Pausamos la sesión para que revises el detalle.'
 }

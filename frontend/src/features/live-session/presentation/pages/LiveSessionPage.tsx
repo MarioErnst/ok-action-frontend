@@ -94,7 +94,10 @@ export default function LiveSessionPage() {
 
   if (
     live.phase === 'stopped_feedback' &&
-    (live.stopReason === 'auto_stop_strikes' || live.stopReason === 'auto_stop_emotion')
+    (live.stopReason === 'auto_stop_strikes' ||
+      live.stopReason === 'auto_stop_emotion' ||
+      live.stopReason === 'auto_stop_loudness' ||
+      live.stopReason === 'auto_stop_phonation')
   ) {
     return (
       <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center px-4 py-8 pb-safe">
