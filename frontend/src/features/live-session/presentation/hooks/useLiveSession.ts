@@ -4,10 +4,13 @@ import { ApiError } from '../../../../api/client'
 import useVoiceMonitor from '../../../../shared/hooks/useVoiceMonitor'
 import type { LoudnessConfig } from '../../../loudness/domain/LoudnessSession'
 import type { LoudnessPresetDto } from '../../../loudness/infrastructure/dto/LoudnessDtos'
-import { HttpLoudnessRepository } from '../../../loudness/infrastructure/repositories/HttpLoudnessRepository'
 import type { CalibrationStep } from '../components/organisms/CalibrationScreen'
+import { useElapsedTimer } from './useElapsedTimer'
+import { useFacialBaseline } from './useFacialBaseline'
+import { useLiveAutoStops } from './useLiveAutoStops'
 import { useLiveLoudness } from './useLiveLoudness'
 import { useLivePhonation } from './useLivePhonation'
+import { useLoudnessPresets } from './useLoudnessPresets'
 import type {
   ComposedEvaluation,
   FacialEmotionName,
@@ -24,7 +27,7 @@ import { HttpLiveSessionRepository } from '../../infrastructure/repositories/Htt
 import { LiveAudioStreamer, buildSilencePcm } from '../../services/liveStreaming/audioStreamer'
 import { LiveStreamSocket } from '../../services/liveStreaming/liveStreamSocket'
 import { FacialSummaryBuilder } from '../../services/emotionMonitor/facialSummaryBuilder'
-import { LiveFaceLoop, type BlendshapeBaseline } from '../../services/emotionMonitor/liveFaceLoop'
+import { LiveFaceLoop } from '../../services/emotionMonitor/liveFaceLoop'
 import { useLiveStreamingStrikes } from './useLiveStreamingStrikes'
 import { useEmotionStop } from './useEmotionStop'
 
@@ -184,7 +187,6 @@ function buildFacialSection(summary: FacialSummaryPayload): FacialExpressionSect
 export function useLiveSession(): UseLiveSessionResult {
   const [phase, setPhase] = useState<LiveSessionPhase>('selection')
   const [selectedModules, setSelectedModules] = useState<LiveModule[]>([])
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [evaluation, setEvaluation] = useState<ComposedEvaluation | null>(null)
   const [liveScore, setLiveScore] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -204,14 +206,11 @@ export function useLiveSession(): UseLiveSessionResult {
   const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null)
   const [recordingDurationMs, setRecordingDurationMs] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
-  // Loudness presets fetched once on mount so the DimensionSelector can
-  // render the dropdown when the user selects loudness. The hook owns
-  // the fetch (instead of the selector) so the chosen preset travels
-  // with the rest of the session state into start() and the summary.
-  const [loudnessPresets, setLoudnessPresets] = useState<LoudnessPresetDto[]>([])
-  const [selectedLoudnessPresetId, setSelectedLoudnessPresetId] = useState<
-    string | null
-  >(null)
+  const {
+    presets: loudnessPresets,
+    selectedId: selectedLoudnessPresetId,
+    select: selectLoudnessPreset,
+  } = useLoudnessPresets()
 
   const facialEnabled = selectedModules.includes('facial_expression')
   const phonationEnabled = selectedModules.includes('phonation')
@@ -283,7 +282,6 @@ export function useLiveSession(): UseLiveSessionResult {
   const liveSocketRef = useRef<LiveStreamSocket | null>(null)
   const faceLoopRef = useRef<LiveFaceLoop | null>(null)
   const facialSummaryBuilderRef = useRef<FacialSummaryBuilder | null>(null)
-  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isStoppingRef = useRef(false)
   // Guard against double-firing start(): the CTA disable flips
@@ -294,16 +292,24 @@ export function useLiveSession(): UseLiveSessionResult {
   const selectedModulesRef = useRef<LiveModule[]>([])
   const phaseRef = useRef<LiveSessionPhase>('selection')
   const stopReasonRef = useRef<StopReason | null>(null)
-  // Facial baseline accumulation. While facialPhase is 'calibrating' we
-  // sum blendshape activations per category so we can build the user's
-  // neutral-face baseline at the moment the calibration window closes.
-  // Once facialPhase flips to 'live' we stop summing and pass the
-  // baseline into classify() so emotion scores reflect deltas above
-  // neutral rather than absolute activations.
-  const facialPhaseRef = useRef<'calibrating' | 'live'>('calibrating')
-  const baselineSumRef = useRef<Map<string, number>>(new Map())
-  const baselineCountRef = useRef(0)
-  const finalBaselineRef = useRef<BlendshapeBaseline | null>(null)
+  // Facial baseline lifecycle (accumulation + finalize + reset) is
+  // owned by a dedicated hook so the orchestrator only deals with
+  // calibration timing and the face-loop listener.
+  const facialBaseline = useFacialBaseline()
+
+  // Elapsed-seconds counter with a one-shot time-limit trigger. The
+  // limit callback dispatches through a ref so we can declare the
+  // timer before the triggerStop closure exists in scope (avoids a
+  // temporal dead zone reference).
+  const triggerStopRef = useRef<((reason: StopReason) => Promise<void>) | null>(
+    null,
+  )
+  const elapsedTimer = useElapsedTimer({
+    limitSeconds: MAX_SESSION_SECONDS,
+    onLimit: useCallback(() => {
+      void triggerStopRef.current?.('time_limit')
+    }, []),
+  })
 
   // Keep refs in sync with state so closures can read fresh values.
   useEffect(() => {
@@ -312,13 +318,6 @@ export function useLiveSession(): UseLiveSessionResult {
   useEffect(() => {
     phaseRef.current = phase
   }, [phase])
-
-  const clearElapsedTimer = useCallback(() => {
-    if (elapsedTimerRef.current) {
-      clearInterval(elapsedTimerRef.current)
-      elapsedTimerRef.current = null
-    }
-  }, [])
 
   const releaseStreams = useCallback(() => {
     audioStreamRef.current?.getTracks().forEach((t) => t.stop())
@@ -353,7 +352,7 @@ export function useLiveSession(): UseLiveSessionResult {
   }, [])
 
   const reset = useCallback(() => {
-    clearElapsedTimer()
+    elapsedTimer.reset()
     if (transitionTimeoutRef.current) {
       clearTimeout(transitionTimeoutRef.current)
       transitionTimeoutRef.current = null
@@ -377,13 +376,9 @@ export function useLiveSession(): UseLiveSessionResult {
     mainRecorderRef.current = null
     isStoppingRef.current = false
     stopReasonRef.current = null
-    facialPhaseRef.current = 'calibrating'
-    baselineSumRef.current = new Map()
-    baselineCountRef.current = 0
-    finalBaselineRef.current = null
+    facialBaseline.reset()
 
     setSelectedModules([])
-    setElapsedSeconds(0)
     setEvaluation(null)
     setLiveScore(null)
     setError(null)
@@ -402,7 +397,8 @@ export function useLiveSession(): UseLiveSessionResult {
     setCalibrationStep(null)
     setPhase('selection')
   }, [
-    clearElapsedTimer,
+    elapsedTimer,
+    facialBaseline,
     releaseStreams,
     recordingAudioUrl,
     strikes,
@@ -500,7 +496,7 @@ export function useLiveSession(): UseLiveSessionResult {
       isStoppingRef.current = true
       stopReasonRef.current = reason
 
-      clearElapsedTimer()
+      elapsedTimer.stop()
       // Close the streaming pipeline so the Gemini WS does not keep
       // billing audio after the user stopped.
       await audioStreamerRef.current?.stop()
@@ -545,8 +541,14 @@ export function useLiveSession(): UseLiveSessionResult {
 
       void runEvaluation(fullBlob, reason)
     },
-    [clearElapsedTimer, releaseStreams, stopMainRecorder, runEvaluation],
+    [elapsedTimer, releaseStreams, stopMainRecorder, runEvaluation, voiceMonitor],
   )
+
+  // Keep the latest triggerStop visible to the elapsed-timer callback,
+  // which was created before triggerStop existed in scope.
+  useEffect(() => {
+    triggerStopRef.current = triggerStop
+  }, [triggerStop])
 
   const stop = useCallback(async () => {
     if (phaseRef.current !== 'recording') return
@@ -629,33 +631,26 @@ export function useLiveSession(): UseLiveSessionResult {
     // selected. The session id is already open at this point so emotion
     // ticks can start feeding the summary builder without a race.
     //
-    // During the 'calibrating' phase the loop emits RAW blendshapes
-    // that we accumulate into baselineSumRef to build the user's
-    // neutral baseline. After calibration ends we set
-    // facialPhaseRef.current = 'live' and from that tick onward the
-    // listener classifies with the baseline and feeds the smoother +
-    // summary builder.
+    // During calibration the listener funnels RAW blendshapes into
+    // useFacialBaseline. Once that hook flips to live (after
+    // markLive() is called below the calibration window) the listener
+    // classifies with the captured baseline and feeds the smoother
+    // and summary builder.
     if (facialEnabled) {
       facialSummaryBuilderRef.current = new FacialSummaryBuilder()
-      facialPhaseRef.current = 'calibrating'
-      baselineSumRef.current = new Map()
-      baselineCountRef.current = 0
-      finalBaselineRef.current = null
+      facialBaseline.reset()
       const loop = new LiveFaceLoop()
       try {
         await loop.load()
         await loop.start((blendshapes) => {
-          if (facialPhaseRef.current === 'calibrating') {
-            for (const sample of blendshapes) {
-              baselineSumRef.current.set(
-                sample.categoryName,
-                (baselineSumRef.current.get(sample.categoryName) ?? 0) + sample.score,
-              )
-            }
-            baselineCountRef.current += 1
+          if (!facialBaseline.isLive()) {
+            facialBaseline.feedSamples(blendshapes)
             return
           }
-          const prediction = loop.classify(blendshapes, finalBaselineRef.current ?? undefined)
+          const prediction = loop.classify(
+            blendshapes,
+            facialBaseline.getBaseline() ?? undefined,
+          )
           facialSummaryBuilderRef.current?.feed(prediction.emotion)
           emotionStop.feedPrediction(prediction.emotion, prediction.confidence)
         })
@@ -720,7 +715,7 @@ export function useLiveSession(): UseLiveSessionResult {
       const elapsed = performance.now() - calibrationStartedAt
       const audioProgress = hasAudioModule ? elapsed / CALIBRATION_MS : 1
       const facialProgress = facialEnabled
-        ? baselineCountRef.current / MIN_FACIAL_BASELINE_SAMPLES
+        ? facialBaseline.getSampleCount() / MIN_FACIAL_BASELINE_SAMPLES
         : 1
       const progress = Math.min(audioProgress, facialProgress)
       setCalibrationProgress(Math.min(1, progress))
@@ -764,7 +759,7 @@ export function useLiveSession(): UseLiveSessionResult {
     if (facialEnabled) {
       const facialDeadline = performance.now() + FACIAL_CALIBRATION_CAP_MS
       while (
-        baselineCountRef.current < MIN_FACIAL_BASELINE_SAMPLES &&
+        facialBaseline.getSampleCount() < MIN_FACIAL_BASELINE_SAMPLES &&
         performance.now() < facialDeadline
       ) {
         await new Promise((resolve) => setTimeout(resolve, 80))
@@ -774,20 +769,13 @@ export function useLiveSession(): UseLiveSessionResult {
     window.clearInterval(calibrationInterval)
     setCalibrationProgress(1)
 
-    // Build the facial baseline from blendshapes accumulated during
-    // calibration. If for any reason we did not collect any sample
-    // (camera failed to deliver frames within the cap) we leave the
-    // baseline empty: classify() then falls back to absolute scores,
-    // which is the same behavior as before this fix and at least lets
-    // the session continue.
-    if (facialEnabled && baselineCountRef.current > 0) {
-      const baseline: BlendshapeBaseline = {}
-      for (const [key, sum] of baselineSumRef.current) {
-        baseline[key] = sum / baselineCountRef.current
-      }
-      finalBaselineRef.current = baseline
+    // Finalize the facial baseline. The hook averages the accumulated
+    // samples; when no sample arrived (camera failed to deliver frames
+    // before the cap) the baseline stays null and classify() falls back
+    // to absolute scores, matching the pre-baseline behavior.
+    if (facialEnabled) {
+      facialBaseline.markLive()
     }
-    facialPhaseRef.current = 'live'
 
     // Audio-only artifacts are created only when we have at least one
     // audio module selected. When only facial is selected we skip the
@@ -860,19 +848,10 @@ export function useLiveSession(): UseLiveSessionResult {
     // out relative to the audio file the user will eventually replay.
     strikes.markRecordingStart(Date.now())
     setCalibrationStep(null)
-    setElapsedSeconds(0)
     setIsRecording(true)
     setPhase('recording')
 
-    elapsedTimerRef.current = setInterval(() => {
-      setElapsedSeconds((prev) => {
-        const next = prev + 1
-        if (next >= MAX_SESSION_SECONDS) {
-          void triggerStop('time_limit')
-        }
-        return next
-      })
-    }, 1000)
+    elapsedTimer.start()
     } finally {
       // Clear the "preparando" guard regardless of how we got out. If
       // start() reached the recording phase the user has long stopped
@@ -884,74 +863,81 @@ export function useLiveSession(): UseLiveSessionResult {
   }, [
     selectedModules,
     facialEnabled,
+    loudnessEnabled,
+    voiceMeterEnabled,
+    voiceMonitor,
     strikes,
     emotionStop,
-    triggerStop,
+    facialBaseline,
+    elapsedTimer,
     releaseStreams,
   ])
 
-  // Auto-stop watchers. Both watchers gate on the current phase via the
-  // ref so a stale render does not trigger spurious stops after the
-  // session is already torn down.
-  useEffect(() => {
-    if (!strikes.shouldStop) return
-    if (phaseRef.current !== 'recording') return
-    if (isStoppingRef.current) return
-    // Only muletillas drive the live auto-stop. The threshold is 1 —
-    // a single muletilla cuts because AssemblyAI returns a verbatim
+  // Auto-stop watchers. Each callback gates on the current phase and
+  // the in-flight stop ref so a stale render does not trigger spurious
+  // stops after the session is already torn down. The four watchers
+  // share a single hook to keep the orchestrator focused on lifecycle.
+  const onStrikeStop = useCallback(() => {
+    if (phaseRef.current !== 'recording' || isStoppingRef.current) return
+    // Only muletillas drive the live strike auto-stop. The threshold is
+    // 1 — a single muletilla cuts because AssemblyAI returns a verbatim
     // transcript that the backend matched against a fixed dictionary,
     // so every strike is grounded in something the user actually said.
     setStopCategory('muletillas')
     void triggerStop('auto_stop_strikes')
-  }, [strikes.shouldStop, strikes.muletillaCount, triggerStop])
+  }, [triggerStop])
 
-  useEffect(() => {
-    if (!emotionStop.trigger) return
-    if (phaseRef.current !== 'recording') return
-    if (isStoppingRef.current) return
-    setEmotionTriggerLabel(EMOTION_LABEL[emotionStop.trigger.emotion] ?? 'malestar')
-    setStopReason('auto_stop_emotion')
-    setStopCategory('emotion')
-    // Persist the emotion for the feedback page in a derived field
-    if (facialSummaryBuilderRef.current) {
-      facialSummaryBuilderRef.current.feed(emotionStop.trigger.emotion)
-    }
-    void triggerStop('auto_stop_emotion')
-  }, [emotionStop.trigger, triggerStop])
+  const onEmotionStopFired = useCallback(
+    (emotion: RawEmotionName) => {
+      if (phaseRef.current !== 'recording' || isStoppingRef.current) return
+      setEmotionTriggerLabel(EMOTION_LABEL[emotion] ?? 'malestar')
+      setStopReason('auto_stop_emotion')
+      setStopCategory('emotion')
+      // Persist the emotion for the feedback page in a derived field.
+      if (facialSummaryBuilderRef.current) {
+        facialSummaryBuilderRef.current.feed(emotion)
+      }
+      void triggerStop('auto_stop_emotion')
+    },
+    [triggerStop],
+  )
 
-  // Phonation auto-stop. Fires when the rolling break counter crosses
-  // the threshold defined inside the hook (5 breaks in 10 s today).
-  useEffect(() => {
-    if (!livePhonation.shouldStop) return
-    if (phaseRef.current !== 'recording') return
-    if (isStoppingRef.current) return
+  const onPhonationStop = useCallback(() => {
+    if (phaseRef.current !== 'recording' || isStoppingRef.current) return
     setStopCategory('phonation')
     void triggerStop('auto_stop_phonation')
-  }, [livePhonation.shouldStop, triggerStop])
+  }, [triggerStop])
 
-  // Loudness auto-stop. Fires when the user has been continuously
-  // clipping for the threshold time (3 s today).
-  useEffect(() => {
-    if (!liveLoudness.shouldStop) return
-    if (phaseRef.current !== 'recording') return
-    if (isStoppingRef.current) return
+  const onLoudnessStop = useCallback(() => {
+    if (phaseRef.current !== 'recording' || isStoppingRef.current) return
     setStopCategory('loudness')
     void triggerStop('auto_stop_loudness')
-  }, [liveLoudness.shouldStop, triggerStop])
+  }, [triggerStop])
+
+  useLiveAutoStops({
+    strikeShouldStop: strikes.shouldStop,
+    emotionTrigger: emotionStop.trigger,
+    phonationShouldStop: livePhonation.shouldStop,
+    loudnessShouldStop: liveLoudness.shouldStop,
+    onStrikeStop,
+    onEmotionStop: onEmotionStopFired,
+    onPhonationStop,
+    onLoudnessStop,
+  })
 
   // Tear-down on unmount: stop loops, release resources, and best-
   // effort abandon any still-open session so we do not leak active
-  // rows in BD.
+  // rows in BD. The elapsed timer cleans itself up via its own
+  // unmount effect inside useElapsedTimer.
   useEffect(() => {
     return () => {
-      clearElapsedTimer()
       if (transitionTimeoutRef.current) {
         clearTimeout(transitionTimeoutRef.current)
       }
       void audioStreamerRef.current?.stop()
       void liveSocketRef.current?.close()
       faceLoopRef.current?.stop()
-        audioStreamRef.current?.getTracks().forEach((t) => t.stop())
+      audioStreamRef.current?.getTracks().forEach((t) => t.stop())
       audioStreamRef.current = null
       const orphan = sessionIdRef.current
       const currentPhase = phaseRef.current
@@ -966,7 +952,7 @@ export function useLiveSession(): UseLiveSessionResult {
       // Avoid duplicate work in callbacks once unmounted.
       sessionIdRef.current = null
     }
-  }, [clearElapsedTimer])
+  }, [])
 
   // Map raw emotion names to the user-facing fragment used by the
   // feedback page. Surface the label only when the auto-stop reason is
@@ -977,30 +963,6 @@ export function useLiveSession(): UseLiveSessionResult {
     }
   }, [stopReason])
 
-  // Fetch the loudness presets once on mount. The dropdown in
-  // DimensionSelector renders as "loading..." while the request is in
-  // flight; if it fails the user can still start a session that
-  // doesn't include loudness, or retry by reloading the page.
-  useEffect(() => {
-    let cancelled = false
-    HttpLoudnessRepository.listPresets()
-      .then((presets) => {
-        if (cancelled) return
-        setLoudnessPresets(presets)
-        if (presets.length > 0) {
-          const fallback =
-            presets.find((preset) => preset.is_default) ?? presets[0]
-          setSelectedLoudnessPresetId((current) => current ?? fallback.id)
-        }
-      })
-      .catch((exc) => {
-        console.warn('Failed to load loudness presets:', exc)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   // Derived flag exposed for the CalibrationScreen and audio-only
   // widgets. Computed at render time so it reflects the latest
   // selectedModules without an extra effect.
@@ -1009,7 +971,7 @@ export function useLiveSession(): UseLiveSessionResult {
   return {
     phase,
     selectedModules,
-    elapsedSeconds,
+    elapsedSeconds: elapsedTimer.seconds,
     evaluation,
     liveScore,
     error,
@@ -1029,7 +991,7 @@ export function useLiveSession(): UseLiveSessionResult {
     recordingDurationMs,
     loudnessPresets,
     selectedLoudnessPresetId,
-    selectLoudnessPreset: setSelectedLoudnessPresetId,
+    selectLoudnessPreset,
     phonationEnabled,
     loudnessEnabled,
     phonationCurrentHz: livePhonation.currentHz,
