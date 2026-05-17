@@ -17,7 +17,29 @@ interface WorkletMessage {
   db: number;
 }
 
-export default function useVoiceMonitor() {
+interface UseVoiceMonitorOptions {
+  // Optional MediaStream provided by the caller. When passed the hook
+  // reuses it (no second getUserMedia prompt) and does not stop its
+  // tracks on cleanup — the caller owns the lifecycle. Used by the
+  // live-session orchestrator, which already opens one mic stream and
+  // pipes it to both the AssemblyAI streamer and the voice monitor.
+  // Standalone modules omit this option and the hook keeps its
+  // original behavior of opening / closing its own stream.
+  externalStream?: MediaStream | null
+  // Optional callback fired right after the noise-floor calibration
+  // window closes. Live needs this to know when to advance to the
+  // next calibration step; standalone modules can ignore it because
+  // they show their own calibration UI inline.
+  onNoiseFloorReady?: (noiseFloor: number) => void
+}
+
+export default function useVoiceMonitor(options: UseVoiceMonitorOptions = {}) {
+  const { externalStream, onNoiseFloorReady } = options
+  // The caller-provided stream is read through a ref so a change after
+  // start() does not retrigger the effect; lifecycle is driven by
+  // explicit start/stop calls, same as the legacy hook.
+  const externalStreamRef = useRef<MediaStream | null>(externalStream ?? null)
+  externalStreamRef.current = externalStream ?? null
   const [hz, setHz] = useState<number | null>(null);
   const [db, setDb] = useState(DEFAULT_DB);
   const [isListening, setIsListening] = useState(false);
@@ -79,7 +101,11 @@ export default function useVoiceMonitor() {
       }
     }
 
-    if (streamRef.current) {
+    // Only stop the stream tracks when we own the stream. When the
+    // caller injected one (live session) the orchestrator handles its
+    // own teardown; stopping the tracks here would also kill the
+    // AssemblyAI streamer that shares the same mic.
+    if (streamRef.current && externalStreamRef.current === null) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
 
@@ -107,7 +133,12 @@ export default function useVoiceMonitor() {
     if (isListeningRef.current) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      // Prefer the caller-provided stream over a new getUserMedia
+      // request so we never prompt the user twice for the mic.
+      const externalStream = externalStreamRef.current;
+      const stream =
+        externalStream ??
+        (await navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
       streamRef.current = stream;
 
       const audioContext = new AudioContext();
@@ -180,6 +211,7 @@ export default function useVoiceMonitor() {
         setIsCalibrating(false);
         calibrationSamplesRef.current = [];
         calibrationTimeoutRef.current = null;
+        onNoiseFloorReady?.(averageDb);
       }, CALIBRATION_DURATION_MS);
 
       isListeningRef.current = true;
@@ -188,7 +220,7 @@ export default function useVoiceMonitor() {
       console.error('useVoiceMonitor.start failed:', error);
       await stop();
     }
-  }, [stop]);
+  }, [stop, onNoiseFloorReady]);
 
   useEffect(() => {
     return () => {
