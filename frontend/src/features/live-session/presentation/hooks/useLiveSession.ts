@@ -523,12 +523,10 @@ export function useLiveSession(): UseLiveSessionResult {
     }
 
     // Pre-warm the live streaming WS in parallel with the calibration
-    // window. Gemini Live has a cold-start the first time it sees
-    // audio for a fresh session; opening the WS now and pushing a
-    // short silence chunk hides that latency behind the 2 s calibration
-    // UI the user is already watching. By the time we flip to
-    // 'recording', the model is in streaming state and the first real
-    // chunk lands warm.
+    // window. Opening the WS now and pushing a short silence chunk
+    // hides the AssemblyAI session handshake behind the 2 s
+    // calibration UI the user is already watching, so the first real
+    // chunk after `recording` lands on a warmed socket.
     let preWarmedSocket: LiveStreamSocket | null = null
     let socketReadyPromise: Promise<void> | null = null
     let authToken: string | null = null
@@ -566,9 +564,9 @@ export function useLiveSession(): UseLiveSessionResult {
     // Calibration: a short cosmetic window so the user sees the same
     // "preparing" UI as before, plus the facial baseline accumulator
     // when facial is on, plus the WS pre-warm above. The streaming
-    // pipeline does not need noise calibration because Gemini Live has
-    // its own VAD, but we keep the visible window so the WS handshake
-    // and warmup silence land while the user is still being prepared.
+    // pipeline does not need noise calibration because AssemblyAI has
+    // its own VAD; we keep the visible window so the WS handshake and
+    // warmup silence land while the user is still being prepared.
     const calibrationStartedAt = performance.now()
     const calibrationInterval = window.setInterval(() => {
       const elapsed = performance.now() - calibrationStartedAt

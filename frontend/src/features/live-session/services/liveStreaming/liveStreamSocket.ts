@@ -1,4 +1,4 @@
-// Thin WebSocket client for the Gemini Live streaming evaluator.
+// Thin WebSocket client for the live streaming evaluator backend.
 //
 // Mirrors fluency/consistency conventions: one WS per active session,
 // JSON for control frames, binary frames for audio. The token query

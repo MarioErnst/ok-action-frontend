@@ -1,8 +1,9 @@
 // Streams raw 16 kHz mono PCM16 audio from a MediaStream into a callback.
 //
-// Why PCM16 mono at 16 kHz: that is the wire format Gemini Live expects in
-// the `audio/pcm;rate=16000` blob. Doing the resampling and quantization
-// here keeps the backend a thin transport that just forwards bytes.
+// Why PCM16 mono at 16 kHz: that is the wire format the backend
+// supervisor needs to feed AssemblyAI streaming (which expects 16 kHz
+// signed-LE PCM). Doing the resampling and quantization here keeps the
+// backend a thin transport that just forwards bytes.
 //
 // Why AudioWorklet with a ScriptProcessor fallback: AudioWorklet is the
 // modern way and runs in an audio thread (no main-thread jitter). iOS
@@ -21,8 +22,8 @@ const SCRIPT_PROCESSOR_BUFFER_SIZE = 4096
 export type PcmChunkListener = (chunk: Uint8Array) => void
 
 interface AudioStreamerOptions {
-  // Override the target sample rate. The Gemini Live API expects 16k;
-  // exposing this only for tests / future tweaking.
+  // Override the target sample rate. The backend pipeline expects 16
+  // kHz mono; exposing this only for tests / future tweaking.
   targetSampleRate?: number
   // Samples per emitted chunk. Default 1600 (= 100 ms at 16 kHz).
   // Smaller chunks mean lower latency but more WS frames; 100 ms is a
@@ -230,7 +231,7 @@ function floatTo16BitPcm(input: Float32Array): Uint8Array {
 // Naive linear-interpolation resampler. The input rate is whatever the
 // browser hands us (typically 44.1 or 48 kHz); the output is fixed at
 // targetSampleRate. Linear is acceptable for speech recognition; the
-// Gemini Live model is robust to mild aliasing.
+// downstream ASR is robust to mild aliasing.
 function resampleToTarget(
   input: Float32Array,
   inputRate: number,
