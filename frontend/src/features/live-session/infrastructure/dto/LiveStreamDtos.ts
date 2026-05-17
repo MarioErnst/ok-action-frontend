@@ -4,7 +4,13 @@
 // downstream — only outgoing. Names mirror the supervisor's strike
 // event so the boundary translation is trivial.
 
-export type LiveStreamModule = 'muletillas' | 'pronunciation' | 'accentuation'
+// The live streaming pipeline only emits strikes for muletillas. The
+// pronunciation and accentuation modules still appear in the live
+// session selector, but they are evaluated at the end by the composed-
+// eval HTTP endpoint, not in real-time. Keeping the union narrow makes
+// every consumer aware that any strike that lands on the WS is a
+// muletilla.
+export type LiveStreamModule = 'muletillas'
 
 export type LiveStreamSeverity = 'low' | 'medium' | 'high'
 
