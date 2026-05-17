@@ -5,6 +5,7 @@ import useVoiceMonitor from '../../../../shared/hooks/useVoiceMonitor'
 import type { LoudnessConfig } from '../../../loudness/domain/LoudnessSession'
 import type { LoudnessPresetDto } from '../../../loudness/infrastructure/dto/LoudnessDtos'
 import { HttpLoudnessRepository } from '../../../loudness/infrastructure/repositories/HttpLoudnessRepository'
+import type { CalibrationStep } from '../components/organisms/CalibrationScreen'
 import { useLiveLoudness } from './useLiveLoudness'
 import { useLivePhonation } from './useLivePhonation'
 import type {
@@ -91,6 +92,10 @@ interface UseLiveSessionResult {
   // prompts or the lazy-loaded MediaPipe download are in flight.
   isStarting: boolean
   calibrationProgress: number
+  // Visible sub-step of the calibration phase. Used by
+  // CalibrationScreen to render the matching copy. Null when no audio
+  // module is selected.
+  calibrationStep: CalibrationStep | null
   // Whether the current selection includes at least one audio-bearing
   // module (anything other than facial_expression). Exposed so the
   // calibration UI can adapt its copy and audio-only widgets can hide
@@ -188,6 +193,12 @@ export function useLiveSession(): UseLiveSessionResult {
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
   const [isRecording, setIsRecording] = useState(false)
   const [calibrationProgress, setCalibrationProgress] = useState(0)
+  // Visible sub-step inside the 'calibrating' phase. Null when no
+  // audio module is selected (the facial-only flow uses the legacy
+  // copy in CalibrationScreen).
+  const [calibrationStep, setCalibrationStep] = useState<CalibrationStep | null>(
+    null,
+  )
   const [stopReason, setStopReason] = useState<StopReason | null>(null)
   const [emotionTriggerLabel, setEmotionTriggerLabel] = useState<string | null>(null)
   const [stopCategory, setStopCategory] = useState<StopCategory | null>(null)
@@ -389,6 +400,7 @@ export function useLiveSession(): UseLiveSessionResult {
     livePhonation.reset()
     liveLoudness.reset()
     setVoiceNoiseFloor(null)
+    setCalibrationStep(null)
     setPhase('selection')
   }, [
     clearElapsedTimer,
@@ -698,13 +710,12 @@ export function useLiveSession(): UseLiveSessionResult {
     }
 
     setPhase('calibrating')
+    // First sub-step: noise floor capture. The shared voice monitor is
+    // already running its 3 s silence window if phonation or loudness
+    // are active; for muletillas-only we just hold the cosmetic
+    // CALIBRATION_MS window. Facial baseline runs in parallel.
+    setCalibrationStep(hasAudioModule ? 'mic_noise' : null)
 
-    // Calibration: a short cosmetic window so the user sees the same
-    // "preparing" UI as before, plus the facial baseline accumulator
-    // when facial is on, plus the WS pre-warm above. The streaming
-    // pipeline does not need noise calibration because AssemblyAI has
-    // its own VAD; we keep the visible window so the WS handshake and
-    // warmup silence land while the user is still being prepared.
     const calibrationStartedAt = performance.now()
     const calibrationInterval = window.setInterval(() => {
       const elapsed = performance.now() - calibrationStartedAt
@@ -732,6 +743,19 @@ export function useLiveSession(): UseLiveSessionResult {
       releaseStreams()
       return
     }
+
+    // Second sub-step (only when loudness is on): give the user 3 extra
+    // seconds with the "habla normal" copy so the volume meter has a
+    // chance to settle on a representative band before the recording
+    // starts. The classifier already uses a fixed assumed voice
+    // baseline (noiseFloor + 25 dB) — this is mostly UX framing.
+    if (loudnessEnabled) {
+      setCalibrationStep('voice_baseline')
+      setCalibrationProgress(0.5)
+      await new Promise((resolve) => setTimeout(resolve, 3_000))
+    }
+
+    setCalibrationStep('finalizing')
 
     // If facial is active, keep the calibration phase open until we have
     // enough blendshape samples for a reliable baseline. The hard cap
@@ -836,6 +860,7 @@ export function useLiveSession(): UseLiveSessionResult {
     // it Date.now() at the recording start so per-event timestamps come
     // out relative to the audio file the user will eventually replay.
     strikes.markRecordingStart(Date.now())
+    setCalibrationStep(null)
     setElapsedSeconds(0)
     setIsRecording(true)
     setPhase('recording')
@@ -994,6 +1019,7 @@ export function useLiveSession(): UseLiveSessionResult {
     isRecording,
     isStarting,
     calibrationProgress,
+    calibrationStep,
     audioEnabled,
     facialEnabled,
     strikeEvents: strikes.events,

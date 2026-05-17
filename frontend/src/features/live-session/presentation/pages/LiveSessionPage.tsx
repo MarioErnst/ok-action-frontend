@@ -49,6 +49,7 @@ export default function LiveSessionPage() {
           progress={live.calibrationProgress}
           audioEnabled={live.audioEnabled}
           facialEnabled={live.facialEnabled}
+          step={live.calibrationStep}
         />
       </main>
     )

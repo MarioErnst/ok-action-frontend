@@ -1,5 +1,12 @@
 import { CalibrationRing } from '../atoms/CalibrationRing'
 
+
+export type CalibrationStep =
+  | 'mic_noise'
+  | 'voice_baseline'
+  | 'finalizing'
+
+
 interface CalibrationScreenProps {
   // 0..1 progress through the calibration window.
   progress: number
@@ -13,6 +20,10 @@ interface CalibrationScreenProps {
   // classifier locks a per-user reference (mirrors the dedicated
   // calibration step in the standalone facial_expression module).
   facialEnabled: boolean
+  // Current audio calibration step. Drives the active copy below the
+  // ring. Null when no audio module is selected (the screen falls
+  // back to the facial-only copy).
+  step: CalibrationStep | null
 }
 
 // Full-screen view shown during the calibration window at the start of
@@ -27,9 +38,10 @@ export const CalibrationScreen = ({
   progress,
   audioEnabled,
   facialEnabled,
+  step,
 }: CalibrationScreenProps) => {
   const pct = Math.round(Math.min(1, Math.max(0, progress)) * 100)
-  const { title, description } = pickCopy(audioEnabled, facialEnabled)
+  const { title, description } = pickCopy(audioEnabled, facialEnabled, step)
   return (
     <div className="flex flex-col items-center justify-center gap-6 min-h-[60dvh] text-center px-6 animate-fade-in">
       <CalibrationRing progress={progress} size={140} />
@@ -44,22 +56,45 @@ export const CalibrationScreen = ({
   )
 }
 
-function pickCopy(audioEnabled: boolean, facialEnabled: boolean): {
+function pickCopy(
+  audioEnabled: boolean,
+  facialEnabled: boolean,
+  step: CalibrationStep | null,
+): {
   title: string
   description: string
 } {
+  if (!audioEnabled && facialEnabled) {
+    return {
+      title: 'Calibrando cámara',
+      description:
+        'Mirá la cámara con cara neutral. Estamos midiendo la expresión base de tu rostro para detectar emociones a partir de ahí.',
+    }
+  }
+
+  if (step === 'voice_baseline') {
+    return {
+      title: facialEnabled
+        ? 'Acomodá tu volumen mientras te ven'
+        : 'Hablá con tu volumen normal',
+      description:
+        'Decí algo en el volumen que vas a usar durante la sesión. Necesitamos un par de segundos de tu voz para ajustar las bandas del módulo de volumen.',
+    }
+  }
+
+  if (step === 'finalizing') {
+    return {
+      title: 'Casi listo',
+      description: 'Terminando de preparar la sesión.',
+    }
+  }
+
+  // Default + mic_noise step.
   if (audioEnabled && facialEnabled) {
     return {
       title: 'Calibrando audio y cámara',
       description:
         'Mantente en silencio y mirá la cámara con cara neutral. Estamos midiendo el ruido del ambiente y la expresión base de tu rostro para evaluarte mejor.',
-    }
-  }
-  if (facialEnabled) {
-    return {
-      title: 'Calibrando cámara',
-      description:
-        'Mirá la cámara con cara neutral. Estamos midiendo la expresión base de tu rostro para detectar emociones a partir de ahí.',
     }
   }
   return {
