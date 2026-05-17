@@ -1,5 +1,11 @@
+// Shared mic-capture hook used by phonation, loudness, pauses and the
+// live-session orchestrator. Returns the calibrated noise floor, the
+// live Hz / dB values and a rolling buffer of recent frames. Sits in
+// shared/ because more than one feature consumes it; previously lived
+// inside the phonation feature.
+
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PhonationFrame } from '../../domain/PhonationSession';
+import type { AudioFrame } from '../types/audioTypes';
 
 const DEFAULT_DB = -100;
 const MAX_FRAMES = 100;
@@ -17,7 +23,7 @@ export default function useVoiceMonitor() {
   const [isListening, setIsListening] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [noiseFloor, setNoiseFloor] = useState(DEFAULT_DB);
-  const [frames, setFrames] = useState<PhonationFrame[]>([]);
+  const [frames, setFrames] = useState<AudioFrame[]>([]);
   // Exposed so visualisation components (RecordingWaveform) can read frame
   // data from the same AudioContext used by the worklet; reusing the source
   // avoids spinning up a second AudioContext for the same microphone.
@@ -34,7 +40,7 @@ export default function useVoiceMonitor() {
   const isListeningRef = useRef(false);
   const pendingHzRef = useRef<number | null>(null);
   const pendingDbRef = useRef(DEFAULT_DB);
-  const pendingFramesRef = useRef<PhonationFrame[]>([]);
+  const pendingFramesRef = useRef<AudioFrame[]>([]);
   const uiTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stop = useCallback(async () => {
