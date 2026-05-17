@@ -202,6 +202,20 @@ export class LiveAudioStreamer {
   }
 }
 
+// Build a chunk of digital silence (all zeros) in the same PCM16 mono
+// 16 kHz format the streamer emits. Used by the orchestrator to push a
+// short pad through the WS right after the server says ready, which
+// nudges the Live model out of cold-start before the user speaks.
+export function buildSilencePcm(
+  durationMs: number,
+  sampleRate: number = TARGET_SAMPLE_RATE,
+): Uint8Array {
+  if (durationMs <= 0) return new Uint8Array(0)
+  const samples = Math.round((durationMs / 1000) * sampleRate)
+  // PCM16 = 2 bytes per sample. Uint8Array is zero-initialized.
+  return new Uint8Array(samples * 2)
+}
+
 function floatTo16BitPcm(input: Float32Array): Uint8Array {
   const out = new ArrayBuffer(input.length * 2)
   const view = new DataView(out)
