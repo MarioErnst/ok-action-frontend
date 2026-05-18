@@ -245,39 +245,48 @@ export function useLiveSession(): UseLiveSessionResult {
     onNoiseFloorReady: setVoiceNoiseFloor,
   })
 
-  // Loudness config used by the live classifier. We adopt a fixed
-  // conservative voice baseline (noise floor + 25 dB) instead of the
-  // standalone module's voice baseline calibration step — that
-  // assumes the alumno can read aloud, which contradicts the live
-  // session's free-speech premise. The error margin is acceptable
-  // because the band is wide; if it turns out tight we can introduce
-  // a proper voice baseline step in a follow-up.
+  // The voice-baseline step is the only window where we sample the
+  // user's typical Hz AND dB. After the step closes the captured values
+  // stay frozen for the rest of the session: useLivePhonation reads the
+  // Hz to detect strained voice; the loudness config below reads the dB
+  // to align the preset band thresholds with the user's actual speaking
+  // volume instead of an assumed +25 dB over the noise floor.
+  const voiceBaseline = useVoiceBaseline({
+    frames: voiceMonitor.frames,
+    capturing: calibrationStep === 'voice_baseline',
+  })
+
+  // Loudness config used by the live classifier. We anchor the preset
+  // band offsets to the user's measured speaking dB when available;
+  // when the voice-baseline step did not produce a usable estimate
+  // (skipped, no voiced frames) we fall back to a conservative noise
+  // floor + 25 dB, which is the rough average for normal speech at
+  // arm's length.
   const loudnessConfig: LoudnessConfig | null = useMemo(() => {
     if (!loudnessEnabled || voiceNoiseFloor === null) return null
     const preset = loudnessPresets.find(
       (p) => p.id === selectedLoudnessPresetId,
     ) ?? loudnessPresets[0]
     if (!preset) return null
-    const assumedVoiceBaseline = voiceNoiseFloor + 25
+    const measuredBaseline = voiceBaseline.baselineDb
+    const fallbackBaseline = voiceNoiseFloor + 25
+    const voiceBaselineDb = measuredBaseline ?? fallbackBaseline
     return {
       presetId: preset.id,
       label: preset.label,
       description: preset.description ?? '',
       silenceOffsetDb: preset.silence_offset_db,
-      tooLowCeilingDbfs: assumedVoiceBaseline + preset.low_offset_db,
-      optimalCeilingDbfs: assumedVoiceBaseline + preset.optimal_offset_db,
+      tooLowCeilingDbfs: voiceBaselineDb + preset.low_offset_db,
+      optimalCeilingDbfs: voiceBaselineDb + preset.optimal_offset_db,
       clipThresholdDbfs: preset.clip_threshold_db,
     }
-  }, [loudnessEnabled, voiceNoiseFloor, loudnessPresets, selectedLoudnessPresetId])
-
-  // The voice-baseline step is the only window where we sample the
-  // user's typical Hz. After it closes the captured value stays frozen
-  // for the rest of the session so useLivePhonation can compare every
-  // live frame against the same reference.
-  const voiceBaseline = useVoiceBaseline({
-    frames: voiceMonitor.frames,
-    capturing: calibrationStep === 'voice_baseline',
-  })
+  }, [
+    loudnessEnabled,
+    voiceNoiseFloor,
+    voiceBaseline.baselineDb,
+    loudnessPresets,
+    selectedLoudnessPresetId,
+  ])
 
   const livePhonation = useLivePhonation({
     frames: voiceMonitor.frames,
