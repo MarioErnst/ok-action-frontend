@@ -213,8 +213,8 @@ usuario en el overlay y en la pantalla de feedback:
 - `emotion`: el clasificador local detecta una emocion sostenida (3 s) y dispara
   `triggerStop('auto_stop_emotion')`.
 - `loudness` (`auto_stop_loudness`): el detector cuenta el tiempo continuo
-  fuera de la banda `optimal`. A los **2 s sostenidos en `too-high` o `clipping`**
-  dispara el corten. Sub-razones:
+  fuera de la banda `optimal`. A los **1.5 s sostenidos en `too-high` o
+  `clipping`** dispara el corten. Sub-razones:
   - `clipping`: el usuario satura el microfono (db por encima del clip
     threshold del preset). Copy: "saturaste el microfono".
   - `too_high`: el usuario habla demasiado alto pero sin saturar el ADC.
@@ -222,8 +222,8 @@ usuario en el overlay y en la pantalla de feedback:
   La banda `too-low` no dispara corten (sin clipping y silencio van por
   conteo al composed-eval).
 - `phonation` (`auto_stop_phonation`): dos detectores en paralelo:
-  - `high_pitch`: la frecuencia fundamental sobrepasa `baselineHz * 1.4`
-    de forma continua por **2 s**. El baseline es el promedio de Hz que
+  - `high_pitch`: la frecuencia fundamental sobrepasa `baselineHz * 1.25`
+    de forma continua por **1.5 s**. El baseline es el promedio de Hz que
     el usuario produjo durante el step `voice_baseline` de la calibracion
     (3 s hablando "normal"). Copy: "tu voz se mantuvo aguda".
   - `breaks`: 5 saltos > 50 Hz dentro de una ventana de 10 s. Copy:
@@ -252,20 +252,44 @@ microfono dos veces y mantiene la latencia baja en iOS Safari, donde
 `getUserMedia` paga su coste solo una vez. Los hooks `useLivePhonation` y `useLiveLoudness`
 escuchan ese stream y mantienen sus propios contadores y resumenes.
 
-### Baseline de Hz para fonacion
+### Baseline de Hz y dB para la calibracion personal
 
 El hook `useVoiceBaseline` corre durante el step `voice_baseline` de la
-calibracion (3 s) acumulando los Hz de cada frame voiced y al cerrar el
-step expone el promedio como `baselineHz`. Ese valor se pasa a
-`useLivePhonation` como referencia personal del usuario para el detector
-`high_pitch`. La ventana de baseline se activa cuando loudness *o*
-fonacion estan tildados; antes solo se prendia con loudness, lo cual
-dejaba a fonacion sin baseline si el usuario habilitaba solo ese modulo.
+calibracion (3 s) acumulando los Hz **y los dB** de cada frame voiced. Al
+cerrar el step expone el promedio de ambos como `baselineHz` y
+`baselineDb`. Estos valores se usan para personalizar dos cosas:
 
-Si por alguna razon el baseline no se pudo capturar (frames silenciosos,
-microfono recien abierto) el detector de `high_pitch` queda desactivado
-y solo el de `breaks` puede disparar el corten — degradado pero
-funcional.
+- `useLivePhonation` recibe `baselineHz` y arma su techo de "voz aguda"
+  como `baselineHz * 1.25`. Si el baseline es null (silencio durante los
+  3 s), el detector de `high_pitch` queda desactivado y solo el de
+  `breaks` sigue activo.
+- El `loudnessConfig` ancla las bandas del preset elegido sobre
+  `baselineDb` real (`tooLow = baselineDb + low_offset_db`,
+  `optimal = baselineDb + optimal_offset_db`). Antes la referencia era
+  `noiseFloor + 25 dB` asumido, lo cual descalibraba al usuario que
+  hablaba mas alto o mas bajo que esos 25 dB de "voz tipica" estimada.
+  Si la medicion falla, hay fallback a `noiseFloor + 25 dB`.
+
+La ventana de baseline se activa cuando loudness *o* fonacion estan
+tildados.
+
+### Logs de diagnostico en sesion live
+
+`useLiveSession` emite tres `console.info` para poder dimensionar el
+comportamiento del corten desde devtools sin instrumentar mas:
+
+- `[live-session] voice baseline captured` con `{ hz, db, samples }`
+  al cerrar el step voice_baseline.
+- `[live-session] loudness config resolved` con el preset, si la
+  baseline fue medida o fallback, y los thresholds resultantes en dBFS.
+- `[live-session] loudness auto-stop` / `[live-session] phonation
+  auto-stop` con la sub-razon, la banda/Hz actual, el streak y el
+  contador de saltos en el momento de disparar el corten.
+
+Esto deja todos los numeros relevantes en el console del navegador
+para iterar las constantes (`OUT_OF_RANGE_THRESHOLD_MS`,
+`HIGH_PITCH_FACTOR`, `HIGH_PITCH_THRESHOLD_MS`) basados en sesiones
+reales en lugar de defaults teoricos.
 
 ### El score agregado lo da `finalize`
 
