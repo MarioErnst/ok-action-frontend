@@ -532,6 +532,13 @@ export function useLiveSession(): UseLiveSessionResult {
         ? liveLoudness.summary() ?? undefined
         : undefined
 
+      console.info('[live-session] runEvaluation payload', {
+        modules: selectedModulesRef.current,
+        hasFacial: facialSummary !== undefined,
+        hasPhonation: phonationSummary !== undefined,
+        hasLoudness: loudnessSummary !== undefined,
+      })
+
       try {
         const evalResponse = await HttpLiveSessionRepository.evaluateAudio(sessionId, {
           audio: audioBlob,

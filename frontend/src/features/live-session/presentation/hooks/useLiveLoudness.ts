@@ -245,7 +245,10 @@ export function useLiveLoudness({
   }, [frames, enabled, config, noiseFloor])
 
   const summary = useCallback((): LoudnessSummaryDto | null => {
-    if (!config) return null
+    if (!config) {
+      console.warn('[useLiveLoudness] summary skipped: config is null')
+      return null
+    }
     const counts = bandCountsRef.current
     const scoredFrames =
       counts.optimal + counts['too-low'] + counts['too-high'] + counts.clipping
@@ -253,6 +256,7 @@ export function useLiveLoudness({
       // No usable frames in the session — skipping the payload is
       // better than sending zeros/NaN that the backend would either
       // reject or persist as misleading metrics.
+      console.warn('[useLiveLoudness] summary skipped: scoredFrames=0', counts)
       return null
     }
     const round = (value: number) => Math.round((value / scoredFrames) * 100)
