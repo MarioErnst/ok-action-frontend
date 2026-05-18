@@ -1,3 +1,5 @@
+import type { LoudnessStopReason } from '../../hooks/useLiveLoudness'
+import type { PhonationStopReason } from '../../hooks/useLivePhonation'
 import type { StopCategory } from '../../hooks/useLiveSession'
 
 interface StoppedTransitionOverlayProps {
@@ -8,6 +10,14 @@ interface StoppedTransitionOverlayProps {
   // Human-readable emotion fragment ("enojo", "tristeza", ...) used
   // when category === 'emotion'. Ignored otherwise.
   emotionLabel?: string
+  // Sub-reason for the loudness corten ('clipping' | 'too_high').
+  // Used to pick between "saturado" vs "demasiado alto" copy.
+  // Ignored when category !== 'loudness'.
+  loudnessReason?: LoudnessStopReason | null
+  // Sub-reason for the phonation corten ('high_pitch' | 'breaks').
+  // Used to pick between "voz aguda" vs "saltos de frecuencia" copy.
+  // Ignored when category !== 'phonation'.
+  phonationReason?: PhonationStopReason | null
 }
 
 // Brief five-second backdrop that fades in over the recording screen
@@ -20,8 +30,15 @@ interface StoppedTransitionOverlayProps {
 export const StoppedTransitionOverlay = ({
   category,
   emotionLabel,
+  loudnessReason,
+  phonationReason,
 }: StoppedTransitionOverlayProps) => {
-  const detail = pickDetailCopy(category, emotionLabel)
+  const detail = pickDetailCopy(
+    category,
+    emotionLabel,
+    loudnessReason,
+    phonationReason,
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg/85 backdrop-blur-md animate-fade-in px-6 text-center">
@@ -41,14 +58,16 @@ export const StoppedTransitionOverlay = ({
   )
 }
 
-// One-line detail explaining which auto-stop fired. Live corten is
-// triggered today by muletillas, sustained emotion, sustained clipping
-// (loudness) and rapid pitch breaks (phonation). Pronunciation and
-// accentuation moved to composed-eval at session end and do not show
-// up here.
+// One-line detail explaining which auto-stop fired. Live corten today
+// covers muletillas, sustained emotion, loudness (clipping or sustained
+// too-high) and phonation (sustained high pitch or repeated pitch
+// breaks). Pronunciation and accentuation moved to composed-eval at
+// session end and do not show up here.
 function pickDetailCopy(
   category: StopCategory | null,
-  emotionLabel?: string,
+  emotionLabel: string | undefined,
+  loudnessReason: LoudnessStopReason | null | undefined,
+  phonationReason: PhonationStopReason | null | undefined,
 ): string {
   if (category === 'muletillas') {
     return 'Apareció una muletilla en tu discurso.'
@@ -57,10 +76,22 @@ function pickDetailCopy(
     return `Mantuviste una expresión de ${emotionLabel ?? 'malestar'} por demasiado tiempo.`
   }
   if (category === 'loudness') {
-    return 'Tu volumen se mantuvo saturado por demasiado tiempo.'
+    if (loudnessReason === 'clipping') {
+      return 'Tu voz se saturó: estuviste gritando muy cerca del micrófono.'
+    }
+    if (loudnessReason === 'too_high') {
+      return 'Tu volumen se mantuvo demasiado alto por varios segundos.'
+    }
+    return 'Tu volumen se salió del rango óptimo por demasiado tiempo.'
   }
   if (category === 'phonation') {
-    return 'Detectamos saltos bruscos de frecuencia en tu voz.'
+    if (phonationReason === 'high_pitch') {
+      return 'Tu voz subió por encima de tu tono normal y se mantuvo así.'
+    }
+    if (phonationReason === 'breaks') {
+      return 'Detectamos varios saltos bruscos de frecuencia en tu voz.'
+    }
+    return 'Detectamos algo inusual en la frecuencia de tu voz.'
   }
   return 'Pausamos la sesión para que revises el detalle.'
 }

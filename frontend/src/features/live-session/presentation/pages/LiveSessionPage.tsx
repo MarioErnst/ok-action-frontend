@@ -87,6 +87,8 @@ export default function LiveSessionPage() {
         <StoppedTransitionOverlay
           category={live.stopCategory}
           emotionLabel={live.emotionTriggerLabel ?? undefined}
+          loudnessReason={live.loudnessStopReason}
+          phonationReason={live.phonationStopReason}
         />
       </main>
     )
@@ -114,6 +116,8 @@ export default function LiveSessionPage() {
             estimatedDurationMs={live.recordingDurationMs}
             stopReason={live.stopReason}
             emotionLabel={live.emotionTriggerLabel ?? undefined}
+            loudnessReason={live.loudnessStopReason}
+            phonationReason={live.phonationStopReason}
           />
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <button

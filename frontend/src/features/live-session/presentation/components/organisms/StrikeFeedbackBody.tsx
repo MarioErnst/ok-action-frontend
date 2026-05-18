@@ -7,6 +7,8 @@ import type {
 } from '../../../domain/LiveSession'
 import type { StrikeEvent } from '../../../domain/StrikeEvent'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
+import type { LoudnessStopReason } from '../../hooks/useLiveLoudness'
+import type { PhonationStopReason } from '../../hooks/useLivePhonation'
 import { ModuleTabPill } from '../molecules/ModuleTabPill'
 import { FrameAudioPlayer } from './FrameAudioPlayer'
 
@@ -23,6 +25,8 @@ interface StrikeFeedbackBodyProps {
     | 'auto_stop_loudness'
     | 'auto_stop_phonation'
   emotionLabel?: string
+  loudnessReason?: LoudnessStopReason | null
+  phonationReason?: PhonationStopReason | null
 }
 
 // Tabs available on the post-stop feedback panel. Each detail tab is
@@ -57,6 +61,8 @@ export const StrikeFeedbackBody = ({
   estimatedDurationMs,
   stopReason,
   emotionLabel,
+  loudnessReason,
+  phonationReason,
 }: StrikeFeedbackBodyProps) => {
   const muletillaEvents = useMemo(
     () => events.filter((ev) => ev.kind === 'muletilla'),
@@ -88,7 +94,12 @@ export const StrikeFeedbackBody = ({
 
   const [activeTab, setActiveTab] = useState<FeedbackTab>('summary')
 
-  const reasonHeadline = pickReasonHeadline(stopReason, emotionLabel)
+  const reasonHeadline = pickReasonHeadline(
+    stopReason,
+    emotionLabel,
+    loudnessReason,
+    phonationReason,
+  )
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -151,6 +162,8 @@ export const StrikeFeedbackBody = ({
 function pickReasonHeadline(
   stopReason: StrikeFeedbackBodyProps['stopReason'],
   emotionLabel: string | undefined,
+  loudnessReason: LoudnessStopReason | null | undefined,
+  phonationReason: PhonationStopReason | null | undefined,
 ): string {
   switch (stopReason) {
     case 'auto_stop_strikes':
@@ -160,9 +173,21 @@ function pickReasonHeadline(
         emotionLabel ? ` (${emotionLabel})` : ''
       }`
     case 'auto_stop_loudness':
-      return 'Detuvimos la sesión por volumen saturado sostenido'
+      if (loudnessReason === 'clipping') {
+        return 'Detuvimos la sesión porque saturaste el micrófono'
+      }
+      if (loudnessReason === 'too_high') {
+        return 'Detuvimos la sesión porque hablaste demasiado alto'
+      }
+      return 'Detuvimos la sesión por volumen fuera del rango óptimo'
     case 'auto_stop_phonation':
-      return 'Detuvimos la sesión por saltos de frecuencia repetidos'
+      if (phonationReason === 'high_pitch') {
+        return 'Detuvimos la sesión porque tu voz se mantuvo aguda'
+      }
+      if (phonationReason === 'breaks') {
+        return 'Detuvimos la sesión por saltos de frecuencia repetidos'
+      }
+      return 'Detuvimos la sesión por inestabilidad de tu voz'
     default:
       return 'Detuvimos la sesión'
   }
