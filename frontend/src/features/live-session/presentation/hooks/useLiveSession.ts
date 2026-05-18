@@ -335,6 +335,11 @@ export function useLiveSession(): UseLiveSessionResult {
   const livePhonationRef = useRef(livePhonation)
   const liveLoudnessRef = useRef(liveLoudness)
   const voiceBaselineRef = useRef(voiceBaseline)
+  // Snapshot of the voice monitor so async code inside start() can read
+  // the live values (isCalibrating, frames, noise floor) without falling
+  // back to the stale closure captured at the moment start() was called.
+  const voiceMonitorRef = useRef(voiceMonitor)
+  const voiceNoiseFloorRef = useRef<number | null>(null)
   useEffect(() => {
     livePhonationStopReasonRef.current = livePhonation.stopReason
     livePhonationRef.current = livePhonation
@@ -346,6 +351,12 @@ export function useLiveSession(): UseLiveSessionResult {
   useEffect(() => {
     voiceBaselineRef.current = voiceBaseline
   }, [voiceBaseline])
+  useEffect(() => {
+    voiceMonitorRef.current = voiceMonitor
+  }, [voiceMonitor])
+  useEffect(() => {
+    voiceNoiseFloorRef.current = voiceNoiseFloor
+  }, [voiceNoiseFloor])
 
   // Refs for long-lived resources that should not trigger renders.
   const sessionIdRef = useRef<string | null>(null)
@@ -877,13 +888,18 @@ export function useLiveSession(): UseLiveSessionResult {
 
     // Diagnostic: report when the noise-floor calibration actually
     // closed and what the voice monitor is reporting at that moment.
-    // Useful to confirm the mic_noise wait was effective and to spot
-    // edge cases where the worklet is not producing frames yet.
+    // Reading through refs (not the closure of start) is critical
+    // here: the closure was captured at the render where start() was
+    // created, when the monitor had its initial values. The ref is
+    // synced on every render so it reflects what the monitor actually
+    // looks like at this point in time.
+    const monitorAtMicNoiseClose = voiceMonitorRef.current
     console.info('[live-session] mic_noise step closed', {
-      noiseFloor: voiceNoiseFloor,
-      monitorNoiseFloor: voiceMonitor.noiseFloor,
-      monitorIsCalibrating: voiceMonitor.isCalibrating,
-      monitorFramesCount: voiceMonitor.frames.length,
+      noiseFloor: voiceNoiseFloorRef.current,
+      monitorNoiseFloor: monitorAtMicNoiseClose.noiseFloor,
+      monitorIsCalibrating: monitorAtMicNoiseClose.isCalibrating,
+      monitorFramesCount: monitorAtMicNoiseClose.frames.length,
+      monitorIsListening: monitorAtMicNoiseClose.isListening,
     })
 
     // Second sub-step: run the voice-baseline window whenever loudness
@@ -895,10 +911,12 @@ export function useLiveSession(): UseLiveSessionResult {
     if (loudnessEnabled || phonationEnabled) {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
+      const monitorAtBaselineStart = voiceMonitorRef.current
       console.info('[live-session] voice_baseline step started', {
         durationMs: VOICE_BASELINE_MS,
-        monitorFramesCount: voiceMonitor.frames.length,
-        monitorIsCalibrating: voiceMonitor.isCalibrating,
+        monitorFramesCount: monitorAtBaselineStart.frames.length,
+        monitorIsCalibrating: monitorAtBaselineStart.isCalibrating,
+        monitorIsListening: monitorAtBaselineStart.isListening,
       })
       // Drive the second half of the progress bar from a fresh timer so
       // the user sees the bar actually advance while they speak. Without
@@ -915,31 +933,36 @@ export function useLiveSession(): UseLiveSessionResult {
         setCalibrationProgress(0.5 + progress * 0.5)
         if (now - lastDiagnosticAt >= 500) {
           lastDiagnosticAt = now
+          // Read all monitor / baseline state through refs so we see
+          // the live values, not the closure captured when start() was
+          // created.
+          const monitor = voiceMonitorRef.current
+          const baseline = voiceBaselineRef.current
           console.info('[live-session] voice_baseline tick', {
             elapsedMs: Math.round(elapsed),
-            samples: voiceBaseline.sampleCount,
-            currentHz:
-              voiceMonitor.hz !== null ? Math.round(voiceMonitor.hz) : null,
-            currentDb: Math.round(voiceMonitor.db * 10) / 10,
-            monitorFramesCount: voiceMonitor.frames.length,
+            samples: baseline.sampleCount,
+            currentHz: monitor.hz !== null ? Math.round(monitor.hz) : null,
+            currentDb: Math.round(monitor.db * 10) / 10,
+            monitorFramesCount: monitor.frames.length,
+            monitorIsCalibrating: monitor.isCalibrating,
+            monitorIsListening: monitor.isListening,
           })
         }
       }, 50)
       await new Promise((resolve) => setTimeout(resolve, VOICE_BASELINE_MS))
       window.clearInterval(voiceBaselineInterval)
-      // Snapshot the captured baseline as soon as the window closes so
-      // the rest of the session has a stable record in the console.
-      // Reading directly from the hook (not a ref) is fine here because
-      // we are running in the same async start() flow that owns the
-      // calibration timing.
-      const hz = voiceBaseline.baselineHz
-      const db = voiceBaseline.baselineDb
+      // Read through the ref so the snapshot reflects whatever the
+      // hook actually computed during the window, not the value the
+      // closure captured at start() creation time.
+      const baselineSnapshot = voiceBaselineRef.current
+      const hz = baselineSnapshot.baselineHz
+      const db = baselineSnapshot.baselineDb
       console.info(
         '[live-session] voice baseline captured',
         {
           hz: hz !== null ? Math.round(hz) : null,
           db: db !== null ? Math.round(db * 10) / 10 : null,
-          samples: voiceBaseline.sampleCount,
+          samples: baselineSnapshot.sampleCount,
         },
       )
     }
