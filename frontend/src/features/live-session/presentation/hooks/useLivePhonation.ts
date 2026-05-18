@@ -63,6 +63,13 @@ const HIGH_PITCH_MIN_RATIO = 0.6
 // before the corten fires. Short enough to react to a sustained shout
 // quickly, long enough to ignore a brief high-pitched outburst.
 const HIGH_PITCH_THRESHOLD_MS = 1_500
+// Half-width of the "natural range" around the baseline used by the
+// final stability score (summary). A voiced frame whose hz is within
+// baselineHz × (1 ± STABILITY_BAND_FACTOR) counts as in-range. Width
+// is shared with HIGH_PITCH_FACTOR (1.25) so "outside the score's
+// natural range" matches "above the live corten ceiling" — anything
+// that triggered the corten will also pull the score down, no more.
+const STABILITY_BAND_FACTOR = 0.25
 
 
 export type PhonationStopReason = 'high_pitch' | 'breaks'
@@ -270,24 +277,49 @@ export function useLivePhonation({
       // backend would reject.
       return null
     }
-    const variance =
-      hzs.reduce((sum, value) => sum + (value - avg) ** 2, 0) / hzs.length
-    const stddev = Math.sqrt(variance)
-    // Stability score is 100 when stddev is 0 and decays linearly with
-    // stddev, hitting 0 at STABILITY_STDDEV_CAP_HZ. The cap matches the
-    // expected spread of natural conversational speech; the standalone
-    // module uses per-exercise specific formulas, this is the simple
-    // live equivalent.
-    const stability = Math.max(
-      0,
-      Math.min(100, Math.round(100 - (stddev / STABILITY_STDDEV_CAP_HZ) * 100)),
-    )
+
+    // Stability score. Coverage-based when a baseline is available
+    // (the live default): the score is the percentage of voiced
+    // frames whose pitch stayed within ±25% of the user's baseline.
+    // The width matches HIGH_PITCH_FACTOR so the score and the live
+    // corten share the same notion of "your normal range". A user
+    // that spoke 60 s in range and 2 s screaming gets ~97; the
+    // previous stddev-based formula gave 0 because a single far
+    // outlier blew up the variance.
+    let stability: number
+    if (baselineHz !== null && baselineHz > 0) {
+      const lowBound = baselineHz * (1 - STABILITY_BAND_FACTOR)
+      const highBound = baselineHz * (1 + STABILITY_BAND_FACTOR)
+      const inRange = hzs.filter(
+        (hz) => hz >= lowBound && hz <= highBound,
+      ).length
+      stability = Math.max(
+        0,
+        Math.min(100, Math.round((inRange / hzs.length) * 100)),
+      )
+    } else {
+      // Fallback: stddev-based score when we never captured a baseline
+      // (legacy or failed calibration). Keeps the field populated so
+      // the summary stays valid.
+      const variance =
+        hzs.reduce((sum, value) => sum + (value - avg) ** 2, 0) /
+        hzs.length
+      const stddev = Math.sqrt(variance)
+      stability = Math.max(
+        0,
+        Math.min(
+          100,
+          Math.round(100 - (stddev / STABILITY_STDDEV_CAP_HZ) * 100),
+        ),
+      )
+    }
+
     return {
       avg_hz: Math.round(avg * 10) / 10,
       stability_score: stability,
       breaks_count: breakTimestampsRef.current.length,
     }
-  }, [])
+  }, [baselineHz])
 
   const shouldStop = useMemo(
     () =>
