@@ -524,12 +524,17 @@ export function useLiveSession(): UseLiveSessionResult {
         facialSummary = built ?? undefined
       }
 
+      // Read both summaries through the live refs instead of the
+      // closure captured when runEvaluation was created. The refs
+      // point at the latest hook output (with the resolved config and
+      // accumulated counts); the closure version freezes at the first
+      // render where config was still null and would return null.
       const phonationSummary = selectedModulesRef.current.includes('phonation')
-        ? livePhonation.summary() ?? undefined
+        ? livePhonationRef.current.summary() ?? undefined
         : undefined
 
       const loudnessSummary = selectedModulesRef.current.includes('loudness')
-        ? liveLoudness.summary() ?? undefined
+        ? liveLoudnessRef.current.summary() ?? undefined
         : undefined
 
       console.info('[live-session] runEvaluation payload', {
