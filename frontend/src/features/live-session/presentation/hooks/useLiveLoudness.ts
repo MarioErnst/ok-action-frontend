@@ -35,7 +35,12 @@ import type { LoudnessSummaryDto } from '../../infrastructure/dto/LiveAudioSumma
 // passed a non-null `config` (i.e. the loudness preset thresholds have
 // already been resolved against the user's voice baseline).
 
-const OUT_OF_RANGE_THRESHOLD_MS = 2_000
+// Continuous time the user must stay outside the optimal band before
+// the corten fires. 1.5 s is short enough to react to a sustained
+// shout quickly but long enough to ignore a single loud word inside
+// otherwise normal speech. The previous 2 s value let users sustain
+// noticeable shouting before the corten kicked in.
+const OUT_OF_RANGE_THRESHOLD_MS = 1_500
 
 
 export type LoudnessStopReason = 'clipping' | 'too_high'

@@ -11,7 +11,7 @@ import { LivePhonationMeter } from './LivePhonationMeter'
 // hooks needing to surface their internals. Keep aligned with the
 // constants in useLivePhonation and useLiveLoudness.
 const PHONATION_BREAK_THRESHOLD = 5
-const LOUDNESS_OUT_OF_RANGE_THRESHOLD_MS = 2_000
+const LOUDNESS_OUT_OF_RANGE_THRESHOLD_MS = 1_500
 
 // Maximum session duration in seconds; the progress bar fills to 100% at
 // this point and the parent hook auto-stops. Five minutes mirrors the

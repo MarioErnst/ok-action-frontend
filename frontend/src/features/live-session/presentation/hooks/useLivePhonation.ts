@@ -40,12 +40,17 @@ const BREAK_WINDOW_MS = 10_000
 const BREAK_THRESHOLD = 5
 const STABILITY_STDDEV_CAP_HZ = 80
 // Multiplier over the calibrated baseline above which we consider the
-// user is straining the voice. 1.4 means roughly +40% — clear shift
-// while still wide enough to allow for natural expression range.
-const HIGH_PITCH_FACTOR = 1.4
+// user is straining the voice. 1.25 means roughly +25% over their
+// normal pitch — empirically that is where a typical speaker starts
+// to sound shouty without yet being a full scream. Earlier sessions
+// at 1.4 (+40%) were too lax: users reported they could "almost yell"
+// without triggering the corten.
+const HIGH_PITCH_FACTOR = 1.25
 // Continuous time the user must stay above the threshold before the
-// corten fires.
-const HIGH_PITCH_THRESHOLD_MS = 2_000
+// corten fires. 1.5 s is short enough to react to a sustained shout
+// quickly but long enough to ignore a single high-pitched word inside
+// otherwise normal speech.
+const HIGH_PITCH_THRESHOLD_MS = 1_500
 
 
 export type PhonationStopReason = 'high_pitch' | 'breaks'
