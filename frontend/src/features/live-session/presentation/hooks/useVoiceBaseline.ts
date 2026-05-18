@@ -18,10 +18,13 @@ interface UseVoiceBaselineOptions {
 interface UseVoiceBaselineResult {
   // Mean Hz of all voiced frames captured during the latest window,
   // or null while the window has not produced any voiced frame yet.
-  // The orchestrator passes this to useLivePhonation so the live
-  // detector knows what "speaking normally" sounds like for this
-  // particular user.
+  // useLivePhonation reads this to know what "speaking normally"
+  // sounds like in pitch for this particular user.
   baselineHz: number | null
+  // Mean dB of voiced frames captured during the latest window. The
+  // loudness classifier uses this (instead of an assumed offset) so
+  // the band thresholds align with the user's actual speaking volume.
+  baselineDb: number | null
   // How many voiced frames went into the current baseline. Useful in
   // logs if we end up with a noisy estimate.
   sampleCount: number
@@ -29,16 +32,18 @@ interface UseVoiceBaselineResult {
 }
 
 
-// Captures the user's typical fundamental frequency while they speak
-// at a normal level during the voice-baseline calibration step. The
-// step in CalibrationScreen already prompts the user to "speak in your
+// Captures the user's typical pitch AND volume while they speak at a
+// normal level during the voice-baseline calibration step. The step
+// in CalibrationScreen already prompts the user to "speak in your
 // usual voice"; this hook just listens to the shared monitor frames
 // while that prompt is on screen.
 //
 // Implementation notes:
-// - We only count voiced frames (hz != null and hz > 0). Silence
-//   frames during the prompt are ignored so a user that pauses mid
-//   sentence does not bias the baseline downwards.
+// - We only sample voiced frames (hz != null and hz > 0). Silence
+//   frames during the prompt are ignored so a pause mid-sentence does
+//   not bias the baselines downwards.
+// - Both averages use the same denominator (voiced sample count) so
+//   the Hz and dB estimates always describe the same audio.
 // - Reset happens both on capturing rising edge (new session) and via
 //   the explicit reset() callback (full orchestrator reset). Falling
 //   edge freezes the result so the live detector can read it for the
@@ -47,19 +52,23 @@ export function useVoiceBaseline({
   frames,
   capturing,
 }: UseVoiceBaselineOptions): UseVoiceBaselineResult {
-  const sumRef = useRef(0)
+  const sumHzRef = useRef(0)
+  const sumDbRef = useRef(0)
   const countRef = useRef(0)
   const lastIndexRef = useRef(0)
   const wasCapturingRef = useRef(false)
 
   const [baselineHz, setBaselineHz] = useState<number | null>(null)
+  const [baselineDb, setBaselineDb] = useState<number | null>(null)
   const [sampleCount, setSampleCount] = useState(0)
 
   const reset = useCallback(() => {
-    sumRef.current = 0
+    sumHzRef.current = 0
+    sumDbRef.current = 0
     countRef.current = 0
     lastIndexRef.current = 0
     setBaselineHz(null)
+    setBaselineDb(null)
     setSampleCount(0)
   }, [])
 
@@ -67,10 +76,12 @@ export function useVoiceBaseline({
     if (capturing && !wasCapturingRef.current) {
       // Rising edge: brand new baseline window. Forget any previous
       // numbers so a retry of the session starts fresh.
-      sumRef.current = 0
+      sumHzRef.current = 0
+      sumDbRef.current = 0
       countRef.current = 0
       lastIndexRef.current = frames.length
       setBaselineHz(null)
+      setBaselineDb(null)
       setSampleCount(0)
     }
     wasCapturingRef.current = capturing
@@ -82,19 +93,21 @@ export function useVoiceBaseline({
       lastIndexRef.current = 0
     }
     for (let i = lastIndexRef.current; i < frames.length; i++) {
-      const hz = frames[i].hz
-      if (hz !== null && hz > 0) {
-        sumRef.current += hz
+      const frame = frames[i]
+      if (frame.hz !== null && frame.hz > 0) {
+        sumHzRef.current += frame.hz
+        sumDbRef.current += frame.db
         countRef.current += 1
       }
     }
     lastIndexRef.current = frames.length
 
     if (countRef.current > 0) {
-      setBaselineHz(sumRef.current / countRef.current)
+      setBaselineHz(sumHzRef.current / countRef.current)
+      setBaselineDb(sumDbRef.current / countRef.current)
       setSampleCount(countRef.current)
     }
   }, [frames, capturing])
 
-  return { baselineHz, sampleCount, reset }
+  return { baselineHz, baselineDb, sampleCount, reset }
 }
