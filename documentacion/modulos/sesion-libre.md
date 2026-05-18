@@ -204,18 +204,37 @@ y un solo prompt compuesto (muletillas) o calculos en cliente sobre la senal de 
 
 ### Auto-stops disponibles
 
-Cuatro categorias de corten en vivo, todas optativas segun los modulos tildados:
+Cuatro categorias de corten en vivo, todas optativas segun los modulos tildados.
+Las dos de senal de audio tienen sub-razon que diferencia el copy mostrado al
+usuario en el overlay y en la pantalla de feedback:
 
 - `muletillas`: AssemblyAI emite un strike y el hook dispara `triggerStop('auto_stop_strikes')`
   al primero.
 - `emotion`: el clasificador local detecta una emocion sostenida (3 s) y dispara
   `triggerStop('auto_stop_emotion')`.
-- `loudness`: 3 s continuos en banda `clipping` disparan `triggerStop('auto_stop_loudness')`.
-- `phonation`: 5 saltos bruscos de pitch (`>50 Hz`) en una ventana de 10 s disparan
-  `triggerStop('auto_stop_phonation')`.
+- `loudness` (`auto_stop_loudness`): el detector cuenta el tiempo continuo
+  fuera de la banda `optimal`. A los **2 s sostenidos en `too-high` o `clipping`**
+  dispara el corten. Sub-razones:
+  - `clipping`: el usuario satura el microfono (db por encima del clip
+    threshold del preset). Copy: "saturaste el microfono".
+  - `too_high`: el usuario habla demasiado alto pero sin saturar el ADC.
+    Copy: "hablaste demasiado alto".
+  La banda `too-low` no dispara corten (sin clipping y silencio van por
+  conteo al composed-eval).
+- `phonation` (`auto_stop_phonation`): dos detectores en paralelo:
+  - `high_pitch`: la frecuencia fundamental sobrepasa `baselineHz * 1.4`
+    de forma continua por **2 s**. El baseline es el promedio de Hz que
+    el usuario produjo durante el step `voice_baseline` de la calibracion
+    (3 s hablando "normal"). Copy: "tu voz se mantuvo aguda".
+  - `breaks`: 5 saltos > 50 Hz dentro de una ventana de 10 s. Copy:
+    "saltos de frecuencia repetidos".
+  Cuando ambos se gatillan al mismo tiempo, el reporte va con la sub-razon
+  del detector que tripeo primero (en la practica `high_pitch` se nota
+  antes que el contador de saltos).
 
-Los cuatro alimentan la fase `stopped_transition` con su categoria, y luego
-`stopped_feedback` con la mezcla de tabs correspondientes.
+Los cuatro alimentan la fase `stopped_transition` con su categoria + sub-razon
+opcional, y luego `stopped_feedback` con la mezcla de tabs correspondientes y
+el headline especifico segun la causa.
 
 ### Selector de preset de volumen
 
@@ -232,6 +251,21 @@ Tanto fonacion como volumen consumen frames de un mismo `AudioWorkletNode`
 microfono dos veces y mantiene la latencia baja en iOS Safari, donde
 `getUserMedia` paga su coste solo una vez. Los hooks `useLivePhonation` y `useLiveLoudness`
 escuchan ese stream y mantienen sus propios contadores y resumenes.
+
+### Baseline de Hz para fonacion
+
+El hook `useVoiceBaseline` corre durante el step `voice_baseline` de la
+calibracion (3 s) acumulando los Hz de cada frame voiced y al cerrar el
+step expone el promedio como `baselineHz`. Ese valor se pasa a
+`useLivePhonation` como referencia personal del usuario para el detector
+`high_pitch`. La ventana de baseline se activa cuando loudness *o*
+fonacion estan tildados; antes solo se prendia con loudness, lo cual
+dejaba a fonacion sin baseline si el usuario habilitaba solo ese modulo.
+
+Si por alguna razon el baseline no se pudo capturar (frames silenciosos,
+microfono recien abierto) el detector de `high_pitch` queda desactivado
+y solo el de `breaks` puede disparar el corten — degradado pero
+funcional.
 
 ### El score agregado lo da `finalize`
 
