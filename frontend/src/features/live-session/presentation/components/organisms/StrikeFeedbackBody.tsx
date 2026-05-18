@@ -179,6 +179,9 @@ function pickReasonHeadline(
       if (loudnessReason === 'too_high') {
         return 'Detuvimos la sesión porque hablaste demasiado alto'
       }
+      if (loudnessReason === 'too_low') {
+        return 'Detuvimos la sesión porque hablaste demasiado bajo'
+      }
       return 'Detuvimos la sesión por volumen fuera del rango óptimo'
     case 'auto_stop_phonation':
       if (phonationReason === 'high_pitch') {

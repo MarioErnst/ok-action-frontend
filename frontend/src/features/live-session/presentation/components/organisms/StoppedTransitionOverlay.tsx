@@ -82,6 +82,9 @@ function pickDetailCopy(
     if (loudnessReason === 'too_high') {
       return 'Tu volumen se mantuvo demasiado alto por varios segundos.'
     }
+    if (loudnessReason === 'too_low') {
+      return 'Hablaste demasiado bajo: tu volumen se mantuvo apenas por encima del ruido.'
+    }
     return 'Tu volumen se salió del rango óptimo por demasiado tiempo.'
   }
   if (category === 'phonation') {
