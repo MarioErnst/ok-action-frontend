@@ -875,6 +875,17 @@ export function useLiveSession(): UseLiveSessionResult {
     window.clearInterval(micNoiseInterval)
     setCalibrationProgress(micNoiseProgressCeiling)
 
+    // Diagnostic: report when the noise-floor calibration actually
+    // closed and what the voice monitor is reporting at that moment.
+    // Useful to confirm the mic_noise wait was effective and to spot
+    // edge cases where the worklet is not producing frames yet.
+    console.info('[live-session] mic_noise step closed', {
+      noiseFloor: voiceNoiseFloor,
+      monitorNoiseFloor: voiceMonitor.noiseFloor,
+      monitorIsCalibrating: voiceMonitor.isCalibrating,
+      monitorFramesCount: voiceMonitor.frames.length,
+    })
+
     // Second sub-step: run the voice-baseline window whenever loudness
     // OR phonation are on. Loudness uses it for the UX framing of the
     // band thresholds; phonation captures the user's typical Hz so the
@@ -884,14 +895,35 @@ export function useLiveSession(): UseLiveSessionResult {
     if (loudnessEnabled || phonationEnabled) {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
+      console.info('[live-session] voice_baseline step started', {
+        durationMs: VOICE_BASELINE_MS,
+        monitorFramesCount: voiceMonitor.frames.length,
+        monitorIsCalibrating: voiceMonitor.isCalibrating,
+      })
       // Drive the second half of the progress bar from a fresh timer so
       // the user sees the bar actually advance while they speak. Without
-      // this the bar stays at 0.5 the whole window.
+      // this the bar stays at 0.5 the whole window. We piggy-back the
+      // same interval to emit a diagnostic snapshot every 500 ms so we
+      // can see in the console whether the voice monitor is actually
+      // producing voiced frames during this window.
       const voiceBaselineStartedAt = performance.now()
+      let lastDiagnosticAt = voiceBaselineStartedAt
       const voiceBaselineInterval = window.setInterval(() => {
-        const elapsed = performance.now() - voiceBaselineStartedAt
+        const now = performance.now()
+        const elapsed = now - voiceBaselineStartedAt
         const progress = Math.min(1, elapsed / VOICE_BASELINE_MS)
         setCalibrationProgress(0.5 + progress * 0.5)
+        if (now - lastDiagnosticAt >= 500) {
+          lastDiagnosticAt = now
+          console.info('[live-session] voice_baseline tick', {
+            elapsedMs: Math.round(elapsed),
+            samples: voiceBaseline.sampleCount,
+            currentHz:
+              voiceMonitor.hz !== null ? Math.round(voiceMonitor.hz) : null,
+            currentDb: Math.round(voiceMonitor.db * 10) / 10,
+            monitorFramesCount: voiceMonitor.frames.length,
+          })
+        }
       }, 50)
       await new Promise((resolve) => setTimeout(resolve, VOICE_BASELINE_MS))
       window.clearInterval(voiceBaselineInterval)
