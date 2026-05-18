@@ -171,17 +171,27 @@ export function useLiveLoudness({
     const scoredFrames =
       counts.optimal + counts['too-low'] + counts['too-high'] + counts.clipping
     if (scoredFrames === 0) {
+      // No usable frames in the session — skipping the payload is
+      // better than sending zeros/NaN that the backend would either
+      // reject or persist as misleading metrics.
       return null
     }
     const round = (value: number) => Math.round((value / scoredFrames) * 100)
+    const peak =
+      peakDbRef.current === -Infinity || Number.isNaN(peakDbRef.current)
+        ? 0
+        : Math.round(peakDbRef.current * 10) / 10
+    const noiseFloorOut = Number.isFinite(noiseFloor)
+      ? Math.round(noiseFloor * 10) / 10
+      : null
     return {
       preset_id: config.presetId,
       optimal_pct: round(counts.optimal),
       low_pct: round(counts['too-low']),
       high_pct: round(counts['too-high']),
       clipping_pct: round(counts.clipping),
-      peak_db: peakDbRef.current === -Infinity ? 0 : Math.round(peakDbRef.current * 10) / 10,
-      noise_floor_db: Math.round(noiseFloor * 10) / 10,
+      peak_db: peak,
+      noise_floor_db: noiseFloorOut,
     }
   }, [config, noiseFloor])
 

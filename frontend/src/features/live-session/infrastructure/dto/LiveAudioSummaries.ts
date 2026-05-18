@@ -33,6 +33,9 @@ export interface LoudnessSummaryDto {
   // analytics; the entity uses Decimal but JSON has no decimal type.
   peak_db: number
   // Ambient floor measured during the pre-session calibration step.
-  // Optional because legacy clients did not produce it.
-  noise_floor_db?: number
+  // Optional because legacy clients did not produce it; nullable when
+  // the live tracker observed only invalid (NaN/Infinity) noise floor
+  // values during the session — we still want to send the rest of the
+  // metrics, the backend column is also nullable.
+  noise_floor_db?: number | null
 }

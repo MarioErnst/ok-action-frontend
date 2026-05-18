@@ -90,7 +90,7 @@ export interface LoudnessSection {
   high_pct: number
   clipping_pct: number
   peak_db: number
-  noise_floor_db?: number
+  noise_floor_db?: number | null
 }
 
 // Facial expression section is computed in the browser from the emotion

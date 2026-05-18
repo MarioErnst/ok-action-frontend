@@ -192,6 +192,13 @@ export function useLivePhonation({
     const hzs = hzHistoryRef.current
     if (hzs.length === 0) return null
     const avg = hzs.reduce((sum, value) => sum + value, 0) / hzs.length
+    if (!Number.isFinite(avg) || avg <= 0) {
+      // Defensive: a zero/NaN average means the AudioWorklet never
+      // produced voiced frames despite the buffer growing. Skipping
+      // the payload is safer than sending invalid numbers that the
+      // backend would reject.
+      return null
+    }
     const variance =
       hzs.reduce((sum, value) => sum + (value - avg) ** 2, 0) / hzs.length
     const stddev = Math.sqrt(variance)
