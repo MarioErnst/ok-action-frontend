@@ -11,6 +11,7 @@ import { useLiveAutoStops } from './useLiveAutoStops'
 import { useLiveLoudness } from './useLiveLoudness'
 import { useLivePhonation } from './useLivePhonation'
 import { useLoudnessPresets } from './useLoudnessPresets'
+import { useVoiceBaseline } from './useVoiceBaseline'
 import type {
   ComposedEvaluation,
   FacialEmotionName,
@@ -260,9 +261,19 @@ export function useLiveSession(): UseLiveSessionResult {
     }
   }, [loudnessEnabled, voiceNoiseFloor, loudnessPresets, selectedLoudnessPresetId])
 
+  // The voice-baseline step is the only window where we sample the
+  // user's typical Hz. After it closes the captured value stays frozen
+  // for the rest of the session so useLivePhonation can compare every
+  // live frame against the same reference.
+  const voiceBaseline = useVoiceBaseline({
+    frames: voiceMonitor.frames,
+    capturing: calibrationStep === 'voice_baseline',
+  })
+
   const livePhonation = useLivePhonation({
     frames: voiceMonitor.frames,
     enabled: phonationEnabled,
+    baselineHz: voiceBaseline.baselineHz,
   })
   const liveLoudness = useLiveLoudness({
     frames: voiceMonitor.frames,
@@ -377,6 +388,7 @@ export function useLiveSession(): UseLiveSessionResult {
     isStoppingRef.current = false
     stopReasonRef.current = null
     facialBaseline.reset()
+    voiceBaseline.reset()
 
     setSelectedModules([])
     setEvaluation(null)
@@ -399,6 +411,7 @@ export function useLiveSession(): UseLiveSessionResult {
   }, [
     elapsedTimer,
     facialBaseline,
+    voiceBaseline,
     releaseStreams,
     recordingAudioUrl,
     strikes,
@@ -738,12 +751,13 @@ export function useLiveSession(): UseLiveSessionResult {
       return
     }
 
-    // Second sub-step (only when loudness is on): give the user 3 extra
-    // seconds with the "habla normal" copy so the volume meter has a
-    // chance to settle on a representative band before the recording
-    // starts. The classifier already uses a fixed assumed voice
-    // baseline (noiseFloor + 25 dB) — this is mostly UX framing.
-    if (loudnessEnabled) {
+    // Second sub-step: run the voice-baseline window whenever loudness
+    // OR phonation are on. Loudness uses it for the UX framing of the
+    // band thresholds; phonation captures the user's typical Hz so the
+    // live high-pitch detector knows what "normal" sounds like for
+    // this user. Three seconds is enough to average a stable pitch
+    // without dragging the calibration UI.
+    if (loudnessEnabled || phonationEnabled) {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
       await new Promise((resolve) => setTimeout(resolve, 3_000))

@@ -7,15 +7,28 @@ import type { PhonationSummaryDto } from '../../infrastructure/dto/LiveAudioSumm
 // Live phonation tracker for the session-libre layout.
 //
 // Consumes a rolling buffer of voice-monitor frames (Hz + dB samples from
-// the AudioWorklet) and provides:
+// the AudioWorklet) and fires the `auto_stop_phonation` corten for two
+// independent reasons:
 //
+//   - High pitch sustained: the user has been speaking at a frequency
+//     above `baselineHz * HIGH_PITCH_FACTOR` for `HIGH_PITCH_THRESHOLD_MS`
+//     in a row. This catches "speaking in a strained / shouty voice"
+//     which the original break-based detector missed.
+//   - Pitch breaks: the user produced too many large frequency jumps in
+//     a short window. Useful for catching erratic delivery.
+//
+// `baselineHz` comes from useVoiceBaseline, which captured the user's
+// typical Hz during the voice-baseline step of calibration. When the
+// baseline is null (calibration without loudness/no voice frames) the
+// high-pitch detector stays disabled and we fall back to break-only.
+//
+// Exposes:
 //   - `currentHz`: latest detected fundamental frequency or null on silence.
-//   - `breaksInWindow`: number of pitch jumps inside the last 10 s window;
-//     used by the orchestrator both to render a UI gauge and to fire the
-//     `auto_stop_phonation` corten when it crosses the threshold.
-//   - `shouldStop`: derived from `breaksInWindow >= BREAK_THRESHOLD`.
-//   - `summary()`: aggregates avg_hz / stability_score / breaks_count for
-//     the composed-eval payload sent at the end of the session.
+//   - `breaksInWindow`: count of pitch jumps inside the rolling window.
+//   - `highPitchStreakMs`: ms continuously above the high-pitch threshold.
+//   - `shouldStop`: true when either reason has tripped.
+//   - `stopReason`: which detector tripped ('high_pitch' | 'breaks' | null).
+//   - `summary()`: aggregates avg_hz / stability_score / breaks_count.
 //
 // Breaks are detected as a delta larger than `BREAK_HZ_DELTA` between two
 // consecutive voiced frames (both hz != null). Silences and transitions to
@@ -26,6 +39,16 @@ const BREAK_HZ_DELTA = 50
 const BREAK_WINDOW_MS = 10_000
 const BREAK_THRESHOLD = 5
 const STABILITY_STDDEV_CAP_HZ = 80
+// Multiplier over the calibrated baseline above which we consider the
+// user is straining the voice. 1.4 means roughly +40% — clear shift
+// while still wide enough to allow for natural expression range.
+const HIGH_PITCH_FACTOR = 1.4
+// Continuous time the user must stay above the threshold before the
+// corten fires.
+const HIGH_PITCH_THRESHOLD_MS = 2_000
+
+
+export type PhonationStopReason = 'high_pitch' | 'breaks'
 
 
 interface UseLivePhonationOptions {
@@ -35,13 +58,21 @@ interface UseLivePhonationOptions {
   // When false the hook does nothing (used when the phonation module
   // was not selected — avoids running the math).
   enabled: boolean
+  // User's typical Hz captured during calibration. Null when no
+  // baseline was captured: the high-pitch detector stays off and we
+  // fall back to break-only behavior.
+  baselineHz: number | null
 }
 
 
 interface UseLivePhonationResult {
   currentHz: number | null
   breaksInWindow: number
+  highPitchStreakMs: number
   shouldStop: boolean
+  // Which detector tripped. Null while neither has tripped; the
+  // orchestrator reads it to pick the matching corten copy.
+  stopReason: PhonationStopReason | null
   // Closure that computes the summary on demand at session end.
   // Returns null if the user never produced voiced audio so the
   // orchestrator can skip sending an empty payload.
@@ -53,6 +84,7 @@ interface UseLivePhonationResult {
 export function useLivePhonation({
   frames,
   enabled,
+  baselineHz,
 }: UseLivePhonationOptions): UseLivePhonationResult {
   // Every voiced Hz value we have seen. Cumulative; used by summary().
   const hzHistoryRef = useRef<number[]>([])
@@ -65,17 +97,25 @@ export function useLivePhonation({
   // process only new frames on each render instead of re-walking the
   // whole rolling buffer.
   const lastIndexRef = useRef(0)
+  // Timestamp of the first frame in the active "high-pitch" streak,
+  // or null when the user is below the high-pitch threshold.
+  const highPitchStartRef = useRef<number | null>(null)
 
   const [currentHz, setCurrentHz] = useState<number | null>(null)
   const [breaksInWindow, setBreaksInWindow] = useState(0)
+  const [highPitchStreakMs, setHighPitchStreakMs] = useState(0)
+  const [stopReason, setStopReason] = useState<PhonationStopReason | null>(null)
 
   const reset = useCallback(() => {
     hzHistoryRef.current = []
     breakTimestampsRef.current = []
     lastVoicedHzRef.current = null
     lastIndexRef.current = 0
+    highPitchStartRef.current = null
     setCurrentHz(null)
     setBreaksInWindow(0)
+    setHighPitchStreakMs(0)
+    setStopReason(null)
   }, [])
 
   useEffect(() => {
@@ -87,6 +127,8 @@ export function useLivePhonation({
     if (frames.length < lastIndexRef.current) {
       lastIndexRef.current = 0
     }
+    const highPitchCeiling =
+      baselineHz !== null ? baselineHz * HIGH_PITCH_FACTOR : null
     for (let i = lastIndexRef.current; i < frames.length; i++) {
       const frame = frames[i]
       const hz = frame.hz
@@ -97,10 +139,20 @@ export function useLivePhonation({
           breakTimestampsRef.current.push(frame.timestamp)
         }
         lastVoicedHzRef.current = hz
+        if (highPitchCeiling !== null) {
+          if (hz >= highPitchCeiling) {
+            if (highPitchStartRef.current === null) {
+              highPitchStartRef.current = frame.timestamp
+            }
+          } else {
+            highPitchStartRef.current = null
+          }
+        }
       } else {
-        // Silence resets the "previous voiced" tracker so the transition
-        // out of silence does not falsely count as a break.
+        // Silence resets both trackers so a natural pause does not
+        // count against the user.
         lastVoicedHzRef.current = null
+        highPitchStartRef.current = null
       }
     }
     lastIndexRef.current = frames.length
@@ -114,7 +166,22 @@ export function useLivePhonation({
     const latestVoiced = hzHistoryRef.current[hzHistoryRef.current.length - 1] ?? null
     setCurrentHz(latestVoiced)
     setBreaksInWindow(breakTimestampsRef.current.length)
-  }, [frames, enabled])
+
+    let highPitchMs = 0
+    if (highPitchStartRef.current !== null) {
+      const lastTimestamp = frames[frames.length - 1]?.timestamp ?? Date.now()
+      highPitchMs = Math.max(0, lastTimestamp - highPitchStartRef.current)
+    }
+    setHighPitchStreakMs(highPitchMs)
+
+    // Compute trip state inline so the orchestrator can read the
+    // reason atomically with shouldStop.
+    if (highPitchMs >= HIGH_PITCH_THRESHOLD_MS) {
+      setStopReason('high_pitch')
+    } else if (breakTimestampsRef.current.length >= BREAK_THRESHOLD) {
+      setStopReason('breaks')
+    }
+  }, [frames, enabled, baselineHz])
 
   const summary = useCallback((): PhonationSummaryDto | null => {
     const hzs = hzHistoryRef.current
@@ -140,14 +207,19 @@ export function useLivePhonation({
   }, [])
 
   const shouldStop = useMemo(
-    () => enabled && breaksInWindow >= BREAK_THRESHOLD,
-    [enabled, breaksInWindow],
+    () =>
+      enabled &&
+      (highPitchStreakMs >= HIGH_PITCH_THRESHOLD_MS ||
+        breaksInWindow >= BREAK_THRESHOLD),
+    [enabled, breaksInWindow, highPitchStreakMs],
   )
 
   return {
     currentHz,
     breaksInWindow,
+    highPitchStreakMs,
     shouldStop,
+    stopReason,
     summary,
     reset,
   }
