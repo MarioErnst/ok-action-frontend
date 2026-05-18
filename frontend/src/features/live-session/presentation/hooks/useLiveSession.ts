@@ -680,7 +680,10 @@ export function useLiveSession(): UseLiveSessionResult {
       // to read its 3 s of silence before we transition to recording.
       if (voiceMeterEnabled) {
         voiceStreamRef.current = audioStream
-        await voiceMonitor.start()
+        // Pass the stream explicitly: reading it from the externalStream
+        // prop would race because the assignment above is imperative and
+        // does not re-render the hook before start() reads its ref.
+        await voiceMonitor.start(audioStream)
       }
     }
 

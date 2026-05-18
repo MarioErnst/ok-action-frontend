@@ -53,6 +53,10 @@ export default function useVoiceMonitor(options: UseVoiceMonitorOptions = {}) {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Whether the current run opened its own mic stream (vs. reusing a
+  // caller-owned one). stop() reads this to decide whether to stop the
+  // tracks; if the caller injected the stream they own its lifecycle.
+  const ownsStreamRef = useRef(false);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
@@ -105,9 +109,10 @@ export default function useVoiceMonitor(options: UseVoiceMonitorOptions = {}) {
     // caller injected one (live session) the orchestrator handles its
     // own teardown; stopping the tracks here would also kill the
     // AssemblyAI streamer that shares the same mic.
-    if (streamRef.current && externalStreamRef.current === null) {
+    if (streamRef.current && ownsStreamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
+    ownsStreamRef.current = false;
 
     if (analyserNodeRef.current) {
       try {
@@ -129,22 +134,29 @@ export default function useVoiceMonitor(options: UseVoiceMonitorOptions = {}) {
     setIsCalibrating(false);
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (stream?: MediaStream) => {
     if (isListeningRef.current) return;
 
     try {
-      // Prefer the caller-provided stream over a new getUserMedia
-      // request so we never prompt the user twice for the mic.
-      const externalStream = externalStreamRef.current;
-      const stream =
+      // Argument > ref > getUserMedia. Callers that already own a mic
+      // stream pass it directly to avoid the race where the prop ref
+      // is still stale at the moment start() reads it (e.g. the live
+      // orchestrator assigns voiceStreamRef.current imperatively and
+      // never re-renders before calling start()). Standalone modules
+      // that omit the argument fall back to the old behavior.
+      const externalStream = stream ?? externalStreamRef.current;
+      const micStream =
         externalStream ??
         (await navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
-      streamRef.current = stream;
+      streamRef.current = micStream;
+      // Track whether this start() opened its own stream so stop()
+      // knows whether to release the mic.
+      ownsStreamRef.current = externalStream === null;
 
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
 
-      const source = audioContext.createMediaStreamSource(stream);
+      const source = audioContext.createMediaStreamSource(micStream);
       sourceRef.current = source;
 
       await audioContext.audioWorklet.addModule('/worklets/phonation.worklet.js');
