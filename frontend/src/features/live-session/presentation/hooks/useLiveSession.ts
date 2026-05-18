@@ -1167,6 +1167,49 @@ export function useLiveSession(): UseLiveSessionResult {
     onLoudnessStop,
   })
 
+  // Diagnostic ticker for the recording phase. Logs the live detector
+  // state every second while phonation or loudness are active so we
+  // can see exactly what the hooks are seeing — current hz/db, the
+  // streak counters and the shouldStop flag. The interval mounts only
+  // during recording and is read through refs so we never see stale
+  // closure values.
+  useEffect(() => {
+    if (phase !== 'recording') return
+    if (!phonationEnabled && !loudnessEnabled) return
+    const interval = window.setInterval(() => {
+      const monitor = voiceMonitorRef.current
+      const baseline = voiceBaselineRef.current
+      const phon = livePhonationRef.current
+      const loud = liveLoudnessRef.current
+      const highPitchCeiling =
+        baseline.baselineHz !== null
+          ? Math.round(baseline.baselineHz * 1.25)
+          : null
+      console.info('[live-session] recording tick', {
+        currentHz: monitor.hz !== null ? Math.round(monitor.hz) : null,
+        currentDb: Math.round(monitor.db * 10) / 10,
+        baselineHz:
+          baseline.baselineHz !== null
+            ? Math.round(baseline.baselineHz)
+            : null,
+        highPitchCeiling,
+        phonation: {
+          highPitchStreakMs: phon.highPitchStreakMs,
+          breaksInWindow: phon.breaksInWindow,
+          shouldStop: phon.shouldStop,
+          stopReason: phon.stopReason,
+        },
+        loudness: {
+          currentBand: loud.currentBand,
+          outOfRangeStreakMs: loud.outOfRangeStreakMs,
+          shouldStop: loud.shouldStop,
+          stopReason: loud.stopReason,
+        },
+      })
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [phase, phonationEnabled, loudnessEnabled])
+
   // Tear-down on unmount: stop loops, release resources, and best-
   // effort abandon any still-open session so we do not leak active
   // rows in BD. The elapsed timer cleans itself up via its own
