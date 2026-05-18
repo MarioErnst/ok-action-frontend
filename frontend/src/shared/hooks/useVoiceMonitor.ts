@@ -1,5 +1,11 @@
+// Shared mic-capture hook used by phonation, loudness, pauses and the
+// live-session orchestrator. Returns the calibrated noise floor, the
+// live Hz / dB values and a rolling buffer of recent frames. Sits in
+// shared/ because more than one feature consumes it; previously lived
+// inside the phonation feature.
+
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PhonationFrame } from '../../domain/PhonationSession';
+import type { AudioFrame } from '../types/audioTypes';
 
 const DEFAULT_DB = -100;
 const MAX_FRAMES = 100;
@@ -11,13 +17,35 @@ interface WorkletMessage {
   db: number;
 }
 
-export default function useVoiceMonitor() {
+interface UseVoiceMonitorOptions {
+  // Optional MediaStream provided by the caller. When passed the hook
+  // reuses it (no second getUserMedia prompt) and does not stop its
+  // tracks on cleanup — the caller owns the lifecycle. Used by the
+  // live-session orchestrator, which already opens one mic stream and
+  // pipes it to both the AssemblyAI streamer and the voice monitor.
+  // Standalone modules omit this option and the hook keeps its
+  // original behavior of opening / closing its own stream.
+  externalStream?: MediaStream | null
+  // Optional callback fired right after the noise-floor calibration
+  // window closes. Live needs this to know when to advance to the
+  // next calibration step; standalone modules can ignore it because
+  // they show their own calibration UI inline.
+  onNoiseFloorReady?: (noiseFloor: number) => void
+}
+
+export default function useVoiceMonitor(options: UseVoiceMonitorOptions = {}) {
+  const { externalStream, onNoiseFloorReady } = options
+  // The caller-provided stream is read through a ref so a change after
+  // start() does not retrigger the effect; lifecycle is driven by
+  // explicit start/stop calls, same as the legacy hook.
+  const externalStreamRef = useRef<MediaStream | null>(externalStream ?? null)
+  externalStreamRef.current = externalStream ?? null
   const [hz, setHz] = useState<number | null>(null);
   const [db, setDb] = useState(DEFAULT_DB);
   const [isListening, setIsListening] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [noiseFloor, setNoiseFloor] = useState(DEFAULT_DB);
-  const [frames, setFrames] = useState<PhonationFrame[]>([]);
+  const [frames, setFrames] = useState<AudioFrame[]>([]);
   // Exposed so visualisation components (RecordingWaveform) can read frame
   // data from the same AudioContext used by the worklet; reusing the source
   // avoids spinning up a second AudioContext for the same microphone.
@@ -25,6 +53,10 @@ export default function useVoiceMonitor() {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  // Whether the current run opened its own mic stream (vs. reusing a
+  // caller-owned one). stop() reads this to decide whether to stop the
+  // tracks; if the caller injected the stream they own its lifecycle.
+  const ownsStreamRef = useRef(false);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
@@ -34,7 +66,7 @@ export default function useVoiceMonitor() {
   const isListeningRef = useRef(false);
   const pendingHzRef = useRef<number | null>(null);
   const pendingDbRef = useRef(DEFAULT_DB);
-  const pendingFramesRef = useRef<PhonationFrame[]>([]);
+  const pendingFramesRef = useRef<AudioFrame[]>([]);
   const uiTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stop = useCallback(async () => {
@@ -73,9 +105,14 @@ export default function useVoiceMonitor() {
       }
     }
 
-    if (streamRef.current) {
+    // Only stop the stream tracks when we own the stream. When the
+    // caller injected one (live session) the orchestrator handles its
+    // own teardown; stopping the tracks here would also kill the
+    // AssemblyAI streamer that shares the same mic.
+    if (streamRef.current && ownsStreamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
     }
+    ownsStreamRef.current = false;
 
     if (analyserNodeRef.current) {
       try {
@@ -97,17 +134,29 @@ export default function useVoiceMonitor() {
     setIsCalibrating(false);
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (stream?: MediaStream) => {
     if (isListeningRef.current) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      streamRef.current = stream;
+      // Argument > ref > getUserMedia. Callers that already own a mic
+      // stream pass it directly to avoid the race where the prop ref
+      // is still stale at the moment start() reads it (e.g. the live
+      // orchestrator assigns voiceStreamRef.current imperatively and
+      // never re-renders before calling start()). Standalone modules
+      // that omit the argument fall back to the old behavior.
+      const externalStream = stream ?? externalStreamRef.current;
+      const micStream =
+        externalStream ??
+        (await navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
+      streamRef.current = micStream;
+      // Track whether this start() opened its own stream so stop()
+      // knows whether to release the mic.
+      ownsStreamRef.current = externalStream === null;
 
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
 
-      const source = audioContext.createMediaStreamSource(stream);
+      const source = audioContext.createMediaStreamSource(micStream);
       sourceRef.current = source;
 
       await audioContext.audioWorklet.addModule('/worklets/phonation.worklet.js');
@@ -174,6 +223,7 @@ export default function useVoiceMonitor() {
         setIsCalibrating(false);
         calibrationSamplesRef.current = [];
         calibrationTimeoutRef.current = null;
+        onNoiseFloorReady?.(averageDb);
       }, CALIBRATION_DURATION_MS);
 
       isListeningRef.current = true;
@@ -182,7 +232,7 @@ export default function useVoiceMonitor() {
       console.error('useVoiceMonitor.start failed:', error);
       await stop();
     }
-  }, [stop]);
+  }, [stop, onNoiseFloorReady]);
 
   useEffect(() => {
     return () => {

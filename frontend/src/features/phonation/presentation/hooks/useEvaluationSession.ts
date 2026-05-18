@@ -5,7 +5,7 @@ import { HttpPhonationRepository } from '../../infrastructure/repositories/HttpP
 import { VOICE_EXERCISES } from '../../services/exercises';
 import type { PhonationFrame, VoiceExercise } from '../../domain/PhonationSession';
 import useDiagnosis from './useDiagnosis';
-import useVoiceMonitor from './useVoiceMonitor';
+import useVoiceMonitor from '../../../../shared/hooks/useVoiceMonitor';
 import { useFrameAccumulator } from './useFrameAccumulator';
 import { useSessionCountdown } from './useSessionCountdown';
 import { useSessionTimer } from './useSessionTimer';

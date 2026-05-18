@@ -32,6 +32,9 @@ export default function LiveSessionPage() {
             }}
             isStartDisabled={live.selectedModules.length === 0}
             isStarting={live.isStarting}
+            loudnessPresets={live.loudnessPresets}
+            selectedLoudnessPresetId={live.selectedLoudnessPresetId}
+            onSelectLoudnessPreset={live.selectLoudnessPreset}
           />
         </div>
         {live.error && <ErrorBanner message={live.error} />}
@@ -46,6 +49,7 @@ export default function LiveSessionPage() {
           progress={live.calibrationProgress}
           audioEnabled={live.audioEnabled}
           facialEnabled={live.facialEnabled}
+          step={live.calibrationStep}
         />
       </main>
     )
@@ -63,6 +67,12 @@ export default function LiveSessionPage() {
           isRecording={live.isRecording}
           audioEnabled={live.audioEnabled}
           facialEnabled={live.facialEnabled}
+          phonationEnabled={live.phonationEnabled}
+          loudnessEnabled={live.loudnessEnabled}
+          phonationCurrentHz={live.phonationCurrentHz}
+          phonationBreaksInWindow={live.phonationBreaksInWindow}
+          loudnessCurrentBand={live.loudnessCurrentBand}
+          loudnessHighStreakMs={live.loudnessHighStreakMs}
           onEnd={() => {
             void live.stop()
           }}
@@ -77,6 +87,8 @@ export default function LiveSessionPage() {
         <StoppedTransitionOverlay
           category={live.stopCategory}
           emotionLabel={live.emotionTriggerLabel ?? undefined}
+          loudnessReason={live.loudnessStopReason}
+          phonationReason={live.phonationStopReason}
         />
       </main>
     )
@@ -84,7 +96,10 @@ export default function LiveSessionPage() {
 
   if (
     live.phase === 'stopped_feedback' &&
-    (live.stopReason === 'auto_stop_strikes' || live.stopReason === 'auto_stop_emotion')
+    (live.stopReason === 'auto_stop_strikes' ||
+      live.stopReason === 'auto_stop_emotion' ||
+      live.stopReason === 'auto_stop_loudness' ||
+      live.stopReason === 'auto_stop_phonation')
   ) {
     return (
       <main className="min-h-[100dvh] w-full bg-bg flex flex-col items-center px-4 py-8 pb-safe">
@@ -101,6 +116,8 @@ export default function LiveSessionPage() {
             estimatedDurationMs={live.recordingDurationMs}
             stopReason={live.stopReason}
             emotionLabel={live.emotionTriggerLabel ?? undefined}
+            loudnessReason={live.loudnessStopReason}
+            phonationReason={live.phonationStopReason}
           />
           <div className="flex flex-col sm:flex-row gap-3 w-full">
             <button

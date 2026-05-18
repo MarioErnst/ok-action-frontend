@@ -1,5 +1,9 @@
 import type { ComposedEvaluation, LiveModule } from '../../domain/LiveSession'
 import type { FacialSummaryPayload } from '../../domain/FacialSummary'
+import type {
+  LoudnessSummaryDto,
+  PhonationSummaryDto,
+} from './LiveAudioSummaries'
 
 // DTOs for the uniform-schema live backend. Live is now an HTTP
 // composition lifecycle (start / finalize / abandon / list / get) over
@@ -16,8 +20,14 @@ export type StopReasonDto =
   | 'completed'
   | 'auto_stop_strikes'
   | 'auto_stop_emotion'
+  | 'auto_stop_loudness'
+  | 'auto_stop_phonation'
 
-export type AutoStopReasonDto = 'auto_stop_strikes' | 'auto_stop_emotion'
+export type AutoStopReasonDto =
+  | 'auto_stop_strikes'
+  | 'auto_stop_emotion'
+  | 'auto_stop_loudness'
+  | 'auto_stop_phonation'
 
 export interface AbandonRequestDto {
   stop_reason: 'user_stop' | 'time_limit' | 'error'
@@ -89,14 +99,15 @@ export interface ComposedAudioEvaluationResponseDto {
 }
 
 // Multipart payload for audio-evaluation. modules is sent as repeated
-// form fields (modules=muletillas&modules=facial_expression...) which
-// FastAPI parses as list[str] natively. When the modules list includes
-// facial_expression, the backend requires facialSummary to be present;
-// in any other case it can be omitted.
+// form fields (modules=muletillas&modules=phonation...) which FastAPI
+// parses as list[str] natively. Each *Summary field is required when
+// its corresponding module is selected and ignored otherwise.
 export interface ComposedAudioEvaluationRequestDto {
   audio: Blob
   modules: LiveModule[]
   startedAt: string
   promptText?: string
   facialSummary?: FacialSummaryPayload
+  phonationSummary?: PhonationSummaryDto
+  loudnessSummary?: LoudnessSummaryDto
 }

@@ -1,3 +1,4 @@
+import type { LoudnessPresetDto } from '../../../../loudness/infrastructure/dto/LoudnessDtos'
 import {
   LIVE_MODULE_DESCRIPTIONS,
   LIVE_MODULE_LABELS,
@@ -14,6 +15,15 @@ interface Props {
   // user does not retrigger the flow while permission prompts /
   // MediaPipe download are in progress.
   isStarting?: boolean
+  // Loudness presets fetched once on mount by the parent. Empty array
+  // means we are still loading or the user has none; in that case the
+  // dropdown shows a fallback hint when loudness is selected.
+  loudnessPresets: LoudnessPresetDto[]
+  // Currently chosen preset id when loudness is selected. Null when
+  // loudness is not selected or the user has not picked one yet (in
+  // which case we default to the first preset on start).
+  selectedLoudnessPresetId: string | null
+  onSelectLoudnessPreset: (presetId: string) => void
 }
 
 // Initial phase of the live session. The user picks a non-empty subset
@@ -26,6 +36,9 @@ export function DimensionSelector({
   onStart,
   isStartDisabled,
   isStarting = false,
+  loudnessPresets,
+  selectedLoudnessPresetId,
+  onSelectLoudnessPreset,
 }: Props) {
   return (
     <div className="flex flex-col items-center gap-8 p-6 w-full max-w-md mx-auto animate-fade-in">
@@ -93,6 +106,36 @@ export function DimensionSelector({
             </button>
           )
         })}
+
+        {selected.includes('loudness') && (
+          <div className="flex flex-col gap-2 rounded-2xl border border-border/40 bg-surface/40 p-4 ml-9">
+            <label
+              htmlFor="live-loudness-preset"
+              className="text-xs font-bold uppercase tracking-widest text-text-muted"
+            >
+              Preset de volumen
+            </label>
+            {loudnessPresets.length === 0 ? (
+              <p className="text-xs text-text-muted">
+                Cargando presets… si no aparecen, usaremos el preset global por defecto.
+              </p>
+            ) : (
+              <select
+                id="live-loudness-preset"
+                value={selectedLoudnessPresetId ?? loudnessPresets[0]?.id ?? ''}
+                onChange={(event) => onSelectLoudnessPreset(event.target.value)}
+                className="w-full rounded-xl border border-border/60 bg-surface px-3 py-2 text-sm text-text min-h-[44px]"
+              >
+                {loudnessPresets.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
+                    {preset.is_default ? ' (predeterminado)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
       </div>
 
       <button

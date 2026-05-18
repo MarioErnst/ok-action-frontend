@@ -1,20 +1,21 @@
 // Domain types for the HTTP composition live session.
 // The four modules below match exactly the backend's ComposableModule
 // literal: changing one without the other breaks the contract.
-// facial_expression replaced consistency: facial data does not come from
-// Gemini's audio evaluation; it is computed in the browser from the
-// emotion classifier stream and submitted alongside the audio as
-// facial_summary in the composed evaluation request.
+// phonation and loudness are client-side modules whose data is
+// computed in the browser via the AudioWorklet pitch/dB pipeline and
+// submitted as phonation_summary / loudness_summary alongside the
+// audio in the composed evaluation request. facial_expression follows
+// the same pattern with its own payload.
 export type LiveModule =
   | 'muletillas'
-  | 'accentuation'
-  | 'pronunciation'
+  | 'phonation'
+  | 'loudness'
   | 'facial_expression'
 
 export const LIVE_MODULES: readonly LiveModule[] = [
   'muletillas',
-  'accentuation',
-  'pronunciation',
+  'phonation',
+  'loudness',
   'facial_expression',
 ] as const
 
@@ -69,40 +70,27 @@ export interface MuletillasSection {
   feedback: string
 }
 
-// Prosodic error reported by Gemini in live, anchored to a word that must
-// appear in the root transcript. Ephemeral: not persisted in DB.
-export interface ProsodicError {
-  word: string
-  expected_stress: string
-  actual_issue: string
-  suggestion: string
+// Phonation summary computed in the browser from the AudioWorklet pitch
+// frames. Submitted alongside the audio as `phonation_summary`. Mirrors
+// the columns of phonation_metrics.
+export interface PhonationSection {
+  avg_hz: number
+  stability_score: number
+  breaks_count: number
 }
 
-export interface AccentuationSection {
-  pronunciation_score: number
-  rhythm_score: number
-  intonation_score: number
-  stress_score: number
-  prosodic_errors?: ProsodicError[]
-  feedback: string
-}
-
-// Phoneme error reported by Gemini in live, anchored to a word that must
-// appear in the root transcript. Ephemeral: not persisted in DB.
-export interface PhonemeError {
-  phoneme: string
-  word: string
-  actual_issue: string
-  suggestion: string
-}
-
-export interface PronunciationSection {
-  vowel_score: number
-  consonant_score: number
-  fluency_score: number
-  intelligibility_score: number
-  phoneme_errors?: PhonemeError[]
-  feedback: string
+// Loudness summary computed in the browser from the per-frame band
+// classifier. Submitted alongside the audio as `loudness_summary`.
+// preset_id identifies which preset's thresholds were used; mirrors
+// the columns of loudness_metrics.
+export interface LoudnessSection {
+  preset_id: string
+  optimal_pct: number
+  low_pct: number
+  high_pct: number
+  clipping_pct: number
+  peak_db: number
+  noise_floor_db?: number | null
 }
 
 // Facial expression section is computed in the browser from the emotion
@@ -144,7 +132,7 @@ export interface ComposedEvaluation {
   // parse cleanly.
   transcript?: string
   muletillas?: MuletillasSection
-  accentuation?: AccentuationSection
-  pronunciation?: PronunciationSection
+  phonation?: PhonationSection
+  loudness?: LoudnessSection
   facial_expression?: FacialExpressionSection
 }

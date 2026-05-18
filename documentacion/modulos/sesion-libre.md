@@ -1,26 +1,33 @@
 # Modulo de Sesion Libre — Frontend
 
-> El strike system corre sobre WebSocket directo a Gemini Live con function
-> tools (umbral 1 strike por categoría). El detalle del pipeline de streaming
-> vive en [`live-strike-system.md`](./live-strike-system.md). Este archivo
-> describe el modelo de pantalla y el flujo de alto nivel; los servicios de
-> audio streaming, WS y persistencia están documentados allí.
+> A partir de la branch `feature/live_phonation_loudness` (mayo 2026),
+> pronunciacion y acentuacion fueron retiradas de la sesion libre y en su
+> lugar entraron fonacion y volumen como modulos client-side. El strike
+> system en vivo lo dispara solo muletillas (via AssemblyAI streaming);
+> el detalle del pipeline de streaming vive en
+> [`live-strike-system.md`](./live-strike-system.md). Este archivo
+> describe el modelo de pantalla y el flujo de alto nivel.
 
 ## 1. Descripcion funcional
 
 La Sesion Libre permite al usuario hablar de forma espontanea durante hasta cinco minutos
 y obtener al final una evaluacion compuesta sobre el mismo audio. El usuario elige los
 modulos a evaluar antes de empezar; durante la grabacion la app evalua frames cortos para
-alimentar un sistema de strikes y, si la expresion facial esta activa, monitorea emociones
-sostenidas. Si completa la sesion sin disparar el corte automatico, al cierre el backend
-hace una unica llamada Gemini compuesta y la pantalla de resumen muestra el desglose por
-modulo y el puntaje agregado. Si se dispara el corte automatico, ve la pantalla de
-feedback rica con detalle por modulo, audio reproducible y marcadores en cada evento.
+alimentar un sistema de strikes y, si los modulos de senal (expresion facial, fonacion,
+volumen) estan activos, monitorea umbrales sostenidos. Si completa la sesion sin disparar
+el corte automatico, al cierre el backend hace una unica llamada Gemini compuesta sobre
+muletillas y la pantalla de resumen muestra el desglose por modulo y el puntaje agregado.
+Si se dispara el corte automatico, ve la pantalla de feedback rica con detalle por modulo,
+audio reproducible y marcadores en cada evento.
 
-Los cuatro modulos disponibles en Sesion Libre son: muletillas, acentuacion, pronunciacion
-y expresion facial. Los demas modulos del producto (fonacion, volumen, pausas, consistencia,
-precision, versatilidad linguistica, fluidez) siguen disponibles solo como modulos
-independientes en sus propias paginas.
+Los cuatro modulos disponibles en Sesion Libre son: **muletillas, fonacion, volumen
+(loudness) y expresion facial**. Los demas modulos del producto (pronunciacion,
+acentuacion, pausas, consistencia, precision, versatilidad linguistica, fluidez) siguen
+disponibles solo como modulos independientes en sus propias paginas. Muletillas se evalua
+con una llamada Gemini al cierre y dispara strikes en vivo via AssemblyAI; fonacion y
+volumen se computan client-side desde el `AudioWorklet` de pitch + dB y se envian como
+`phonation_summary` / `loudness_summary` junto al audio; expresion facial corre con su
+clasificador local de emociones.
 
 ## 2. Navegacion
 
@@ -31,50 +38,79 @@ nombre "Sesion Libre" con el icono de microfono (`live`).
 
 ```
 LiveSessionPage
-  ├── DimensionSelector       (fase 'selection')
-  ├── LiveRecordingScreen     (fases 'recording' y 'evaluating')
-  └── SessionSummaryScreen    (fase 'summary')
+  ├── DimensionSelector            (fase 'selection')
+  │     └── selector de preset de volumen (si loudness esta tildado)
+  ├── CalibrationScreen            (fase 'calibrating')
+  ├── LiveRecordingScreen          (fases 'recording' y 'evaluating')
+  │     ├── LivePhonationMeter     (si fonacion esta tildada)
+  │     └── LiveLoudnessMeter      (si volumen esta tildado)
+  ├── StoppedTransitionOverlay     (fase 'stopped_transition')
+  ├── StrikeFeedbackBody           (fase 'stopped_feedback' con auto_stop_*)
+  └── SessionSummaryScreen         (fase 'summary')
 ```
 
 `LiveSessionPage` no tiene estado propio: lee la fase desde `useLiveSession` y elige cual
-organismo renderizar. Los tres organismos viven en
-`presentation/components/organisms/`. La pantalla de error es una rama in-line del Page,
-no un organismo separado, porque consiste solo en un titulo y dos botones.
+organismo renderizar. Los organismos viven en `presentation/components/organisms/`. La
+pantalla de error es una rama in-line del Page, no un organismo separado, porque consiste
+solo en un titulo y dos botones.
 
 ## 4. Hook principal: useLiveSession
 
 ### Maquina de estados (fases)
 
 ```typescript
-type LiveSessionPhase = 'selection' | 'recording' | 'evaluating' | 'summary' | 'error'
+type LiveSessionPhase =
+  | 'selection'
+  | 'calibrating'
+  | 'recording'
+  | 'evaluating'
+  | 'stopped_transition'
+  | 'stopped_feedback'
+  | 'summary'
+  | 'error'
 ```
 
 - **selection**: estado inicial. El usuario marca/desmarca modulos. `DimensionSelector` se
   muestra. `Comenzar` queda deshabilitado mientras la lista este vacia.
-- **recording**: tras `start()`, se abrio la sesion live (`POST /live/sessions`) y comenzo
-  la captura con `useAudioRecorder`. Un `setInterval` de un segundo incrementa
+- **calibrating**: tras `start()`, una ventana corta para medir el piso de ruido del
+  microfono y, si volumen esta tildado, una segunda etapa para capturar la voz del usuario
+  como base de las bandas (mic_noise → voice_baseline → finalizing). La copia adapta segun
+  el modulo activo.
+- **recording**: tras la calibracion, se abrio la sesion live (`POST /live/sessions`) y
+  comenzo la captura con `useAudioRecorder`. Un `setInterval` de un segundo incrementa
   `elapsedSeconds`; al alcanzar `MAX_SESSION_SECONDS = 300` se dispara `stop()`
   automaticamente.
-- **evaluating**: tras `stop()` (manual o auto), se detuvo la captura y se subio el blob
-  a `POST /live/sessions/:id/audio-evaluation`. Mientras la respuesta no llega, la UI
-  muestra un spinner.
-- **summary**: con la respuesta del endpoint y el `finalize` posterior, se renderiza
-  `SessionSummaryScreen` con `evaluation` y `liveScore`.
+- **evaluating**: tras `stop()` (manual o auto), se detuvo la captura y se subio el blob a
+  `POST /live/sessions/:id/audio-evaluation`. Mientras la respuesta no llega, la UI muestra
+  un spinner.
+- **stopped_transition**: overlay breve "¡CORTEN!" cuando un auto-stop dispara (muletillas,
+  emocion sostenida, volumen saturado o saltos de fonacion). Cubre el switch entre
+  recording y la pantalla rica de feedback.
+- **stopped_feedback**: pantalla rica que se muestra tras un auto-stop con tabs por modulo
+  (resumen, muletillas, fonacion, volumen, expresion facial) y el audio reproducible.
+- **summary**: cuando la sesion termina por tiempo o por boton manual sin auto-stop, con la
+  respuesta del endpoint y el `finalize` posterior, se renderiza `SessionSummaryScreen` con
+  `evaluation` y `liveScore`.
 - **error**: cualquier fallo (microfono denegado, Gemini sin respuesta, red caida, etc.)
-  termina aca con un mensaje. El usuario puede reintentar (`reset()` vuelve a
-  selection) o ir al dashboard.
+  termina aca con un mensaje. El usuario puede reintentar (`reset()` vuelve a selection) o
+  ir al dashboard.
 
 ### Transiciones
 
 ```
-selection → recording        (start() exitoso)
-recording → evaluating       (stop() manual o por time limit)
-evaluating → summary         (audio-evaluation + finalize OK)
-evaluating → error           (audio-evaluation o finalize fallaron)
-recording → error            (stopRecording fallo)
-selection → error            (no hay modulos seleccionados o startSession fallo)
-summary → selection          (reset())
-error → selection            (reset())
+selection → calibrating              (start() exitoso)
+calibrating → recording              (calibracion lista)
+recording → evaluating               (stop() manual o por time limit)
+recording → stopped_transition       (auto_stop_muletillas/emotion/loudness/phonation)
+stopped_transition → evaluating      (overlay termina)
+evaluating → summary                 (sin auto-stop: audio-evaluation + finalize OK)
+evaluating → stopped_feedback        (con auto-stop: composed-eval + finalize OK)
+evaluating → error                   (audio-evaluation o finalize fallaron)
+recording → error                    (stopRecording fallo)
+selection → error                    (no hay modulos seleccionados o startSession fallo)
+summary → selection                  (reset())
+stopped_feedback → selection         (reset())
+error → selection                    (reset())
 ```
 
 ### Refs
@@ -160,10 +196,100 @@ peor experiencia que ser explicito.
 
 Los demas modulos del producto requieren modos de input incompatibles con el habla libre
 (precision/versatilidad piden rondas de Q&A, fluidez y consistencia comparten el WS PCM
-historico, y fonacion/volumen/pausas/expresion-facial corren con calculos del cliente
-sobre seniales DSP o video). Para no degradar la calidad de evaluacion, la sesion libre
+historico, pausas requiere un escenario monitoreado y pronunciacion/acentuacion necesitan
+prompts especificos por frase). Para no degradar la calidad de evaluacion, la sesion libre
 solo cubre los cuatro modulos cuya evaluacion sirve sobre habla libre con un solo audio
-y un solo prompt compuesto.
+y un solo prompt compuesto (muletillas) o calculos en cliente sobre la senal de audio
+(fonacion, volumen) y de video (expresion facial).
+
+### Auto-stops disponibles
+
+Cuatro categorias de corten en vivo, todas optativas segun los modulos tildados.
+Las dos de senal de audio tienen sub-razon que diferencia el copy mostrado al
+usuario en el overlay y en la pantalla de feedback:
+
+- `muletillas`: AssemblyAI emite un strike y el hook dispara `triggerStop('auto_stop_strikes')`
+  al primero.
+- `emotion`: el clasificador local detecta una emocion sostenida (3 s) y dispara
+  `triggerStop('auto_stop_emotion')`.
+- `loudness` (`auto_stop_loudness`): el detector cuenta el tiempo continuo
+  fuera de la banda `optimal`. A los **1.5 s sostenidos en `too-high` o
+  `clipping`** dispara el corten. Sub-razones:
+  - `clipping`: el usuario satura el microfono (db por encima del clip
+    threshold del preset). Copy: "saturaste el microfono".
+  - `too_high`: el usuario habla demasiado alto pero sin saturar el ADC.
+    Copy: "hablaste demasiado alto".
+  La banda `too-low` no dispara corten (sin clipping y silencio van por
+  conteo al composed-eval).
+- `phonation` (`auto_stop_phonation`): dos detectores en paralelo:
+  - `high_pitch`: la frecuencia fundamental sobrepasa `baselineHz * 1.25`
+    de forma continua por **1.5 s**. El baseline es el promedio de Hz que
+    el usuario produjo durante el step `voice_baseline` de la calibracion
+    (3 s hablando "normal"). Copy: "tu voz se mantuvo aguda".
+  - `breaks`: 5 saltos > 50 Hz dentro de una ventana de 10 s. Copy:
+    "saltos de frecuencia repetidos".
+  Cuando ambos se gatillan al mismo tiempo, el reporte va con la sub-razon
+  del detector que tripeo primero (en la practica `high_pitch` se nota
+  antes que el contador de saltos).
+
+Los cuatro alimentan la fase `stopped_transition` con su categoria + sub-razon
+opcional, y luego `stopped_feedback` con la mezcla de tabs correspondientes y
+el headline especifico segun la causa.
+
+### Selector de preset de volumen
+
+El selector de preset es parte de `DimensionSelector`: aparece como dropdown solo cuando el
+usuario tilda volumen. Lee la lista de presets desde `GET /loudness/presets` y prefiere el
+que tenga `is_default=true`; si no hay default elige el primero de la lista. El `preset_id`
+elegido viaja en el `loudness_summary` al cierre para que el backend pueda almacenar la
+referencia exacta.
+
+### Pitch + dB en cliente (AudioWorklet)
+
+Tanto fonacion como volumen consumen frames de un mismo `AudioWorkletNode`
+(`/worklets/phonation.worklet.js`) que emite `{ hz, db }` cada ~50 ms. Esto evita abrir el
+microfono dos veces y mantiene la latencia baja en iOS Safari, donde
+`getUserMedia` paga su coste solo una vez. Los hooks `useLivePhonation` y `useLiveLoudness`
+escuchan ese stream y mantienen sus propios contadores y resumenes.
+
+### Baseline de Hz y dB para la calibracion personal
+
+El hook `useVoiceBaseline` corre durante el step `voice_baseline` de la
+calibracion (3 s) acumulando los Hz **y los dB** de cada frame voiced. Al
+cerrar el step expone el promedio de ambos como `baselineHz` y
+`baselineDb`. Estos valores se usan para personalizar dos cosas:
+
+- `useLivePhonation` recibe `baselineHz` y arma su techo de "voz aguda"
+  como `baselineHz * 1.25`. Si el baseline es null (silencio durante los
+  3 s), el detector de `high_pitch` queda desactivado y solo el de
+  `breaks` sigue activo.
+- El `loudnessConfig` ancla las bandas del preset elegido sobre
+  `baselineDb` real (`tooLow = baselineDb + low_offset_db`,
+  `optimal = baselineDb + optimal_offset_db`). Antes la referencia era
+  `noiseFloor + 25 dB` asumido, lo cual descalibraba al usuario que
+  hablaba mas alto o mas bajo que esos 25 dB de "voz tipica" estimada.
+  Si la medicion falla, hay fallback a `noiseFloor + 25 dB`.
+
+La ventana de baseline se activa cuando loudness *o* fonacion estan
+tildados.
+
+### Logs de diagnostico en sesion live
+
+`useLiveSession` emite tres `console.info` para poder dimensionar el
+comportamiento del corten desde devtools sin instrumentar mas:
+
+- `[live-session] voice baseline captured` con `{ hz, db, samples }`
+  al cerrar el step voice_baseline.
+- `[live-session] loudness config resolved` con el preset, si la
+  baseline fue medida o fallback, y los thresholds resultantes en dBFS.
+- `[live-session] loudness auto-stop` / `[live-session] phonation
+  auto-stop` con la sub-razon, la banda/Hz actual, el streak y el
+  contador de saltos en el momento de disparar el corten.
+
+Esto deja todos los numeros relevantes en el console del navegador
+para iterar las constantes (`OUT_OF_RANGE_THRESHOLD_MS`,
+`HIGH_PITCH_FACTOR`, `HIGH_PITCH_THRESHOLD_MS`) basados en sesiones
+reales en lugar de defaults teoricos.
 
 ### El score agregado lo da `finalize`
 

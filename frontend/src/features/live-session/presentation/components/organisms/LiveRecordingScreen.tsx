@@ -1,7 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { RecordingWaveform } from '../../../../../shared/ui/molecules/RecordingWaveform'
+import type { LoudnessBand } from '../../../../loudness/domain/LoudnessSession'
 import { LIVE_MODULE_LABELS } from '../../../domain/liveDimLabels'
 import type { LiveModule, LiveSessionPhase } from '../../../domain/LiveSession'
+import { LiveLoudnessMeter } from './LiveLoudnessMeter'
+import { LivePhonationMeter } from './LivePhonationMeter'
+
+// Thresholds visible in the meter widgets; sourced from the hooks but
+// re-declared here so the bar progress fills are accurate without the
+// hooks needing to surface their internals. Keep aligned with the
+// constants in useLivePhonation and useLiveLoudness.
+const PHONATION_BREAK_THRESHOLD = 5
+const LOUDNESS_HIGH_THRESHOLD_MS = 1_500
 
 // Maximum session duration in seconds; the progress bar fills to 100% at
 // this point and the parent hook auto-stops. Five minutes mirrors the
@@ -23,6 +33,15 @@ interface Props {
   // Whether facial_expression is selected. Drives the recording
   // subtitle in flows without audio.
   facialEnabled: boolean
+  // Live state of the phonation / loudness hooks. Only used when their
+  // respective modules are selected; the screen falls back to a flat
+  // copy when they are not.
+  phonationEnabled: boolean
+  loudnessEnabled: boolean
+  phonationCurrentHz: number | null
+  phonationBreaksInWindow: number
+  loudnessCurrentBand: LoudnessBand
+  loudnessHighStreakMs: number
   onEnd: () => void
 }
 
@@ -44,6 +63,12 @@ export function LiveRecordingScreen({
   isRecording,
   audioEnabled,
   facialEnabled,
+  phonationEnabled,
+  loudnessEnabled,
+  phonationCurrentHz,
+  phonationBreaksInWindow,
+  loudnessCurrentBand,
+  loudnessHighStreakMs,
   onEnd,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -113,6 +138,31 @@ export function LiveRecordingScreen({
           {pickStatusLabel({ isEvaluating, audioEnabled, facialEnabled })}
         </p>
       </div>
+
+      {(phonationEnabled || loudnessEnabled) && !isEvaluating && (
+        <div
+          className={`w-full grid gap-3 ${
+            phonationEnabled && loudnessEnabled
+              ? 'grid-cols-1 sm:grid-cols-2'
+              : 'grid-cols-1'
+          }`}
+        >
+          {phonationEnabled && (
+            <LivePhonationMeter
+              currentHz={phonationCurrentHz}
+              breaksInWindow={phonationBreaksInWindow}
+              breakThreshold={PHONATION_BREAK_THRESHOLD}
+            />
+          )}
+          {loudnessEnabled && (
+            <LiveLoudnessMeter
+              currentBand={loudnessCurrentBand}
+              outOfRangeStreakMs={loudnessHighStreakMs}
+              outOfRangeThresholdMs={LOUDNESS_HIGH_THRESHOLD_MS}
+            />
+          )}
+        </div>
+      )}
 
       <div className="w-full rounded-2xl border border-border/40 bg-surface/40 backdrop-blur-sm p-5 flex flex-col gap-3">
         <p className="text-xs font-bold uppercase tracking-widest text-accent">
