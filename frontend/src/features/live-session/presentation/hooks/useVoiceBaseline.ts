@@ -55,7 +55,11 @@ export function useVoiceBaseline({
   const sumHzRef = useRef(0)
   const sumDbRef = useRef(0)
   const countRef = useRef(0)
-  const lastIndexRef = useRef(0)
+  // Timestamp of the last frame we consumed. Using a timestamp cursor
+  // instead of an array index survives the voice monitor's rolling
+  // buffer (which caps at MAX_FRAMES — an index cursor would freeze
+  // once the buffer reaches that cap, losing every later frame).
+  const lastProcessedTsRef = useRef<number>(-Infinity)
   const wasCapturingRef = useRef(false)
 
   const [baselineHz, setBaselineHz] = useState<number | null>(null)
@@ -66,7 +70,7 @@ export function useVoiceBaseline({
     sumHzRef.current = 0
     sumDbRef.current = 0
     countRef.current = 0
-    lastIndexRef.current = 0
+    lastProcessedTsRef.current = -Infinity
     setBaselineHz(null)
     setBaselineDb(null)
     setSampleCount(0)
@@ -75,32 +79,38 @@ export function useVoiceBaseline({
   useEffect(() => {
     if (capturing && !wasCapturingRef.current) {
       // Rising edge: brand new baseline window. Forget any previous
-      // numbers so a retry of the session starts fresh.
+      // numbers and seed the cursor at "the latest timestamp we've
+      // seen so far" so we only count frames produced AFTER the
+      // capture window opened.
       sumHzRef.current = 0
       sumDbRef.current = 0
       countRef.current = 0
-      lastIndexRef.current = frames.length
+      const latestTs = frames.reduce(
+        (max, f) => (f.timestamp > max ? f.timestamp : max),
+        -Infinity,
+      )
+      lastProcessedTsRef.current = latestTs
       setBaselineHz(null)
       setBaselineDb(null)
       setSampleCount(0)
     }
     wasCapturingRef.current = capturing
-  }, [capturing, frames.length])
+  }, [capturing, frames])
 
   useEffect(() => {
     if (!capturing) return
-    if (frames.length < lastIndexRef.current) {
-      lastIndexRef.current = 0
-    }
-    for (let i = lastIndexRef.current; i < frames.length; i++) {
+    let newestSeen = lastProcessedTsRef.current
+    for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
+      if (frame.timestamp <= lastProcessedTsRef.current) continue
+      newestSeen = Math.max(newestSeen, frame.timestamp)
       if (frame.hz !== null && frame.hz > 0) {
         sumHzRef.current += frame.hz
         sumDbRef.current += frame.db
         countRef.current += 1
       }
     }
-    lastIndexRef.current = frames.length
+    lastProcessedTsRef.current = newestSeen
 
     if (countRef.current > 0) {
       setBaselineHz(sumHzRef.current / countRef.current)

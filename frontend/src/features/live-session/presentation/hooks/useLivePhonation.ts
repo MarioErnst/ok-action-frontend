@@ -122,10 +122,12 @@ export function useLivePhonation({
   // Hz of the most recent voiced frame, so we can compare against the
   // next one and decide whether a break happened.
   const lastVoicedHzRef = useRef<number | null>(null)
-  // Index of the last frame consumed from the input buffer. Lets us
-  // process only new frames on each render instead of re-walking the
-  // whole rolling buffer.
-  const lastIndexRef = useRef(0)
+  // Timestamp of the last frame we consumed. Using a timestamp cursor
+  // instead of an array index survives the voice monitor's rolling
+  // buffer: once the buffer caps at MAX_FRAMES it stops growing, so
+  // an index cursor reaches `frames.length` and never advances again
+  // even though new frames keep entering at the tail.
+  const lastProcessedTsRef = useRef<number>(-Infinity)
   // Sliding window of voiced frames used for the ratio calculation.
   // Each entry stores the frame timestamp and whether the pitch was
   // above the ceiling. Trimmed to HIGH_PITCH_WINDOW_MS on every pass.
@@ -148,7 +150,7 @@ export function useLivePhonation({
     hzHistoryRef.current = []
     breakTimestampsRef.current = []
     lastVoicedHzRef.current = null
-    lastIndexRef.current = 0
+    lastProcessedTsRef.current = -Infinity
     voicedWindowRef.current = []
     highPitchStartRef.current = null
     setCurrentHz(null)
@@ -162,17 +164,16 @@ export function useLivePhonation({
 
   useEffect(() => {
     if (!enabled) return
-    // The shared voice monitor caps its rolling buffer at MAX_FRAMES,
-    // so a long session will see the array shrink from the left. Our
-    // index tracking respects that: if the array got shorter we reset
-    // the cursor to keep going from the first new frame.
-    if (frames.length < lastIndexRef.current) {
-      lastIndexRef.current = 0
-    }
     const highPitchCeiling =
       baselineHz !== null ? baselineHz * HIGH_PITCH_FACTOR : null
-    for (let i = lastIndexRef.current; i < frames.length; i++) {
+    // Walk only frames newer than the last one we processed. The
+    // monitor's rolling buffer can drop older frames between renders
+    // so index-based cursors stop advancing once the buffer caps.
+    let newestSeen = lastProcessedTsRef.current
+    for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
+      if (frame.timestamp <= lastProcessedTsRef.current) continue
+      newestSeen = Math.max(newestSeen, frame.timestamp)
       const hz = frame.hz
       if (hz !== null && hz > 0) {
         hzHistoryRef.current.push(hz)
@@ -195,7 +196,7 @@ export function useLivePhonation({
         lastVoicedHzRef.current = null
       }
     }
-    lastIndexRef.current = frames.length
+    lastProcessedTsRef.current = newestSeen
 
     // Trim break timestamps to the active break window.
     const cutoff = Date.now() - BREAK_WINDOW_MS

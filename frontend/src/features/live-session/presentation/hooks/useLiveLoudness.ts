@@ -91,8 +91,11 @@ export function useLiveLoudness({
   })
   // Highest dB observed; used for peak_db in summary().
   const peakDbRef = useRef<number>(-Infinity)
-  // Frames already consumed, so we process only the new tail.
-  const lastIndexRef = useRef(0)
+  // Timestamp of the last frame we consumed. Using a timestamp cursor
+  // instead of an array index survives the voice monitor's rolling
+  // buffer cap, which would otherwise leave us frozen once the buffer
+  // reaches MAX_FRAMES.
+  const lastProcessedTsRef = useRef<number>(-Infinity)
   // First timestamp of the current continuous out-of-range streak
   // (any frame in too-high or clipping). Anything else resets it.
   const outOfRangeStartRef = useRef<number | null>(null)
@@ -110,7 +113,7 @@ export function useLiveLoudness({
       clipping: 0,
     }
     peakDbRef.current = -Infinity
-    lastIndexRef.current = 0
+    lastProcessedTsRef.current = -Infinity
     outOfRangeStartRef.current = null
     setCurrentBand('silence')
     setOutOfRangeStreakMs(0)
@@ -119,13 +122,12 @@ export function useLiveLoudness({
 
   useEffect(() => {
     if (!enabled || !config) return
-    if (frames.length < lastIndexRef.current) {
-      // Voice monitor truncated its rolling buffer; restart the cursor.
-      lastIndexRef.current = 0
-    }
     let lastFrameBand: LoudnessBand | null = null
-    for (let i = lastIndexRef.current; i < frames.length; i++) {
+    let newestSeen = lastProcessedTsRef.current
+    for (let i = 0; i < frames.length; i++) {
       const frame = frames[i]
+      if (frame.timestamp <= lastProcessedTsRef.current) continue
+      newestSeen = Math.max(newestSeen, frame.timestamp)
       const band = classifyLoudness(frame.db, noiseFloor, config)
       bandCountsRef.current[band] += 1
       if (frame.db > peakDbRef.current) {
@@ -144,7 +146,7 @@ export function useLiveLoudness({
       }
       lastFrameBand = band
     }
-    lastIndexRef.current = frames.length
+    lastProcessedTsRef.current = newestSeen
 
     if (lastFrameBand !== null) {
       setCurrentBand(lastFrameBand)
