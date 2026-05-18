@@ -70,12 +70,6 @@ interface UseLiveLoudnessResult {
   // streak in the live meter and uses both to decide when to fire.
   highStreakMs: number
   lowStreakMs: number
-  // Ratios in the sliding window. Exposed for diagnostic logs.
-  highRatio: number
-  lowRatio: number
-  // Non-silence frames currently in the window. Used both as the
-  // "min frames" gate and for diagnostics.
-  windowSize: number
   shouldStop: boolean
   // Which band tripped the corten. Null until shouldStop turns true.
   stopReason: LoudnessStopReason | null
@@ -121,9 +115,6 @@ export function useLiveLoudness({
   const [currentBand, setCurrentBand] = useState<LoudnessBand>('silence')
   const [highStreakMs, setHighStreakMs] = useState(0)
   const [lowStreakMs, setLowStreakMs] = useState(0)
-  const [highRatio, setHighRatio] = useState(0)
-  const [lowRatio, setLowRatio] = useState(0)
-  const [windowSize, setWindowSize] = useState(0)
   const [stopReason, setStopReason] = useState<LoudnessStopReason | null>(null)
 
   const reset = useCallback(() => {
@@ -142,9 +133,6 @@ export function useLiveLoudness({
     setCurrentBand('silence')
     setHighStreakMs(0)
     setLowStreakMs(0)
-    setHighRatio(0)
-    setLowRatio(0)
-    setWindowSize(0)
     setStopReason(null)
   }, [])
 
@@ -200,9 +188,6 @@ export function useLiveLoudness({
     }
     const newHighRatio = total > 0 ? highCount / total : 0
     const newLowRatio = total > 0 ? lowCount / total : 0
-    setWindowSize(total)
-    setHighRatio(newHighRatio)
-    setLowRatio(newLowRatio)
 
     // High-side streak: streak grows while ratio exceeds threshold and
     // the window has enough non-silence samples.
@@ -245,10 +230,7 @@ export function useLiveLoudness({
   }, [frames, enabled, config, noiseFloor])
 
   const summary = useCallback((): LoudnessSummaryDto | null => {
-    if (!config) {
-      console.warn('[useLiveLoudness] summary skipped: config is null')
-      return null
-    }
+    if (!config) return null
     const counts = bandCountsRef.current
     const scoredFrames =
       counts.optimal + counts['too-low'] + counts['too-high'] + counts.clipping
@@ -256,7 +238,6 @@ export function useLiveLoudness({
       // No usable frames in the session — skipping the payload is
       // better than sending zeros/NaN that the backend would either
       // reject or persist as misleading metrics.
-      console.warn('[useLiveLoudness] summary skipped: scoredFrames=0', counts)
       return null
     }
     const round = (value: number) => Math.round((value / scoredFrames) * 100)
@@ -290,9 +271,6 @@ export function useLiveLoudness({
     currentBand,
     highStreakMs,
     lowStreakMs,
-    highRatio,
-    lowRatio,
-    windowSize,
     shouldStop,
     stopReason,
     summary,

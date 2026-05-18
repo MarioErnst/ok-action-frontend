@@ -291,7 +291,7 @@ export function useLiveSession(): UseLiveSessionResult {
     const measuredBaseline = voiceBaseline.baselineDb
     const fallbackBaseline = voiceNoiseFloor + 25
     const voiceBaselineDb = measuredBaseline ?? fallbackBaseline
-    const config: LoudnessConfig = {
+    return {
       presetId: preset.id,
       label: preset.label,
       description: preset.description ?? '',
@@ -300,15 +300,6 @@ export function useLiveSession(): UseLiveSessionResult {
       optimalCeilingDbfs: voiceBaselineDb + preset.optimal_offset_db,
       clipThresholdDbfs: preset.clip_threshold_db,
     }
-    console.info('[live-session] loudness config resolved', {
-      preset: preset.label,
-      baselineSource: measuredBaseline !== null ? 'measured' : 'fallback',
-      voiceBaselineDb: Math.round(voiceBaselineDb * 10) / 10,
-      tooLowCeilingDbfs: Math.round(config.tooLowCeilingDbfs * 10) / 10,
-      optimalCeilingDbfs: Math.round(config.optimalCeilingDbfs * 10) / 10,
-      clipThresholdDbfs: Math.round(config.clipThresholdDbfs * 10) / 10,
-    })
-    return config
   }, [
     loudnessEnabled,
     voiceNoiseFloor,
@@ -336,14 +327,12 @@ export function useLiveSession(): UseLiveSessionResult {
   // values without needing them in their dep arrays.
   const livePhonationStopReasonRef = useRef<PhonationStopReason | null>(null)
   const liveLoudnessStopReasonRef = useRef<LoudnessStopReason | null>(null)
+  // Phonation and loudness snapshots used inside runEvaluation. We
+  // read summary() through the ref because runEvaluation is created
+  // with empty deps and its closure captures the initial hook output
+  // where config was still null.
   const livePhonationRef = useRef(livePhonation)
   const liveLoudnessRef = useRef(liveLoudness)
-  const voiceBaselineRef = useRef(voiceBaseline)
-  // Snapshot of the voice monitor so async code inside start() can read
-  // the live values (isCalibrating, frames, noise floor) without falling
-  // back to the stale closure captured at the moment start() was called.
-  const voiceMonitorRef = useRef(voiceMonitor)
-  const voiceNoiseFloorRef = useRef<number | null>(null)
   useEffect(() => {
     livePhonationStopReasonRef.current = livePhonation.stopReason
     livePhonationRef.current = livePhonation
@@ -352,15 +341,6 @@ export function useLiveSession(): UseLiveSessionResult {
     liveLoudnessStopReasonRef.current = liveLoudness.stopReason
     liveLoudnessRef.current = liveLoudness
   }, [liveLoudness])
-  useEffect(() => {
-    voiceBaselineRef.current = voiceBaseline
-  }, [voiceBaseline])
-  useEffect(() => {
-    voiceMonitorRef.current = voiceMonitor
-  }, [voiceMonitor])
-  useEffect(() => {
-    voiceNoiseFloorRef.current = voiceNoiseFloor
-  }, [voiceNoiseFloor])
 
   // Refs for long-lived resources that should not trigger renders.
   const sessionIdRef = useRef<string | null>(null)
@@ -536,13 +516,6 @@ export function useLiveSession(): UseLiveSessionResult {
       const loudnessSummary = selectedModulesRef.current.includes('loudness')
         ? liveLoudnessRef.current.summary() ?? undefined
         : undefined
-
-      console.info('[live-session] runEvaluation payload', {
-        modules: selectedModulesRef.current,
-        hasFacial: facialSummary !== undefined,
-        hasPhonation: phonationSummary !== undefined,
-        hasLoudness: loudnessSummary !== undefined,
-      })
 
       try {
         const evalResponse = await HttpLiveSessionRepository.evaluateAudio(sessionId, {
@@ -902,22 +875,6 @@ export function useLiveSession(): UseLiveSessionResult {
     window.clearInterval(micNoiseInterval)
     setCalibrationProgress(micNoiseProgressCeiling)
 
-    // Diagnostic: report when the noise-floor calibration actually
-    // closed and what the voice monitor is reporting at that moment.
-    // Reading through refs (not the closure of start) is critical
-    // here: the closure was captured at the render where start() was
-    // created, when the monitor had its initial values. The ref is
-    // synced on every render so it reflects what the monitor actually
-    // looks like at this point in time.
-    const monitorAtMicNoiseClose = voiceMonitorRef.current
-    console.info('[live-session] mic_noise step closed', {
-      noiseFloor: voiceNoiseFloorRef.current,
-      monitorNoiseFloor: monitorAtMicNoiseClose.noiseFloor,
-      monitorIsCalibrating: monitorAtMicNoiseClose.isCalibrating,
-      monitorFramesCount: monitorAtMicNoiseClose.frames.length,
-      monitorIsListening: monitorAtMicNoiseClose.isListening,
-    })
-
     // Second sub-step: run the voice-baseline window whenever loudness
     // OR phonation are on. Loudness uses it for the UX framing of the
     // band thresholds; phonation captures the user's typical Hz so the
@@ -927,60 +884,17 @@ export function useLiveSession(): UseLiveSessionResult {
     if (loudnessEnabled || phonationEnabled) {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
-      const monitorAtBaselineStart = voiceMonitorRef.current
-      console.info('[live-session] voice_baseline step started', {
-        durationMs: VOICE_BASELINE_MS,
-        monitorFramesCount: monitorAtBaselineStart.frames.length,
-        monitorIsCalibrating: monitorAtBaselineStart.isCalibrating,
-        monitorIsListening: monitorAtBaselineStart.isListening,
-      })
-      // Drive the second half of the progress bar from a fresh timer so
-      // the user sees the bar actually advance while they speak. Without
-      // this the bar stays at 0.5 the whole window. We piggy-back the
-      // same interval to emit a diagnostic snapshot every 500 ms so we
-      // can see in the console whether the voice monitor is actually
-      // producing voiced frames during this window.
+      // Drive the second half of the progress bar from a fresh timer
+      // so the user sees the bar actually advance while they speak.
+      // Without this the bar stays at 0.5 the whole window.
       const voiceBaselineStartedAt = performance.now()
-      let lastDiagnosticAt = voiceBaselineStartedAt
       const voiceBaselineInterval = window.setInterval(() => {
-        const now = performance.now()
-        const elapsed = now - voiceBaselineStartedAt
+        const elapsed = performance.now() - voiceBaselineStartedAt
         const progress = Math.min(1, elapsed / VOICE_BASELINE_MS)
         setCalibrationProgress(0.5 + progress * 0.5)
-        if (now - lastDiagnosticAt >= 500) {
-          lastDiagnosticAt = now
-          // Read all monitor / baseline state through refs so we see
-          // the live values, not the closure captured when start() was
-          // created.
-          const monitor = voiceMonitorRef.current
-          const baseline = voiceBaselineRef.current
-          console.info('[live-session] voice_baseline tick', {
-            elapsedMs: Math.round(elapsed),
-            samples: baseline.sampleCount,
-            currentHz: monitor.hz !== null ? Math.round(monitor.hz) : null,
-            currentDb: Math.round(monitor.db * 10) / 10,
-            monitorFramesCount: monitor.frames.length,
-            monitorIsCalibrating: monitor.isCalibrating,
-            monitorIsListening: monitor.isListening,
-          })
-        }
       }, 50)
       await new Promise((resolve) => setTimeout(resolve, VOICE_BASELINE_MS))
       window.clearInterval(voiceBaselineInterval)
-      // Read through the ref so the snapshot reflects whatever the
-      // hook actually computed during the window, not the value the
-      // closure captured at start() creation time.
-      const baselineSnapshot = voiceBaselineRef.current
-      const hz = baselineSnapshot.baselineHz
-      const db = baselineSnapshot.baselineDb
-      console.info(
-        '[live-session] voice baseline captured',
-        {
-          hz: hz !== null ? Math.round(hz) : null,
-          db: db !== null ? Math.round(db * 10) / 10 : null,
-          samples: baselineSnapshot.sampleCount,
-        },
-      )
     }
 
     setCalibrationStep('finalizing')
@@ -1140,38 +1054,15 @@ export function useLiveSession(): UseLiveSessionResult {
 
   const onPhonationStop = useCallback(() => {
     if (phaseRef.current !== 'recording' || isStoppingRef.current) return
-    const subReason = livePhonationStopReasonRef.current
-    const phonationSnapshot = livePhonationRef.current
-    const baselineHz = voiceBaselineRef.current.baselineHz
     setStopCategory('phonation')
-    setPhonationStopReason(subReason)
-    console.info('[live-session] phonation auto-stop', {
-      reason: subReason,
-      currentHz:
-        phonationSnapshot.currentHz !== null
-          ? Math.round(phonationSnapshot.currentHz)
-          : null,
-      baselineHz: baselineHz !== null ? Math.round(baselineHz) : null,
-      highPitchStreakMs: phonationSnapshot.highPitchStreakMs,
-      breaksInWindow: phonationSnapshot.breaksInWindow,
-    })
+    setPhonationStopReason(livePhonationStopReasonRef.current)
     void triggerStop('auto_stop_phonation')
   }, [triggerStop])
 
   const onLoudnessStop = useCallback(() => {
     if (phaseRef.current !== 'recording' || isStoppingRef.current) return
-    const subReason = liveLoudnessStopReasonRef.current
-    const loudnessSnapshot = liveLoudnessRef.current
     setStopCategory('loudness')
-    setLoudnessStopReason(subReason)
-    console.info('[live-session] loudness auto-stop', {
-      reason: subReason,
-      currentBand: loudnessSnapshot.currentBand,
-      highStreakMs: loudnessSnapshot.highStreakMs,
-      lowStreakMs: loudnessSnapshot.lowStreakMs,
-      highRatio: Math.round(loudnessSnapshot.highRatio * 100) / 100,
-      lowRatio: Math.round(loudnessSnapshot.lowRatio * 100) / 100,
-    })
+    setLoudnessStopReason(liveLoudnessStopReasonRef.current)
     void triggerStop('auto_stop_loudness')
   }, [triggerStop])
 
@@ -1185,95 +1076,6 @@ export function useLiveSession(): UseLiveSessionResult {
     onPhonationStop,
     onLoudnessStop,
   })
-
-  // Diagnostic ticker for the recording phase. Logs the live detector
-  // state every second while phonation or loudness are active so we
-  // can see exactly what the hooks are seeing. Instead of just showing
-  // the last frame (a single sample of a fast stream), we count how
-  // many frames arrived in the last second, how many were voiced and
-  // how many crossed the high-pitch ceiling. That tells us the real
-  // detection rate of the worklet during natural speech, which the
-  // single-sample tick was hiding.
-  useEffect(() => {
-    if (phase !== 'recording') return
-    if (!phonationEnabled && !loudnessEnabled) return
-    let lastTickAt = Date.now()
-    const interval = window.setInterval(() => {
-      const monitor = voiceMonitorRef.current
-      const baseline = voiceBaselineRef.current
-      const phon = livePhonationRef.current
-      const loud = liveLoudnessRef.current
-      const highPitchCeiling =
-        baseline.baselineHz !== null
-          ? baseline.baselineHz * 1.25
-          : null
-      const now = Date.now()
-      // Take a single snapshot of the frames array so the counts and
-      // averages all describe the same window even if the worklet
-      // pushes new frames mid-iteration.
-      const frames = monitor.frames
-      const windowFrames = frames.filter((f) => f.timestamp >= lastTickAt)
-      const voicedFrames = windowFrames.filter(
-        (f) => f.hz !== null && f.hz > 0,
-      )
-      const aboveCeilingFrames =
-        highPitchCeiling !== null
-          ? voicedFrames.filter((f) => (f.hz as number) >= highPitchCeiling)
-          : []
-      const avgVoicedHz =
-        voicedFrames.length > 0
-          ? Math.round(
-              voicedFrames.reduce((sum, f) => sum + (f.hz as number), 0) /
-                voicedFrames.length,
-            )
-          : null
-      const maxVoicedHz =
-        voicedFrames.length > 0
-          ? Math.round(Math.max(...voicedFrames.map((f) => f.hz as number)))
-          : null
-      const avgDb =
-        windowFrames.length > 0
-          ? Math.round(
-              (windowFrames.reduce((sum, f) => sum + f.db, 0) /
-                windowFrames.length) *
-                10,
-            ) / 10
-          : null
-      console.info(
-        '[live-session] recording tick',
-        'windowFrames=' + windowFrames.length,
-        'voicedFrames=' + voicedFrames.length,
-        'aboveCeilingFrames=' + aboveCeilingFrames.length,
-        'avgVoicedHz=' + avgVoicedHz,
-        'maxVoicedHz=' + maxVoicedHz,
-        'avgDb=' + avgDb,
-        'baselineHz=' +
-          (baseline.baselineHz !== null
-            ? Math.round(baseline.baselineHz)
-            : 'null'),
-        'highPitchCeiling=' +
-          (highPitchCeiling !== null ? Math.round(highPitchCeiling) : 'null'),
-        // Detector-level values: read from the hook ref so they reflect
-        // the sliding-window state, not the per-tick frame counts.
-        'phonWindowSize=' + phon.voicedWindowSize,
-        'phonWindowAbove=' + phon.voicedWindowAbove,
-        'phonRatio=' + (Math.round(phon.highPitchRatio * 100) / 100),
-        'phonStreakMs=' + phon.highPitchStreakMs,
-        'phonShouldStop=' + phon.shouldStop,
-        'phonBreaks=' + phon.breaksInWindow,
-        'loudBand=' + loud.currentBand,
-        'loudWindowSize=' + loud.windowSize,
-        'loudHighRatio=' + (Math.round(loud.highRatio * 100) / 100),
-        'loudLowRatio=' + (Math.round(loud.lowRatio * 100) / 100),
-        'loudHighStreakMs=' + loud.highStreakMs,
-        'loudLowStreakMs=' + loud.lowStreakMs,
-        'loudShouldStop=' + loud.shouldStop,
-        'loudStopReason=' + loud.stopReason,
-      )
-      lastTickAt = now
-    }, 1000)
-    return () => window.clearInterval(interval)
-  }, [phase, phonationEnabled, loudnessEnabled])
 
   // Tear-down on unmount: stop loops, release resources, and best-
   // effort abandon any still-open session so we do not leak active

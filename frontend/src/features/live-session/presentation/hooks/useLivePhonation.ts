@@ -97,14 +97,6 @@ interface UseLivePhonationResult {
   // ratio drops below the threshold. The orchestrator uses this for
   // the live UI feedback and the auto-stop trigger.
   highPitchStreakMs: number
-  // Latest observed ratio of voiced frames above the ceiling, 0..1.
-  // Exposed for diagnostic logs so we can see how aggressive the user
-  // is being relative to their baseline.
-  highPitchRatio: number
-  // Raw counts of the sliding window the ratio is computed from.
-  // Exposed for diagnostic logs only.
-  voicedWindowSize: number
-  voicedWindowAbove: number
   shouldStop: boolean
   // Which detector tripped. Null while neither has tripped; the
   // orchestrator reads it to pick the matching corten copy.
@@ -148,9 +140,6 @@ export function useLivePhonation({
   const [currentHz, setCurrentHz] = useState<number | null>(null)
   const [breaksInWindow, setBreaksInWindow] = useState(0)
   const [highPitchStreakMs, setHighPitchStreakMs] = useState(0)
-  const [highPitchRatio, setHighPitchRatio] = useState(0)
-  const [voicedWindowSize, setVoicedWindowSize] = useState(0)
-  const [voicedWindowAbove, setVoicedWindowAbove] = useState(0)
   const [stopReason, setStopReason] = useState<PhonationStopReason | null>(null)
 
   const reset = useCallback(() => {
@@ -163,9 +152,6 @@ export function useLivePhonation({
     setCurrentHz(null)
     setBreaksInWindow(0)
     setHighPitchStreakMs(0)
-    setHighPitchRatio(0)
-    setVoicedWindowSize(0)
-    setVoicedWindowAbove(0)
     setStopReason(null)
   }, [])
 
@@ -234,9 +220,6 @@ export function useLivePhonation({
       0,
     )
     const ratio = voicedCount > 0 ? aboveCount / voicedCount : 0
-    setHighPitchRatio(ratio)
-    setVoicedWindowSize(voicedCount)
-    setVoicedWindowAbove(aboveCount)
 
     let highPitchMs = 0
     if (highPitchCeiling !== null) {
@@ -333,9 +316,6 @@ export function useLivePhonation({
     currentHz,
     breaksInWindow,
     highPitchStreakMs,
-    highPitchRatio,
-    voicedWindowSize,
-    voicedWindowAbove,
     shouldStop,
     stopReason,
     summary,
