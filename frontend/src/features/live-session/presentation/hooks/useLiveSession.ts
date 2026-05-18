@@ -234,15 +234,25 @@ export function useLiveSession(): UseLiveSessionResult {
   const emotionStop = useEmotionStop({ enabled: facialEnabled })
 
   // The voice monitor consumes the MediaStream we already opened for
-  // muletillas streaming. We pass it via externalStream so the shared
-  // hook does not prompt the mic a second time. The monitor's noise
+  // muletillas streaming. We pass the stream explicitly to its start()
+  // method so there is no prop-vs-imperative race. The monitor's noise
   // floor is captured into local state so the loudness classifier
   // (which depends on it) can react when calibration completes.
   const [voiceNoiseFloor, setVoiceNoiseFloor] = useState<number | null>(null)
   const voiceStreamRef = useRef<MediaStream | null>(null)
+  // Resolver pair the mic_noise step awaits so it does not advance to
+  // voice_baseline until the voice monitor's own ~3 s calibration is
+  // done. Without this gate the orchestrator could enter voice_baseline
+  // while the monitor is still in its calibration window and never see
+  // any voiced frame.
+  const noiseFloorReadyResolverRef = useRef<(() => void) | null>(null)
+  const handleNoiseFloorReady = useCallback((value: number) => {
+    setVoiceNoiseFloor(value)
+    noiseFloorReadyResolverRef.current?.()
+    noiseFloorReadyResolverRef.current = null
+  }, [])
   const voiceMonitor = useVoiceMonitor({
-    externalStream: voiceStreamRef.current,
-    onNoiseFloorReady: setVoiceNoiseFloor,
+    onNoiseFloorReady: handleNoiseFloorReady,
   })
 
   // The voice-baseline step is the only window where we sample the
@@ -665,6 +675,7 @@ export function useLiveSession(): UseLiveSessionResult {
     // camera permission denial does not interfere with the audio
     // pipeline.
     let audioStream: MediaStream | null = null
+    let noiseFloorReadyPromise: Promise<void> | null = null
     if (hasAudioModule) {
       try {
         audioStream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -680,6 +691,11 @@ export function useLiveSession(): UseLiveSessionResult {
       // to read its 3 s of silence before we transition to recording.
       if (voiceMeterEnabled) {
         voiceStreamRef.current = audioStream
+        // Set up the noise-floor wait gate BEFORE starting the monitor
+        // so the resolver is in place when the callback fires.
+        noiseFloorReadyPromise = new Promise<void>((resolve) => {
+          noiseFloorReadyResolverRef.current = resolve
+        })
         // Pass the stream explicitly: reading it from the externalStream
         // prop would race because the assignment above is imperative and
         // does not re-render the hook before start() reads its ref.
@@ -798,10 +814,27 @@ export function useLiveSession(): UseLiveSessionResult {
     }, 50)
 
     try {
+      // The mic_noise step waits for three things to complete:
+      // 1. A cosmetic minimum so the UI does not flash by.
+      // 2. The AssemblyAI WS handshake (when muletillas is selected).
+      // 3. The voice monitor's own ~3 s noise-floor calibration. Skipping
+      //    this third wait was the bug behind the empty voice_baseline
+      //    capture: we used to leave mic_noise after 2 s while the
+      //    monitor was still in its internal calibration window, so
+      //    voice_baseline ran against a stream that produced no frames
+      //    yet. We cap the wait at 5 s as a safety net in case the
+      //    callback never fires (worklet failure, mic stalled).
+      const noiseFloorGate = noiseFloorReadyPromise
+        ? Promise.race([
+            noiseFloorReadyPromise,
+            new Promise<void>((r) => setTimeout(r, 5_000)),
+          ])
+        : null
       await Promise.all(
         [
           new Promise((resolve) => setTimeout(resolve, CALIBRATION_MS)),
           socketReadyPromise,
+          noiseFloorGate,
         ].filter((p): p is Promise<unknown> => p !== null),
       )
     } catch (exc) {
