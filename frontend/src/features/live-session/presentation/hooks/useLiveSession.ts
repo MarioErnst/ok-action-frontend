@@ -653,6 +653,11 @@ export function useLiveSession(): UseLiveSessionResult {
     const hasAudioModule = selectedModules.some(
       (m) => m !== 'facial_expression',
     )
+    // AssemblyAI only feeds muletillas. Opening that WS for sessions
+    // that did not pick muletillas wastes a paid streaming session and
+    // adds latency to start(); skip it entirely when the user did not
+    // ask for muletillas.
+    const muletillasEnabled = selectedModules.includes('muletillas')
 
     // Open audio stream first. LiveFaceLoop opens its own camera
     // stream later when facial_expression is active; doing it
@@ -736,11 +741,13 @@ export function useLiveSession(): UseLiveSessionResult {
     // window. Opening the WS now and pushing a short silence chunk
     // hides the AssemblyAI session handshake behind the 2 s
     // calibration UI the user is already watching, so the first real
-    // chunk after `recording` lands on a warmed socket.
+    // chunk after `recording` lands on a warmed socket. Only open the
+    // socket when muletillas is selected — AssemblyAI does not feed
+    // any other module.
     let preWarmedSocket: LiveStreamSocket | null = null
     let socketReadyPromise: Promise<void> | null = null
     let authToken: string | null = null
-    if (hasAudioModule) {
+    if (muletillasEnabled) {
       authToken = localStorage.getItem('auth_token')
       if (!authToken) {
         setError('Sesión expirada. Volvé a iniciar sesión.')
@@ -859,19 +866,11 @@ export function useLiveSession(): UseLiveSessionResult {
       facialBaseline.markLive()
     }
 
-    // Audio-only artifacts are created only when we have at least one
-    // audio module selected. When only facial is selected we skip the
-    // main recorder and the streaming pipeline entirely; the strike
-    // counter for facial is driven by the emotion classifier.
-    if (hasAudioModule && audioStream && preWarmedSocket) {
-      // The WS was opened and warmed during the calibration window. We
-      // adopt it into the long-lived ref so triggerStop / reset / the
-      // unmount cleanup can close it like any other resource.
-      liveSocketRef.current = preWarmedSocket
-
-      // Start the full-audio recorder for the final composed evaluation.
-      // This is the same recording that gets uploaded at session end so
-      // the composed eval can score the entire session.
+    // The full-audio MediaRecorder is needed for ANY audio module
+    // (muletillas/phonation/loudness all upload the recording to the
+    // composed-eval endpoint at session end). When only facial is
+    // selected we skip it.
+    if (hasAudioModule && audioStream) {
       const mime = pickMimeType()
       const mainRecorder = new MediaRecorder(audioStream, mime ? { mimeType: mime } : {})
       mainChunksRef.current = []
@@ -880,6 +879,17 @@ export function useLiveSession(): UseLiveSessionResult {
       }
       mainRecorderRef.current = mainRecorder
       mainRecorder.start()
+    }
+
+    // The PCM streaming pipeline only feeds AssemblyAI for muletillas
+    // detection. Skip it entirely when muletillas was not selected so
+    // we do not spend AssemblyAI minutes nor add the streamer overhead
+    // to sessions that only use client-side audio modules.
+    if (muletillasEnabled && audioStream && preWarmedSocket) {
+      // The WS was opened and warmed during the calibration window. We
+      // adopt it into the long-lived ref so triggerStop / reset / the
+      // unmount cleanup can close it like any other resource.
+      liveSocketRef.current = preWarmedSocket
 
       // If the streamer fails to come up we still have to roll back the
       // recorder and the already-open WS so nothing leaks.
