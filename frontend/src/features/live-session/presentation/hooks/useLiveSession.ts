@@ -34,6 +34,12 @@ import { useEmotionStop } from './useEmotionStop'
 
 const MAX_SESSION_SECONDS = 300
 const CALIBRATION_MS = 2000
+// Duration of the voice_baseline window where the user speaks at their
+// natural level so we can sample baseline Hz and dB. 5 seconds gives
+// room for 2-3 short sentences after the UI copy change and the user's
+// reaction time. The earlier 3-second window was tight: users reported
+// they barely got to say two words before the step closed.
+const VOICE_BASELINE_MS = 5000
 const STOPPED_TRANSITION_MS = 5000
 // Pad of digital silence pushed through the WS right after `ready` to
 // warm up the Live model before the user starts speaking. Anything
@@ -851,12 +857,12 @@ export function useLiveSession(): UseLiveSessionResult {
     // OR phonation are on. Loudness uses it for the UX framing of the
     // band thresholds; phonation captures the user's typical Hz so the
     // live high-pitch detector knows what "normal" sounds like for
-    // this user. Three seconds is enough to average a stable pitch
-    // without dragging the calibration UI.
+    // this user. Duration is governed by VOICE_BASELINE_MS so we can
+    // tune it as one constant instead of a magic literal here.
     if (loudnessEnabled || phonationEnabled) {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
-      await new Promise((resolve) => setTimeout(resolve, 3_000))
+      await new Promise((resolve) => setTimeout(resolve, VOICE_BASELINE_MS))
       // Snapshot the captured baseline as soon as the window closes so
       // the rest of the session has a stable record in the console.
       // Reading directly from the hook (not a ref) is fine here because
