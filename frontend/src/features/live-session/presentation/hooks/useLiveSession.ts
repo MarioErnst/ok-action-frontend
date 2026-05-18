@@ -1169,13 +1169,16 @@ export function useLiveSession(): UseLiveSessionResult {
 
   // Diagnostic ticker for the recording phase. Logs the live detector
   // state every second while phonation or loudness are active so we
-  // can see exactly what the hooks are seeing — current hz/db, the
-  // streak counters and the shouldStop flag. The interval mounts only
-  // during recording and is read through refs so we never see stale
-  // closure values.
+  // can see exactly what the hooks are seeing. Instead of just showing
+  // the last frame (a single sample of a fast stream), we count how
+  // many frames arrived in the last second, how many were voiced and
+  // how many crossed the high-pitch ceiling. That tells us the real
+  // detection rate of the worklet during natural speech, which the
+  // single-sample tick was hiding.
   useEffect(() => {
     if (phase !== 'recording') return
     if (!phonationEnabled && !loudnessEnabled) return
+    let lastTickAt = Date.now()
     const interval = window.setInterval(() => {
       const monitor = voiceMonitorRef.current
       const baseline = voiceBaselineRef.current
@@ -1183,16 +1186,59 @@ export function useLiveSession(): UseLiveSessionResult {
       const loud = liveLoudnessRef.current
       const highPitchCeiling =
         baseline.baselineHz !== null
-          ? Math.round(baseline.baselineHz * 1.25)
+          ? baseline.baselineHz * 1.25
+          : null
+      const now = Date.now()
+      // Take a single snapshot of the frames array so the counts and
+      // averages all describe the same window even if the worklet
+      // pushes new frames mid-iteration.
+      const frames = monitor.frames
+      const windowFrames = frames.filter((f) => f.timestamp >= lastTickAt)
+      const voicedFrames = windowFrames.filter(
+        (f) => f.hz !== null && f.hz > 0,
+      )
+      const aboveCeilingFrames =
+        highPitchCeiling !== null
+          ? voicedFrames.filter((f) => (f.hz as number) >= highPitchCeiling)
+          : []
+      const avgVoicedHz =
+        voicedFrames.length > 0
+          ? Math.round(
+              voicedFrames.reduce((sum, f) => sum + (f.hz as number), 0) /
+                voicedFrames.length,
+            )
+          : null
+      const maxVoicedHz =
+        voicedFrames.length > 0
+          ? Math.round(Math.max(...voicedFrames.map((f) => f.hz as number)))
+          : null
+      const avgDb =
+        windowFrames.length > 0
+          ? Math.round(
+              (windowFrames.reduce((sum, f) => sum + f.db, 0) /
+                windowFrames.length) *
+                10,
+            ) / 10
           : null
       console.info('[live-session] recording tick', {
-        currentHz: monitor.hz !== null ? Math.round(monitor.hz) : null,
-        currentDb: Math.round(monitor.db * 10) / 10,
+        windowFrames: windowFrames.length,
+        voicedFrames: voicedFrames.length,
+        aboveCeilingFrames: aboveCeilingFrames.length,
+        voicedRatio:
+          windowFrames.length > 0
+            ? Math.round(
+                (voicedFrames.length / windowFrames.length) * 100,
+              ) / 100
+            : null,
+        avgVoicedHz,
+        maxVoicedHz,
+        avgDb,
         baselineHz:
           baseline.baselineHz !== null
             ? Math.round(baseline.baselineHz)
             : null,
-        highPitchCeiling,
+        highPitchCeiling:
+          highPitchCeiling !== null ? Math.round(highPitchCeiling) : null,
         phonation: {
           highPitchStreakMs: phon.highPitchStreakMs,
           breaksInWindow: phon.breaksInWindow,
@@ -1206,6 +1252,7 @@ export function useLiveSession(): UseLiveSessionResult {
           stopReason: loud.stopReason,
         },
       })
+      lastTickAt = now
     }, 1000)
     return () => window.clearInterval(interval)
   }, [phase, phonationEnabled, loudnessEnabled])
