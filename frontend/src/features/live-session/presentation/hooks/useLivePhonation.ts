@@ -51,6 +51,14 @@ const HIGH_PITCH_FACTOR = 1.25
 // quickly but long enough to ignore a single high-pitched word inside
 // otherwise normal speech.
 const HIGH_PITCH_THRESHOLD_MS = 1_500
+// Tolerance for short gaps in the high-pitch streak. The AudioWorklet
+// frequently returns hz=null between voiced frames (consonants, micro
+// pauses, frames where pitch detection lacks confidence) so a strict
+// "any non-above-ceiling frame resets the streak" rule never lets the
+// counter reach the threshold even while the user is clearly shouting.
+// We keep the streak alive as long as we have seen a frame above the
+// ceiling within the last GAP_TOLERANCE_MS.
+const HIGH_PITCH_GAP_TOLERANCE_MS = 500
 
 
 export type PhonationStopReason = 'high_pitch' | 'breaks'
@@ -105,6 +113,11 @@ export function useLivePhonation({
   // Timestamp of the first frame in the active "high-pitch" streak,
   // or null when the user is below the high-pitch threshold.
   const highPitchStartRef = useRef<number | null>(null)
+  // Timestamp of the most recent frame that crossed the ceiling. Used
+  // together with HIGH_PITCH_GAP_TOLERANCE_MS to tolerate short gaps
+  // (silences and null-hz frames between consonants) without breaking
+  // the streak.
+  const lastHighPitchHitRef = useRef<number | null>(null)
 
   const [currentHz, setCurrentHz] = useState<number | null>(null)
   const [breaksInWindow, setBreaksInWindow] = useState(0)
@@ -117,6 +130,7 @@ export function useLivePhonation({
     lastVoicedHzRef.current = null
     lastIndexRef.current = 0
     highPitchStartRef.current = null
+    lastHighPitchHitRef.current = null
     setCurrentHz(null)
     setBreaksInWindow(0)
     setHighPitchStreakMs(0)
@@ -146,18 +160,37 @@ export function useLivePhonation({
         lastVoicedHzRef.current = hz
         if (highPitchCeiling !== null) {
           if (hz >= highPitchCeiling) {
+            // Above ceiling: open the streak if it was closed, and
+            // always refresh the "last hit" timestamp so subsequent
+            // gaps know we were just up there.
             if (highPitchStartRef.current === null) {
               highPitchStartRef.current = frame.timestamp
             }
+            lastHighPitchHitRef.current = frame.timestamp
           } else {
+            // Below ceiling with a voiced frame is a clear signal the
+            // user came back to normal pitch — reset immediately.
             highPitchStartRef.current = null
+            lastHighPitchHitRef.current = null
           }
         }
       } else {
-        // Silence resets both trackers so a natural pause does not
-        // count against the user.
+        // Silence frame. We deliberately do NOT reset the high-pitch
+        // streak here: the AudioWorklet emits null between voiced
+        // frames more often than not (consonants, micro-pauses, low
+        // confidence) and a strict reset starved the detector. The
+        // tolerance check below closes the streak if the last hit is
+        // older than HIGH_PITCH_GAP_TOLERANCE_MS.
         lastVoicedHzRef.current = null
-        highPitchStartRef.current = null
+        if (
+          highPitchStartRef.current !== null &&
+          lastHighPitchHitRef.current !== null &&
+          frame.timestamp - lastHighPitchHitRef.current >
+            HIGH_PITCH_GAP_TOLERANCE_MS
+        ) {
+          highPitchStartRef.current = null
+          lastHighPitchHitRef.current = null
+        }
       }
     }
     lastIndexRef.current = frames.length
