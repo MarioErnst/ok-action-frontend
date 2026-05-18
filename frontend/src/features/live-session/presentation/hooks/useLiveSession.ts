@@ -808,15 +808,34 @@ export function useLiveSession(): UseLiveSessionResult {
     // CALIBRATION_MS window. Facial baseline runs in parallel.
     setCalibrationStep(hasAudioModule ? 'mic_noise' : null)
 
-    const calibrationStartedAt = performance.now()
-    const calibrationInterval = window.setInterval(() => {
-      const elapsed = performance.now() - calibrationStartedAt
-      const audioProgress = hasAudioModule ? elapsed / CALIBRATION_MS : 1
+    // The progress bar is split into halves when a voice_baseline step
+    // is going to follow: mic_noise fills 0 → 0.5 and voice_baseline
+    // fills 0.5 → 1. Without that split the bar reaches 100% during
+    // mic_noise and stays pegged through voice_baseline, which made
+    // users think the calibration was over before they had to speak.
+    const willCaptureVoiceBaseline = loudnessEnabled || phonationEnabled
+    const micNoiseProgressCeiling = willCaptureVoiceBaseline ? 0.5 : 1
+    const micNoiseStartedAt = performance.now()
+    // We do not know exactly how long mic_noise will run (depends on
+    // the voice monitor's internal calibration). The denominator below
+    // is a best-effort estimate: at least CALIBRATION_MS, but if the
+    // voice monitor's 3 s gate is active we extend the estimate so the
+    // bar fills smoothly instead of jumping to ceiling and waiting.
+    const micNoiseExpectedMs = noiseFloorReadyPromise
+      ? Math.max(CALIBRATION_MS, 3_500)
+      : CALIBRATION_MS
+    const micNoiseInterval = window.setInterval(() => {
+      const elapsed = performance.now() - micNoiseStartedAt
+      const audioProgress = hasAudioModule
+        ? Math.min(1, elapsed / micNoiseExpectedMs)
+        : 1
       const facialProgress = facialEnabled
         ? facialBaseline.getSampleCount() / MIN_FACIAL_BASELINE_SAMPLES
         : 1
-      const progress = Math.min(audioProgress, facialProgress)
-      setCalibrationProgress(Math.min(1, progress))
+      const phaseProgress = Math.min(audioProgress, facialProgress)
+      setCalibrationProgress(
+        Math.min(micNoiseProgressCeiling, phaseProgress * micNoiseProgressCeiling),
+      )
     }, 50)
 
     try {
@@ -844,7 +863,7 @@ export function useLiveSession(): UseLiveSessionResult {
         ].filter((p): p is Promise<unknown> => p !== null),
       )
     } catch (exc) {
-      window.clearInterval(calibrationInterval)
+      window.clearInterval(micNoiseInterval)
       setError(
         exc instanceof Error ? exc.message : 'No se pudo abrir la conexión en vivo',
       )
@@ -852,6 +871,9 @@ export function useLiveSession(): UseLiveSessionResult {
       releaseStreams()
       return
     }
+
+    window.clearInterval(micNoiseInterval)
+    setCalibrationProgress(micNoiseProgressCeiling)
 
     // Second sub-step: run the voice-baseline window whenever loudness
     // OR phonation are on. Loudness uses it for the UX framing of the
@@ -862,7 +884,17 @@ export function useLiveSession(): UseLiveSessionResult {
     if (loudnessEnabled || phonationEnabled) {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
+      // Drive the second half of the progress bar from a fresh timer so
+      // the user sees the bar actually advance while they speak. Without
+      // this the bar stays at 0.5 the whole window.
+      const voiceBaselineStartedAt = performance.now()
+      const voiceBaselineInterval = window.setInterval(() => {
+        const elapsed = performance.now() - voiceBaselineStartedAt
+        const progress = Math.min(1, elapsed / VOICE_BASELINE_MS)
+        setCalibrationProgress(0.5 + progress * 0.5)
+      }, 50)
       await new Promise((resolve) => setTimeout(resolve, VOICE_BASELINE_MS))
+      window.clearInterval(voiceBaselineInterval)
       // Snapshot the captured baseline as soon as the window closes so
       // the rest of the session has a stable record in the console.
       // Reading directly from the hook (not a ref) is fine here because
@@ -897,7 +929,6 @@ export function useLiveSession(): UseLiveSessionResult {
       }
     }
 
-    window.clearInterval(calibrationInterval)
     setCalibrationProgress(1)
 
     // Finalize the facial baseline. The hook averages the accumulated
