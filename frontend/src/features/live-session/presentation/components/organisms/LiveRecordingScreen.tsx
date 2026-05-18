@@ -11,7 +11,7 @@ import { LivePhonationMeter } from './LivePhonationMeter'
 // hooks needing to surface their internals. Keep aligned with the
 // constants in useLivePhonation and useLiveLoudness.
 const PHONATION_BREAK_THRESHOLD = 5
-const LOUDNESS_CLIPPING_THRESHOLD_MS = 3_000
+const LOUDNESS_OUT_OF_RANGE_THRESHOLD_MS = 2_000
 
 // Maximum session duration in seconds; the progress bar fills to 100% at
 // this point and the parent hook auto-stops. Five minutes mirrors the
@@ -41,7 +41,7 @@ interface Props {
   phonationCurrentHz: number | null
   phonationBreaksInWindow: number
   loudnessCurrentBand: LoudnessBand
-  loudnessClippingStreakMs: number
+  loudnessOutOfRangeStreakMs: number
   onEnd: () => void
 }
 
@@ -68,7 +68,7 @@ export function LiveRecordingScreen({
   phonationCurrentHz,
   phonationBreaksInWindow,
   loudnessCurrentBand,
-  loudnessClippingStreakMs,
+  loudnessOutOfRangeStreakMs,
   onEnd,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -157,8 +157,8 @@ export function LiveRecordingScreen({
           {loudnessEnabled && (
             <LiveLoudnessMeter
               currentBand={loudnessCurrentBand}
-              clippingStreakMs={loudnessClippingStreakMs}
-              clippingThresholdMs={LOUDNESS_CLIPPING_THRESHOLD_MS}
+              outOfRangeStreakMs={loudnessOutOfRangeStreakMs}
+              outOfRangeThresholdMs={LOUDNESS_OUT_OF_RANGE_THRESHOLD_MS}
             />
           )}
         </div>

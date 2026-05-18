@@ -13,13 +13,21 @@ import type { LoudnessSummaryDto } from '../../infrastructure/dto/LiveAudioSumma
 //
 // Reuses the standalone loudness classifier (same band thresholds as the
 // dedicated module) so the live experience and the standalone one feel
-// consistent. Exposes:
+// consistent. The corten fires when the user spends too long outside
+// the optimal band — that covers both grit/clipping AND "talking too
+// loud without saturating", which is a common case where the original
+// clipping-only detector did nothing.
+//
+// Exposes:
 //
 //   - `currentBand`: latest classified band, drives the meter cursor.
-//   - `clippingStreakMs`: how long the user has been continuously in
-//     clipping; used both as a UI hint and to fire the
+//   - `outOfRangeStreakMs`: how long the user has been continuously in
+//     `too-high` OR `clipping`. Used both as a UI hint and to fire the
 //     `auto_stop_loudness` corten at the threshold.
-//   - `shouldStop`: derived from `clippingStreakMs >= CLIPPING_THRESHOLD_MS`.
+//   - `shouldStop`: derived from outOfRangeStreakMs.
+//   - `stopReason`: 'clipping' | 'too_high' | null. Indicates which band
+//     the user was in when the threshold tripped so the orchestrator
+//     can pick the matching copy ("saturado" vs "demasiado alto").
 //   - `summary()`: aggregates band percentages + peak + noise floor for
 //     the composed-eval payload.
 //
@@ -27,7 +35,10 @@ import type { LoudnessSummaryDto } from '../../infrastructure/dto/LiveAudioSumma
 // passed a non-null `config` (i.e. the loudness preset thresholds have
 // already been resolved against the user's voice baseline).
 
-const CLIPPING_THRESHOLD_MS = 3_000
+const OUT_OF_RANGE_THRESHOLD_MS = 2_000
+
+
+export type LoudnessStopReason = 'clipping' | 'too_high'
 
 
 interface UseLiveLoudnessOptions {
@@ -45,8 +56,12 @@ interface UseLiveLoudnessOptions {
 
 interface UseLiveLoudnessResult {
   currentBand: LoudnessBand
-  clippingStreakMs: number
+  outOfRangeStreakMs: number
   shouldStop: boolean
+  // Which band the user was in when the threshold tripped. Null while
+  // the streak is below the threshold; set as soon as shouldStop turns
+  // true so the orchestrator can read it before firing the corten.
+  stopReason: LoudnessStopReason | null
   // Closure that computes the summary on demand at session end.
   // Returns null if no frames were classified or the config is still
   // unresolved, so the orchestrator can skip the payload.
@@ -73,11 +88,13 @@ export function useLiveLoudness({
   const peakDbRef = useRef<number>(-Infinity)
   // Frames already consumed, so we process only the new tail.
   const lastIndexRef = useRef(0)
-  // First timestamp of the current continuous clipping streak.
-  const clippingStreakStartRef = useRef<number | null>(null)
+  // First timestamp of the current continuous out-of-range streak
+  // (any frame in too-high or clipping). Anything else resets it.
+  const outOfRangeStartRef = useRef<number | null>(null)
 
   const [currentBand, setCurrentBand] = useState<LoudnessBand>('silence')
-  const [clippingStreakMs, setClippingStreakMs] = useState(0)
+  const [outOfRangeStreakMs, setOutOfRangeStreakMs] = useState(0)
+  const [stopReason, setStopReason] = useState<LoudnessStopReason | null>(null)
 
   const reset = useCallback(() => {
     bandCountsRef.current = {
@@ -89,9 +106,10 @@ export function useLiveLoudness({
     }
     peakDbRef.current = -Infinity
     lastIndexRef.current = 0
-    clippingStreakStartRef.current = null
+    outOfRangeStartRef.current = null
     setCurrentBand('silence')
-    setClippingStreakMs(0)
+    setOutOfRangeStreakMs(0)
+    setStopReason(null)
   }, [])
 
   useEffect(() => {
@@ -108,13 +126,16 @@ export function useLiveLoudness({
       if (frame.db > peakDbRef.current) {
         peakDbRef.current = frame.db
       }
-      if (band === 'clipping') {
-        if (clippingStreakStartRef.current === null) {
-          clippingStreakStartRef.current = frame.timestamp
+      if (band === 'too-high' || band === 'clipping') {
+        if (outOfRangeStartRef.current === null) {
+          outOfRangeStartRef.current = frame.timestamp
         }
       } else {
-        // Streak resets as soon as a non-clipping band comes through.
-        clippingStreakStartRef.current = null
+        // Streak resets when the user returns to optimal, too-low or
+        // silence. We do NOT count too-low as "out of range" for the
+        // corten: a quiet speaker is not as disruptive as a loud one
+        // and the standalone loudness module will flag it at session end.
+        outOfRangeStartRef.current = null
       }
       lastFrameBand = band
     }
@@ -124,13 +145,18 @@ export function useLiveLoudness({
       setCurrentBand(lastFrameBand)
     }
 
-    if (clippingStreakStartRef.current !== null) {
+    if (outOfRangeStartRef.current !== null && lastFrameBand !== null) {
       const lastTimestamp = frames[frames.length - 1]?.timestamp ?? Date.now()
-      setClippingStreakMs(
-        Math.max(0, lastTimestamp - clippingStreakStartRef.current),
-      )
+      const streakMs = Math.max(0, lastTimestamp - outOfRangeStartRef.current)
+      setOutOfRangeStreakMs(streakMs)
+      if (streakMs >= OUT_OF_RANGE_THRESHOLD_MS) {
+        // The reason mirrors the band of the latest frame so a streak
+        // that drifted between too-high and clipping is reported as
+        // whichever the user landed on at the moment we tripped.
+        setStopReason(lastFrameBand === 'clipping' ? 'clipping' : 'too_high')
+      }
     } else {
-      setClippingStreakMs(0)
+      setOutOfRangeStreakMs(0)
     }
   }, [frames, enabled, config, noiseFloor])
 
@@ -155,14 +181,15 @@ export function useLiveLoudness({
   }, [config, noiseFloor])
 
   const shouldStop = useMemo(
-    () => enabled && clippingStreakMs >= CLIPPING_THRESHOLD_MS,
-    [enabled, clippingStreakMs],
+    () => enabled && outOfRangeStreakMs >= OUT_OF_RANGE_THRESHOLD_MS,
+    [enabled, outOfRangeStreakMs],
   )
 
   return {
     currentBand,
-    clippingStreakMs,
+    outOfRangeStreakMs,
     shouldStop,
+    stopReason,
     summary,
     reset,
   }

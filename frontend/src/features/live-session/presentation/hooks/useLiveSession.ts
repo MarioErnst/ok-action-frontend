@@ -133,7 +133,7 @@ interface UseLiveSessionResult {
   phonationCurrentHz: number | null
   phonationBreaksInWindow: number
   loudnessCurrentBand: ReturnType<typeof useLiveLoudness>['currentBand']
-  loudnessClippingStreakMs: number
+  loudnessOutOfRangeStreakMs: number
   start: () => Promise<void>
   stop: () => Promise<void>
   reset: () => void
@@ -997,7 +997,7 @@ export function useLiveSession(): UseLiveSessionResult {
     phonationCurrentHz: livePhonation.currentHz,
     phonationBreaksInWindow: livePhonation.breaksInWindow,
     loudnessCurrentBand: liveLoudness.currentBand,
-    loudnessClippingStreakMs: liveLoudness.clippingStreakMs,
+    loudnessOutOfRangeStreakMs: liveLoudness.outOfRangeStreakMs,
     toggleModule,
     start,
     stop,

@@ -5,11 +5,12 @@ interface LiveLoudnessMeterProps {
   // Latest classified band reported by the live tracker. Drives the
   // active swatch in the band strip.
   currentBand: LoudnessBand
-  // How long the user has been continuously in clipping. Lets us draw
-  // a small progress hint when the auto-stop is about to fire.
-  clippingStreakMs: number
+  // How long the user has been continuously outside the optimal band
+  // (too-high or clipping). Lets us draw a small progress hint when
+  // the auto-stop is about to fire.
+  outOfRangeStreakMs: number
   // Threshold (ms) at which the orchestrator will fire the auto-stop.
-  clippingThresholdMs: number
+  outOfRangeThresholdMs: number
 }
 
 
@@ -48,12 +49,12 @@ const BAND_TONES: Record<LoudnessBand, string> = {
 // `useLiveLoudness`.
 export function LiveLoudnessMeter({
   currentBand,
-  clippingStreakMs,
-  clippingThresholdMs,
+  outOfRangeStreakMs,
+  outOfRangeThresholdMs,
 }: LiveLoudnessMeterProps) {
-  const clippingRatio = Math.min(
+  const dangerRatio = Math.min(
     1,
-    clippingStreakMs / Math.max(1, clippingThresholdMs),
+    outOfRangeStreakMs / Math.max(1, outOfRangeThresholdMs),
   )
   return (
     <div
@@ -82,7 +83,7 @@ export function LiveLoudnessMeter({
       <div className="relative h-1 w-full overflow-hidden rounded-full bg-surface-alt">
         <div
           className="h-full rounded-full bg-danger transition-all duration-200"
-          style={{ width: `${clippingRatio * 100}%` }}
+          style={{ width: `${dangerRatio * 100}%` }}
         />
       </div>
     </div>
