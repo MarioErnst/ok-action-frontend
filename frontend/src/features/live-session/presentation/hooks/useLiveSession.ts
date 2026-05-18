@@ -1241,6 +1241,7 @@ export function useLiveSession(): UseLiveSessionResult {
           highPitchCeiling !== null ? Math.round(highPitchCeiling) : null,
         phonation: {
           highPitchStreakMs: phon.highPitchStreakMs,
+          highPitchRatio: Math.round(phon.highPitchRatio * 100) / 100,
           breaksInWindow: phon.breaksInWindow,
           shouldStop: phon.shouldStop,
           stopReason: phon.stopReason,

@@ -41,24 +41,28 @@ const BREAK_THRESHOLD = 5
 const STABILITY_STDDEV_CAP_HZ = 80
 // Multiplier over the calibrated baseline above which we consider the
 // user is straining the voice. 1.25 means roughly +25% over their
-// normal pitch — empirically that is where a typical speaker starts
-// to sound shouty without yet being a full scream. Earlier sessions
-// at 1.4 (+40%) were too lax: users reported they could "almost yell"
-// without triggering the corten.
+// normal pitch.
 const HIGH_PITCH_FACTOR = 1.25
-// Continuous time the user must stay above the threshold before the
-// corten fires. 1.5 s is short enough to react to a sustained shout
-// quickly but long enough to ignore a single high-pitched word inside
-// otherwise normal speech.
+// Sliding window over which we compute the "above ceiling" ratio.
+// 2 s is wide enough to absorb the natural fluctuations of speech
+// (vocals come and go, sometimes a single syllable dips below the
+// ceiling) without losing reactivity for a sustained shout.
+const HIGH_PITCH_WINDOW_MS = 2_000
+// Minimum number of voiced frames the window must contain before we
+// trust the ratio. Below this we are still gathering data and refuse
+// to fire the trigger to avoid false positives on a single loud
+// vowel.
+const HIGH_PITCH_MIN_VOICED_IN_WINDOW = 8
+// Fraction of voiced frames in the window that must be above the
+// ceiling. 0.6 means "at least 60% of what you're voicing is above
+// your normal pitch". Empirically this is the right shape for natural
+// shouting: speech fluctuates a lot, demanding 100% above the ceiling
+// (the old logic) starved the detector forever.
+const HIGH_PITCH_MIN_RATIO = 0.6
+// Time the ratio must stay above HIGH_PITCH_MIN_RATIO continuously
+// before the corten fires. Short enough to react to a sustained shout
+// quickly, long enough to ignore a brief high-pitched outburst.
 const HIGH_PITCH_THRESHOLD_MS = 1_500
-// Tolerance for short gaps in the high-pitch streak. The AudioWorklet
-// frequently returns hz=null between voiced frames (consonants, micro
-// pauses, frames where pitch detection lacks confidence) so a strict
-// "any non-above-ceiling frame resets the streak" rule never lets the
-// counter reach the threshold even while the user is clearly shouting.
-// We keep the streak alive as long as we have seen a frame above the
-// ceiling within the last GAP_TOLERANCE_MS.
-const HIGH_PITCH_GAP_TOLERANCE_MS = 500
 
 
 export type PhonationStopReason = 'high_pitch' | 'breaks'
@@ -81,7 +85,15 @@ interface UseLivePhonationOptions {
 interface UseLivePhonationResult {
   currentHz: number | null
   breaksInWindow: number
+  // Time (ms) the ratio of voiced frames above the ceiling has stayed
+  // above HIGH_PITCH_MIN_RATIO continuously. Resets to 0 when the
+  // ratio drops below the threshold. The orchestrator uses this for
+  // the live UI feedback and the auto-stop trigger.
   highPitchStreakMs: number
+  // Latest observed ratio of voiced frames above the ceiling, 0..1.
+  // Exposed for diagnostic logs so we can see how aggressive the user
+  // is being relative to their baseline.
+  highPitchRatio: number
   shouldStop: boolean
   // Which detector tripped. Null while neither has tripped; the
   // orchestrator reads it to pick the matching corten copy.
@@ -110,18 +122,20 @@ export function useLivePhonation({
   // process only new frames on each render instead of re-walking the
   // whole rolling buffer.
   const lastIndexRef = useRef(0)
-  // Timestamp of the first frame in the active "high-pitch" streak,
-  // or null when the user is below the high-pitch threshold.
+  // Sliding window of voiced frames used for the ratio calculation.
+  // Each entry stores the frame timestamp and whether the pitch was
+  // above the ceiling. Trimmed to HIGH_PITCH_WINDOW_MS on every pass.
+  const voicedWindowRef = useRef<Array<{ ts: number; aboveCeiling: boolean }>>(
+    [],
+  )
+  // Timestamp the ratio crossed HIGH_PITCH_MIN_RATIO for the first time
+  // in the current streak. Null while the ratio is below the threshold.
   const highPitchStartRef = useRef<number | null>(null)
-  // Timestamp of the most recent frame that crossed the ceiling. Used
-  // together with HIGH_PITCH_GAP_TOLERANCE_MS to tolerate short gaps
-  // (silences and null-hz frames between consonants) without breaking
-  // the streak.
-  const lastHighPitchHitRef = useRef<number | null>(null)
 
   const [currentHz, setCurrentHz] = useState<number | null>(null)
   const [breaksInWindow, setBreaksInWindow] = useState(0)
   const [highPitchStreakMs, setHighPitchStreakMs] = useState(0)
+  const [highPitchRatio, setHighPitchRatio] = useState(0)
   const [stopReason, setStopReason] = useState<PhonationStopReason | null>(null)
 
   const reset = useCallback(() => {
@@ -129,11 +143,12 @@ export function useLivePhonation({
     breakTimestampsRef.current = []
     lastVoicedHzRef.current = null
     lastIndexRef.current = 0
+    voicedWindowRef.current = []
     highPitchStartRef.current = null
-    lastHighPitchHitRef.current = null
     setCurrentHz(null)
     setBreaksInWindow(0)
     setHighPitchStreakMs(0)
+    setHighPitchRatio(0)
     setStopReason(null)
   }, [])
 
@@ -158,57 +173,69 @@ export function useLivePhonation({
           breakTimestampsRef.current.push(frame.timestamp)
         }
         lastVoicedHzRef.current = hz
+        // Only voiced frames feed the high-pitch ratio window. Silence
+        // and null-hz frames are ignored entirely (the worklet is too
+        // strict at returning null on consonants — counting those as
+        // "below ceiling" was the bug).
         if (highPitchCeiling !== null) {
-          if (hz >= highPitchCeiling) {
-            // Above ceiling: open the streak if it was closed, and
-            // always refresh the "last hit" timestamp so subsequent
-            // gaps know we were just up there.
-            if (highPitchStartRef.current === null) {
-              highPitchStartRef.current = frame.timestamp
-            }
-            lastHighPitchHitRef.current = frame.timestamp
-          } else {
-            // Below ceiling with a voiced frame is a clear signal the
-            // user came back to normal pitch — reset immediately.
-            highPitchStartRef.current = null
-            lastHighPitchHitRef.current = null
-          }
+          voicedWindowRef.current.push({
+            ts: frame.timestamp,
+            aboveCeiling: hz >= highPitchCeiling,
+          })
         }
       } else {
-        // Silence frame. We deliberately do NOT reset the high-pitch
-        // streak here: the AudioWorklet emits null between voiced
-        // frames more often than not (consonants, micro-pauses, low
-        // confidence) and a strict reset starved the detector. The
-        // tolerance check below closes the streak if the last hit is
-        // older than HIGH_PITCH_GAP_TOLERANCE_MS.
         lastVoicedHzRef.current = null
-        if (
-          highPitchStartRef.current !== null &&
-          lastHighPitchHitRef.current !== null &&
-          frame.timestamp - lastHighPitchHitRef.current >
-            HIGH_PITCH_GAP_TOLERANCE_MS
-        ) {
-          highPitchStartRef.current = null
-          lastHighPitchHitRef.current = null
-        }
       }
     }
     lastIndexRef.current = frames.length
 
-    // Trim break timestamps to the active window.
+    // Trim break timestamps to the active break window.
     const cutoff = Date.now() - BREAK_WINDOW_MS
     breakTimestampsRef.current = breakTimestampsRef.current.filter(
       (ts) => ts >= cutoff,
+    )
+
+    // Trim voiced window. Use the latest frame timestamp as "now" so
+    // the calculation is consistent with the data we just processed
+    // and not skewed by render delays.
+    const latestTimestamp =
+      frames[frames.length - 1]?.timestamp ?? Date.now()
+    const windowCutoff = latestTimestamp - HIGH_PITCH_WINDOW_MS
+    voicedWindowRef.current = voicedWindowRef.current.filter(
+      (entry) => entry.ts >= windowCutoff,
     )
 
     const latestVoiced = hzHistoryRef.current[hzHistoryRef.current.length - 1] ?? null
     setCurrentHz(latestVoiced)
     setBreaksInWindow(breakTimestampsRef.current.length)
 
+    // Compute the high-pitch ratio over the sliding window. We require
+    // a minimum number of voiced samples so a single shouted vowel does
+    // not produce a 100% ratio that immediately trips.
+    const voicedCount = voicedWindowRef.current.length
+    const aboveCount = voicedWindowRef.current.reduce(
+      (sum, entry) => sum + (entry.aboveCeiling ? 1 : 0),
+      0,
+    )
+    const ratio = voicedCount > 0 ? aboveCount / voicedCount : 0
+    setHighPitchRatio(ratio)
+
     let highPitchMs = 0
-    if (highPitchStartRef.current !== null) {
-      const lastTimestamp = frames[frames.length - 1]?.timestamp ?? Date.now()
-      highPitchMs = Math.max(0, lastTimestamp - highPitchStartRef.current)
+    if (highPitchCeiling !== null) {
+      if (
+        voicedCount >= HIGH_PITCH_MIN_VOICED_IN_WINDOW &&
+        ratio >= HIGH_PITCH_MIN_RATIO
+      ) {
+        if (highPitchStartRef.current === null) {
+          highPitchStartRef.current = latestTimestamp
+        }
+        highPitchMs = Math.max(
+          0,
+          latestTimestamp - highPitchStartRef.current,
+        )
+      } else {
+        highPitchStartRef.current = null
+      }
     }
     setHighPitchStreakMs(highPitchMs)
 
@@ -263,6 +290,7 @@ export function useLivePhonation({
     currentHz,
     breaksInWindow,
     highPitchStreakMs,
+    highPitchRatio,
     shouldStop,
     stopReason,
     summary,
