@@ -271,7 +271,7 @@ export function useLiveSession(): UseLiveSessionResult {
     const measuredBaseline = voiceBaseline.baselineDb
     const fallbackBaseline = voiceNoiseFloor + 25
     const voiceBaselineDb = measuredBaseline ?? fallbackBaseline
-    return {
+    const config: LoudnessConfig = {
       presetId: preset.id,
       label: preset.label,
       description: preset.description ?? '',
@@ -280,6 +280,15 @@ export function useLiveSession(): UseLiveSessionResult {
       optimalCeilingDbfs: voiceBaselineDb + preset.optimal_offset_db,
       clipThresholdDbfs: preset.clip_threshold_db,
     }
+    console.info('[live-session] loudness config resolved', {
+      preset: preset.label,
+      baselineSource: measuredBaseline !== null ? 'measured' : 'fallback',
+      voiceBaselineDb: Math.round(voiceBaselineDb * 10) / 10,
+      tooLowCeilingDbfs: Math.round(config.tooLowCeilingDbfs * 10) / 10,
+      optimalCeilingDbfs: Math.round(config.optimalCeilingDbfs * 10) / 10,
+      clipThresholdDbfs: Math.round(config.clipThresholdDbfs * 10) / 10,
+    })
+    return config
   }, [
     loudnessEnabled,
     voiceNoiseFloor,
@@ -300,17 +309,27 @@ export function useLiveSession(): UseLiveSessionResult {
     enabled: loudnessEnabled,
   })
 
-  // Refs let the auto-stop callbacks read the freshest subreason
+  // Refs let the auto-stop callbacks read the freshest hook state
   // without depending on it (which would re-create the callback on
-  // every reactive change of stopReason and re-trigger useLiveAutoStops).
+  // every reactive change and re-trigger useLiveAutoStops). They are
+  // updated by lightweight effects so the callbacks see the latest
+  // values without needing them in their dep arrays.
   const livePhonationStopReasonRef = useRef<PhonationStopReason | null>(null)
   const liveLoudnessStopReasonRef = useRef<LoudnessStopReason | null>(null)
+  const livePhonationRef = useRef(livePhonation)
+  const liveLoudnessRef = useRef(liveLoudness)
+  const voiceBaselineRef = useRef(voiceBaseline)
   useEffect(() => {
     livePhonationStopReasonRef.current = livePhonation.stopReason
-  }, [livePhonation.stopReason])
+    livePhonationRef.current = livePhonation
+  }, [livePhonation])
   useEffect(() => {
     liveLoudnessStopReasonRef.current = liveLoudness.stopReason
-  }, [liveLoudness.stopReason])
+    liveLoudnessRef.current = liveLoudness
+  }, [liveLoudness])
+  useEffect(() => {
+    voiceBaselineRef.current = voiceBaseline
+  }, [voiceBaseline])
 
   // Refs for long-lived resources that should not trigger renders.
   const sessionIdRef = useRef<string | null>(null)
@@ -795,6 +814,21 @@ export function useLiveSession(): UseLiveSessionResult {
       setCalibrationStep('voice_baseline')
       setCalibrationProgress(0.5)
       await new Promise((resolve) => setTimeout(resolve, 3_000))
+      // Snapshot the captured baseline as soon as the window closes so
+      // the rest of the session has a stable record in the console.
+      // Reading directly from the hook (not a ref) is fine here because
+      // we are running in the same async start() flow that owns the
+      // calibration timing.
+      const hz = voiceBaseline.baselineHz
+      const db = voiceBaseline.baselineDb
+      console.info(
+        '[live-session] voice baseline captured',
+        {
+          hz: hz !== null ? Math.round(hz) : null,
+          db: db !== null ? Math.round(db * 10) / 10 : null,
+          samples: voiceBaseline.sampleCount,
+        },
+      )
     }
 
     setCalibrationStep('finalizing')
@@ -952,15 +986,35 @@ export function useLiveSession(): UseLiveSessionResult {
 
   const onPhonationStop = useCallback(() => {
     if (phaseRef.current !== 'recording' || isStoppingRef.current) return
+    const subReason = livePhonationStopReasonRef.current
+    const phonationSnapshot = livePhonationRef.current
+    const baselineHz = voiceBaselineRef.current.baselineHz
     setStopCategory('phonation')
-    setPhonationStopReason(livePhonationStopReasonRef.current)
+    setPhonationStopReason(subReason)
+    console.info('[live-session] phonation auto-stop', {
+      reason: subReason,
+      currentHz:
+        phonationSnapshot.currentHz !== null
+          ? Math.round(phonationSnapshot.currentHz)
+          : null,
+      baselineHz: baselineHz !== null ? Math.round(baselineHz) : null,
+      highPitchStreakMs: phonationSnapshot.highPitchStreakMs,
+      breaksInWindow: phonationSnapshot.breaksInWindow,
+    })
     void triggerStop('auto_stop_phonation')
   }, [triggerStop])
 
   const onLoudnessStop = useCallback(() => {
     if (phaseRef.current !== 'recording' || isStoppingRef.current) return
+    const subReason = liveLoudnessStopReasonRef.current
+    const loudnessSnapshot = liveLoudnessRef.current
     setStopCategory('loudness')
-    setLoudnessStopReason(liveLoudnessStopReasonRef.current)
+    setLoudnessStopReason(subReason)
+    console.info('[live-session] loudness auto-stop', {
+      reason: subReason,
+      currentBand: loudnessSnapshot.currentBand,
+      outOfRangeStreakMs: loudnessSnapshot.outOfRangeStreakMs,
+    })
     void triggerStop('auto_stop_loudness')
   }, [triggerStop])
 
