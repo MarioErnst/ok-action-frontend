@@ -1236,6 +1236,8 @@ export function useLiveSession(): UseLiveSessionResult {
           (highPitchCeiling !== null ? Math.round(highPitchCeiling) : 'null'),
         // Detector-level values: read from the hook ref so they reflect
         // the sliding-window state, not the per-tick frame counts.
+        'phonWindowSize=' + phon.voicedWindowSize,
+        'phonWindowAbove=' + phon.voicedWindowAbove,
         'phonRatio=' + (Math.round(phon.highPitchRatio * 100) / 100),
         'phonStreakMs=' + phon.highPitchStreakMs,
         'phonShouldStop=' + phon.shouldStop,
