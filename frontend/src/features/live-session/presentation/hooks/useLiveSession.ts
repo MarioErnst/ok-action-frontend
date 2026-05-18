@@ -145,7 +145,11 @@ interface UseLiveSessionResult {
   phonationCurrentHz: number | null
   phonationBreaksInWindow: number
   loudnessCurrentBand: ReturnType<typeof useLiveLoudness>['currentBand']
-  loudnessOutOfRangeStreakMs: number
+  // Sustained-time on each side of the corten. The meter UI uses the
+  // high streak for its danger bar; the low streak fires its own
+  // corten but does not have a visible meter today.
+  loudnessHighStreakMs: number
+  loudnessLowStreakMs: number
   start: () => Promise<void>
   stop: () => Promise<void>
   reset: () => void
@@ -1151,7 +1155,10 @@ export function useLiveSession(): UseLiveSessionResult {
     console.info('[live-session] loudness auto-stop', {
       reason: subReason,
       currentBand: loudnessSnapshot.currentBand,
-      outOfRangeStreakMs: loudnessSnapshot.outOfRangeStreakMs,
+      highStreakMs: loudnessSnapshot.highStreakMs,
+      lowStreakMs: loudnessSnapshot.lowStreakMs,
+      highRatio: Math.round(loudnessSnapshot.highRatio * 100) / 100,
+      lowRatio: Math.round(loudnessSnapshot.lowRatio * 100) / 100,
     })
     void triggerStop('auto_stop_loudness')
   }, [triggerStop])
@@ -1243,8 +1250,13 @@ export function useLiveSession(): UseLiveSessionResult {
         'phonShouldStop=' + phon.shouldStop,
         'phonBreaks=' + phon.breaksInWindow,
         'loudBand=' + loud.currentBand,
-        'loudStreakMs=' + loud.outOfRangeStreakMs,
+        'loudWindowSize=' + loud.windowSize,
+        'loudHighRatio=' + (Math.round(loud.highRatio * 100) / 100),
+        'loudLowRatio=' + (Math.round(loud.lowRatio * 100) / 100),
+        'loudHighStreakMs=' + loud.highStreakMs,
+        'loudLowStreakMs=' + loud.lowStreakMs,
         'loudShouldStop=' + loud.shouldStop,
+        'loudStopReason=' + loud.stopReason,
       )
       lastTickAt = now
     }, 1000)
@@ -1325,7 +1337,8 @@ export function useLiveSession(): UseLiveSessionResult {
     phonationCurrentHz: livePhonation.currentHz,
     phonationBreaksInWindow: livePhonation.breaksInWindow,
     loudnessCurrentBand: liveLoudness.currentBand,
-    loudnessOutOfRangeStreakMs: liveLoudness.outOfRangeStreakMs,
+    loudnessHighStreakMs: liveLoudness.highStreakMs,
+    loudnessLowStreakMs: liveLoudness.lowStreakMs,
     toggleModule,
     start,
     stop,

@@ -72,7 +72,7 @@ export default function LiveSessionPage() {
           phonationCurrentHz={live.phonationCurrentHz}
           phonationBreaksInWindow={live.phonationBreaksInWindow}
           loudnessCurrentBand={live.loudnessCurrentBand}
-          loudnessOutOfRangeStreakMs={live.loudnessOutOfRangeStreakMs}
+          loudnessHighStreakMs={live.loudnessHighStreakMs}
           onEnd={() => {
             void live.stop()
           }}
