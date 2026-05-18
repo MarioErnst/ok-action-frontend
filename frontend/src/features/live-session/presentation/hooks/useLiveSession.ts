@@ -8,8 +8,8 @@ import type { CalibrationStep } from '../components/organisms/CalibrationScreen'
 import { useElapsedTimer } from './useElapsedTimer'
 import { useFacialBaseline } from './useFacialBaseline'
 import { useLiveAutoStops } from './useLiveAutoStops'
-import { useLiveLoudness } from './useLiveLoudness'
-import { useLivePhonation } from './useLivePhonation'
+import { useLiveLoudness, type LoudnessStopReason } from './useLiveLoudness'
+import { useLivePhonation, type PhonationStopReason } from './useLivePhonation'
 import { useLoudnessPresets } from './useLoudnessPresets'
 import { useVoiceBaseline } from './useVoiceBaseline'
 import type {
@@ -111,10 +111,15 @@ interface UseLiveSessionResult {
   stopReason: StopReason | null
   // Specific category that triggered the auto-stop. Populated by the
   // hook just before transitioning into stopped_transition so the
-  // overlay can render a copy that matches the actual cause (the three
+  // overlay can render a copy that matches the actual cause (the four
   // strike counters are independent and each one has its own message).
   // Null when the session ended manually or by time_limit.
   stopCategory: StopCategory | null
+  // Fine-grained reason within the loudness/phonation categories.
+  // 'clipping' vs 'too_high' for loudness; 'high_pitch' vs 'breaks'
+  // for phonation. Null when neither category fired the corten.
+  loudnessStopReason: LoudnessStopReason | null
+  phonationStopReason: PhonationStopReason | null
   emotionTriggerLabel: string | null
   recordingAudioUrl: string | null
   recordingDurationMs: number
@@ -204,6 +209,10 @@ export function useLiveSession(): UseLiveSessionResult {
   const [stopReason, setStopReason] = useState<StopReason | null>(null)
   const [emotionTriggerLabel, setEmotionTriggerLabel] = useState<string | null>(null)
   const [stopCategory, setStopCategory] = useState<StopCategory | null>(null)
+  const [loudnessStopReason, setLoudnessStopReason] =
+    useState<LoudnessStopReason | null>(null)
+  const [phonationStopReason, setPhonationStopReason] =
+    useState<PhonationStopReason | null>(null)
   const [recordingAudioUrl, setRecordingAudioUrl] = useState<string | null>(null)
   const [recordingDurationMs, setRecordingDurationMs] = useState(0)
   const [isStarting, setIsStarting] = useState(false)
@@ -281,6 +290,18 @@ export function useLiveSession(): UseLiveSessionResult {
     config: loudnessConfig,
     enabled: loudnessEnabled,
   })
+
+  // Refs let the auto-stop callbacks read the freshest subreason
+  // without depending on it (which would re-create the callback on
+  // every reactive change of stopReason and re-trigger useLiveAutoStops).
+  const livePhonationStopReasonRef = useRef<PhonationStopReason | null>(null)
+  const liveLoudnessStopReasonRef = useRef<LoudnessStopReason | null>(null)
+  useEffect(() => {
+    livePhonationStopReasonRef.current = livePhonation.stopReason
+  }, [livePhonation.stopReason])
+  useEffect(() => {
+    liveLoudnessStopReasonRef.current = liveLoudness.stopReason
+  }, [liveLoudness.stopReason])
 
   // Refs for long-lived resources that should not trigger renders.
   const sessionIdRef = useRef<string | null>(null)
@@ -398,6 +419,8 @@ export function useLiveSession(): UseLiveSessionResult {
     setCalibrationProgress(0)
     setStopReason(null)
     setStopCategory(null)
+    setLoudnessStopReason(null)
+    setPhonationStopReason(null)
     setEmotionTriggerLabel(null)
     setRecordingAudioUrl(null)
     setRecordingDurationMs(0)
@@ -582,6 +605,8 @@ export function useLiveSession(): UseLiveSessionResult {
     setLiveScore(null)
     setStopReason(null)
     setStopCategory(null)
+    setLoudnessStopReason(null)
+    setPhonationStopReason(null)
     setEmotionTriggerLabel(null)
     setRecordingAudioUrl(null)
     setRecordingDurationMs(0)
@@ -919,12 +944,14 @@ export function useLiveSession(): UseLiveSessionResult {
   const onPhonationStop = useCallback(() => {
     if (phaseRef.current !== 'recording' || isStoppingRef.current) return
     setStopCategory('phonation')
+    setPhonationStopReason(livePhonationStopReasonRef.current)
     void triggerStop('auto_stop_phonation')
   }, [triggerStop])
 
   const onLoudnessStop = useCallback(() => {
     if (phaseRef.current !== 'recording' || isStoppingRef.current) return
     setStopCategory('loudness')
+    setLoudnessStopReason(liveLoudnessStopReasonRef.current)
     void triggerStop('auto_stop_loudness')
   }, [triggerStop])
 
@@ -1000,6 +1027,8 @@ export function useLiveSession(): UseLiveSessionResult {
     strikeEvents: strikes.events,
     stopReason,
     stopCategory,
+    loudnessStopReason,
+    phonationStopReason,
     emotionTriggerLabel,
     recordingAudioUrl,
     recordingDurationMs,
