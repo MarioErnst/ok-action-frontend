@@ -75,10 +75,10 @@ function pickCopy(
   if (step === 'voice_baseline') {
     return {
       title: facialEnabled
-        ? 'Acomodá tu volumen mientras te ven'
+        ? 'Hablá normal mientras te ven'
         : 'Hablá con tu volumen normal',
       description:
-        'Decí algo en el volumen que vas a usar durante la sesión. Necesitamos un par de segundos de tu voz para ajustar las bandas del módulo de volumen.',
+        'Hablá de corrido durante todo este paso — cualquier frase larga sirve, por ejemplo contá qué hiciste hoy. Estamos midiendo tu tono y tu volumen reales para usarlos como referencia el resto de la sesión.',
     }
   }
 
