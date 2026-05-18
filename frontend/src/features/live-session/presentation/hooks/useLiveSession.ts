@@ -1220,39 +1220,30 @@ export function useLiveSession(): UseLiveSessionResult {
                 10,
             ) / 10
           : null
-      console.info('[live-session] recording tick', {
-        windowFrames: windowFrames.length,
-        voicedFrames: voicedFrames.length,
-        aboveCeilingFrames: aboveCeilingFrames.length,
-        voicedRatio:
-          windowFrames.length > 0
-            ? Math.round(
-                (voicedFrames.length / windowFrames.length) * 100,
-              ) / 100
-            : null,
-        avgVoicedHz,
-        maxVoicedHz,
-        avgDb,
-        baselineHz:
-          baseline.baselineHz !== null
+      console.info(
+        '[live-session] recording tick',
+        'windowFrames=' + windowFrames.length,
+        'voicedFrames=' + voicedFrames.length,
+        'aboveCeilingFrames=' + aboveCeilingFrames.length,
+        'avgVoicedHz=' + avgVoicedHz,
+        'maxVoicedHz=' + maxVoicedHz,
+        'avgDb=' + avgDb,
+        'baselineHz=' +
+          (baseline.baselineHz !== null
             ? Math.round(baseline.baselineHz)
-            : null,
-        highPitchCeiling:
-          highPitchCeiling !== null ? Math.round(highPitchCeiling) : null,
-        phonation: {
-          highPitchStreakMs: phon.highPitchStreakMs,
-          highPitchRatio: Math.round(phon.highPitchRatio * 100) / 100,
-          breaksInWindow: phon.breaksInWindow,
-          shouldStop: phon.shouldStop,
-          stopReason: phon.stopReason,
-        },
-        loudness: {
-          currentBand: loud.currentBand,
-          outOfRangeStreakMs: loud.outOfRangeStreakMs,
-          shouldStop: loud.shouldStop,
-          stopReason: loud.stopReason,
-        },
-      })
+            : 'null'),
+        'highPitchCeiling=' +
+          (highPitchCeiling !== null ? Math.round(highPitchCeiling) : 'null'),
+        // Detector-level values: read from the hook ref so they reflect
+        // the sliding-window state, not the per-tick frame counts.
+        'phonRatio=' + (Math.round(phon.highPitchRatio * 100) / 100),
+        'phonStreakMs=' + phon.highPitchStreakMs,
+        'phonShouldStop=' + phon.shouldStop,
+        'phonBreaks=' + phon.breaksInWindow,
+        'loudBand=' + loud.currentBand,
+        'loudStreakMs=' + loud.outOfRangeStreakMs,
+        'loudShouldStop=' + loud.shouldStop,
+      )
       lastTickAt = now
     }, 1000)
     return () => window.clearInterval(interval)
