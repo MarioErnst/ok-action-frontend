@@ -41,14 +41,14 @@ export const InitialRadar = ({ dimensions }: InitialRadarProps) => {
 
   return (
     <div
-      className="relative w-full max-w-[520px] aspect-square animate-fade-in"
+      className="relative w-full max-w-[520px] mx-auto aspect-square animate-fade-in"
       style={{ animationDelay: '250ms', animationFillMode: 'backwards' }}
     >
       <div
         className="pointer-events-none absolute inset-[-20%] rounded-full bg-accent/15 blur-[80px] animate-pulse-glow"
         aria-hidden
       />
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
         <RadarChart data={data} outerRadius="65%" margin={{ top: 24, right: 32, bottom: 24, left: 32 }}>
           <PolarGrid stroke="var(--color-border)" strokeOpacity={0.35} gridType="polygon" />
           <PolarAngleAxis dataKey="label" tick={<AxisTick />} />

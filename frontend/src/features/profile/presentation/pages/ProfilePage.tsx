@@ -27,7 +27,7 @@ export const ProfilePage = () => {
           <h1 className="text-3xl md:text-5xl font-extrabold text-text tracking-tight mb-2">{user?.fullName}</h1>
           <p className="text-text-muted text-sm md:text-base bg-surface-alt/50 px-4 py-1.5 rounded-full border border-white/5 inline-block">{user?.email}</p>
         </div>
-        <ModuleGuideLauncher guideId="profile" />
+        <div className="shrink-0 mt-1"><ModuleGuideLauncher guideId="profile" /></div>
       </header>
 
       <section data-journey-id="profile-history">

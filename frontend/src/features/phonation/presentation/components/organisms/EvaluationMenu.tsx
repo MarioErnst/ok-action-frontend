@@ -26,17 +26,7 @@ export const EvaluationMenu = ({ onStart }: EvaluationMenuProps) => {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-8 p-6 pb-28 relative z-10">
-      {/* Header */}
-      <div className="flex flex-col items-center gap-3 relative text-center mt-4">
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
-        <p className="text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)] relative z-10">Evaluación de Voz</p>
-        <h1 className="text-3xl md:text-4xl font-extrabold text-text tracking-tight drop-shadow-[0_0_10px_rgba(255,255,255,0.1)] relative z-10">Ejercicios</h1>
-        <p className="text-sm font-medium text-text-muted bg-surface-alt/50 px-4 py-2 rounded-full border border-white/5 relative z-10 mt-2">
-          Selecciona los ejercicios a realizar
-        </p>
-      </div>
-
+    <div className="flex flex-col gap-8 relative z-10 w-full max-w-3xl mx-auto">
       <div className="flex flex-col gap-6">
         {/* Quick Actions */}
         <div className="flex gap-4">

@@ -56,86 +56,87 @@ export function DimensionSelector({
         {LIVE_MODULES.map((module) => {
           const isActive = selected.includes(module)
           return (
-            <button
-              key={module}
-              onClick={() => onToggle(module)}
-              type="button"
-              className={`
-                flex items-center gap-4 w-full p-4 rounded-2xl border text-left transition-all duration-200 min-h-[44px]
-                ${
-                  isActive
-                    ? 'border-accent bg-accent/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
-                    : 'border-border/50 bg-surface/60 hover:border-border hover:bg-surface'
-                }
-              `}
-            >
-              <div
+            <div key={module} className="flex flex-col gap-2 w-full">
+              <button
+                onClick={() => onToggle(module)}
+                type="button"
                 className={`
-                  w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all
-                  ${isActive ? 'bg-accent border-accent' : 'border-border'}
+                  flex items-center gap-4 w-full p-4 rounded-2xl border text-left transition-all duration-200 min-h-[44px]
+                  ${
+                    isActive
+                      ? 'border-accent bg-accent/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]'
+                      : 'border-border/50 bg-surface/60 hover:border-border hover:bg-surface'
+                  }
                 `}
               >
-                {isActive && (
-                  <svg
-                    className="w-3 h-3 text-text-on-accent"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={3}
-                    viewBox="0 0 12 12"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M2 6l3 3 5-5"
-                    />
-                  </svg>
-                )}
-              </div>
-              <div className="flex flex-col">
-                <span
-                  className={`font-semibold text-sm ${
-                    isActive ? 'text-accent' : 'text-text'
-                  }`}
+                <div
+                  className={`
+                    w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all
+                    ${isActive ? 'bg-accent border-accent' : 'border-border'}
+                  `}
                 >
-                  {LIVE_MODULE_LABELS[module]}
-                </span>
-                <span className="text-xs text-text-muted">
-                  {LIVE_MODULE_DESCRIPTIONS[module]}
-                </span>
-              </div>
-            </button>
+                  {isActive && (
+                    <svg
+                      className="w-3 h-3 text-text-on-accent"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={3}
+                      viewBox="0 0 12 12"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2 6l3 3 5-5"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span
+                    className={`font-semibold text-sm ${
+                      isActive ? 'text-accent' : 'text-text'
+                    }`}
+                  >
+                    {LIVE_MODULE_LABELS[module]}
+                  </span>
+                  <span className="text-xs text-text-muted">
+                    {LIVE_MODULE_DESCRIPTIONS[module]}
+                  </span>
+                </div>
+              </button>
+              
+              {module === 'loudness' && isActive && (
+                <div className="flex flex-col gap-2 rounded-2xl border border-border/40 bg-surface/40 p-4 w-full animate-fade-in">
+                  <label
+                    htmlFor="live-loudness-preset"
+                    className="text-xs font-bold uppercase tracking-widest text-text-muted"
+                  >
+                    Preset de volumen
+                  </label>
+                  {loudnessPresets.length === 0 ? (
+                    <p className="text-xs text-text-muted">
+                      Cargando presets… si no aparecen, usaremos el preset global por defecto.
+                    </p>
+                  ) : (
+                    <select
+                      id="live-loudness-preset"
+                      value={selectedLoudnessPresetId ?? loudnessPresets[0]?.id ?? ''}
+                      onChange={(event) => onSelectLoudnessPreset(event.target.value)}
+                      className="w-full rounded-xl border border-border/60 bg-surface px-3 py-2 text-sm text-text min-h-[44px]"
+                    >
+                      {loudnessPresets.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.label}
+                          {preset.is_default ? ' (predeterminado)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
           )
         })}
-
-        {selected.includes('loudness') && (
-          <div className="flex flex-col gap-2 rounded-2xl border border-border/40 bg-surface/40 p-4 ml-9">
-            <label
-              htmlFor="live-loudness-preset"
-              className="text-xs font-bold uppercase tracking-widest text-text-muted"
-            >
-              Preset de volumen
-            </label>
-            {loudnessPresets.length === 0 ? (
-              <p className="text-xs text-text-muted">
-                Cargando presets… si no aparecen, usaremos el preset global por defecto.
-              </p>
-            ) : (
-              <select
-                id="live-loudness-preset"
-                value={selectedLoudnessPresetId ?? loudnessPresets[0]?.id ?? ''}
-                onChange={(event) => onSelectLoudnessPreset(event.target.value)}
-                className="w-full rounded-xl border border-border/60 bg-surface px-3 py-2 text-sm text-text min-h-[44px]"
-              >
-                {loudnessPresets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                    {preset.is_default ? ' (predeterminado)' : ''}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
       </div>
 
       <button

@@ -19,7 +19,12 @@ export default function WeakestPhrasesCard({
 }: WeakestPhrasesCardProps) {
   const state = useWeakestPronunciationPrompts(limit, minPracticeCount, level)
 
-  if (state.status === 'loading' || state.status === 'error' || state.rows.length === 0) {
+  if (
+    state.status === 'loading' ||
+    state.status === 'error' ||
+    !Array.isArray(state.rows) ||
+    state.rows.length === 0
+  ) {
     return null
   }
 

@@ -33,7 +33,7 @@ export const WelcomePage = () => {
   };
 
   return (
-    <main className="relative min-h-[100dvh] bg-bg overflow-hidden">
+    <main className="relative min-h-[100dvh] bg-bg overflow-hidden flex flex-col items-center justify-center p-4">
       <div
         className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-accent/15 blur-[100px] animate-float"
         aria-hidden
@@ -43,10 +43,10 @@ export const WelcomePage = () => {
         aria-hidden
       />
 
-      <div className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-2xl flex-col items-center justify-between gap-8 px-4 py-8 md:px-8 md:py-12 lg:py-16 pb-safe">
+      <div className="relative z-10 mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-10 rounded-3xl border border-border/60 bg-surface/60 backdrop-blur-md p-8 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.6)] animate-fade-in">
         <WelcomeHeading firstName={getFirstName(user?.fullName)} />
 
-        <div className="flex w-full flex-1 items-center justify-center">
+        <div className="flex w-full items-center justify-center py-4">
           <InitialRadar dimensions={INITIAL_SCORES} />
         </div>
 
@@ -57,7 +57,7 @@ export const WelcomePage = () => {
           <Button
             type="button"
             onClick={handleContinue}
-            className="md:max-w-[260px] md:mx-auto md:block h-12"
+            className="w-full max-w-xs mx-auto block h-14 text-lg font-bold rounded-2xl"
           >
             Continuar
           </Button>

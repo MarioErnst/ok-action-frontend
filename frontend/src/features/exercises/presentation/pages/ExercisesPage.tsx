@@ -42,7 +42,7 @@ export const ExercisesPage = () => {
     <div className="p-4 md:p-8 max-w-6xl mx-auto flex-1 w-full animate-fade-in relative z-10">
       <header className="mb-6 md:mb-10 text-center md:text-left relative" data-journey-id="exercises-intro">
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-0 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
-        <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="relative z-10 flex flex-row items-start justify-between gap-4">
           <div>
             <p className="text-accent text-xs md:text-sm font-medium tracking-wider uppercase mb-2">Catalogo</p>
             <h1 className="text-text text-3xl md:text-4xl font-extrabold tracking-tight">Ejercicios</h1>
@@ -50,7 +50,7 @@ export const ExercisesPage = () => {
               Elige un modulo para empezar a entrenar. Cada uno mide y devuelve feedback especifico sobre un aspecto de tu comunicacion.
             </p>
           </div>
-          <ModuleGuideLauncher guideId="exercises" className="mx-auto md:mx-0" />
+          <div className="shrink-0 mt-1"><ModuleGuideLauncher guideId="exercises" className="mx-auto md:mx-0" /></div>
         </div>
       </header>
 

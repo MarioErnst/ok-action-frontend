@@ -36,7 +36,7 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
 
   if (catalogStatus === 'loading') {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-4 p-6">
+      <div className="mx-auto flex w-full max-w-lg flex-col items-start gap-4 p-6">
         <div className="w-12 h-12 rounded-full border-4 border-surface-alt border-t-accent animate-spin" />
         <p className="text-sm text-text-muted">Cargando frases...</p>
       </div>
@@ -45,8 +45,8 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
 
   if (catalogStatus === 'error') {
     return (
-      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-3 p-6">
-        <p className="text-center text-sm text-danger">
+      <div className="mx-auto flex w-full max-w-lg flex-col items-start gap-3 p-6">
+        <p className="text-left text-sm text-danger">
           {catalogError ?? 'No se pudieron cargar las frases.'}
         </p>
       </div>
@@ -58,28 +58,19 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
   const isProcessing = phase === 'processing';
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 p-6 animate-fade-in relative z-10 pb-28" data-journey-id="accentuation-intro">
-      {phase === 'idle' && (
-        <div className="flex justify-end">
-          <ModuleGuideLauncher guideId="accentuation" />
-        </div>
-      )}
-      <div className="flex flex-col items-center gap-2 relative">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-24 bg-accent/20 blur-[40px] rounded-full pointer-events-none" />
-        <p className="text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-          Evaluación de acentuación
-        </p>
-        {phase !== 'idle' && (
-          <p className="text-sm font-medium text-text-muted bg-surface-alt/50 px-3 py-1 rounded-full border border-white/5">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6 animate-fade-in relative z-10 pb-28" data-journey-id="accentuation-intro">
+      {phase !== 'idle' && (
+        <div className="flex flex-col items-start gap-2 relative">
+          <p className="text-sm font-medium text-text-muted bg-surface-alt/50 px-3 py-1 rounded-full border border-white/5 w-fit">
             Frase {currentIndex + 1} de {totalPhrases}
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {phase === 'idle' && (
-        <div className="flex flex-col items-center gap-6 mt-4">
+        <div className="flex flex-col items-start gap-6 mt-4">
           <div className="bg-surface/60 backdrop-blur-sm border border-border/50 p-6 rounded-3xl shadow-lg w-full">
-            <p className="text-center text-text-muted leading-relaxed">
+            <p className="text-left text-text-muted leading-relaxed">
               Lee cada frase en voz alta. Intenta pronunciar con claridad y entonación natural.
             </p>
           </div>
@@ -102,9 +93,9 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
             <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-50" />
             <StressedPhrase
               phrase={currentPhrase.text}
-              className="text-center text-xl md:text-2xl font-bold leading-relaxed text-text relative z-10"
+              className="text-left text-xl md:text-2xl font-bold leading-relaxed text-text relative z-10"
             />
-            <p className="mt-3 text-center text-xs font-medium uppercase tracking-widest text-text-muted relative z-10">
+            <p className="mt-3 text-left text-xs font-medium uppercase tracking-widest text-text-muted relative z-10">
               Sílaba tónica en color
             </p>
           </div>
@@ -114,14 +105,14 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
           </div>
 
           {isRecording && (
-            <div className="flex items-center justify-center gap-3 bg-danger/10 py-2 px-4 rounded-full mx-auto border border-danger/20 animate-pulse-glow">
+            <div className="flex items-start justify-center gap-3 bg-danger/10 py-2 px-4 rounded-full mx-auto border border-danger/20 animate-pulse-glow">
               <span className="h-3 w-3 rounded-full bg-danger shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
               <span className="text-xs font-bold text-danger uppercase tracking-wider">Grabando</span>
             </div>
           )}
 
           {recordingError && (
-            <p className="text-center text-sm font-medium text-danger bg-danger/10 py-2 px-4 rounded-xl border border-danger/20">{recordingError}</p>
+            <p className="text-left text-sm font-medium text-danger bg-danger/10 py-2 px-4 rounded-xl border border-danger/20">{recordingError}</p>
           )}
 
           <div className="flex flex-col gap-3">
@@ -167,7 +158,7 @@ export default function RecordingScreen({ onFinish }: RecordingScreenProps) {
       )}
 
       {isProcessing && (
-        <div className="flex flex-col items-center gap-6 justify-center flex-1">
+        <div className="flex flex-col items-start gap-6 justify-center flex-1">
           <div className="w-16 h-16 rounded-full border-4 border-surface-alt border-t-accent animate-spin shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
           <p className="text-text-muted font-medium animate-pulse">Procesando evaluaciones...</p>
         </div>

@@ -18,7 +18,23 @@ export const VideoCapsulesSection = () => {
 
   useEffect(() => {
     apiRequest<VideoData[]>('/videos')
-      .then((data) => setVideos(data))
+      .then((data) => {
+        const videoArray = Array.isArray(data) ? data : ((data as any)?.data || (data as any)?.items || []);
+        
+        // Agregar la URL base de Backblaze si el url del video no es absoluto
+        const backblazeUrl = import.meta.env.VITE_BACKBLAZE_URL || '';
+        const mappedVideos = videoArray.map((v: VideoData) => {
+          if (v.url && !v.url.startsWith('http')) {
+            return {
+              ...v,
+              url: `${backblazeUrl.replace(/\/$/, '')}/${v.url.replace(/^\//, '')}`
+            };
+          }
+          return v;
+        });
+        
+        setVideos(mappedVideos);
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -41,7 +57,7 @@ export const VideoCapsulesSection = () => {
     );
   }
 
-  if (videos.length === 0) {
+  if (!Array.isArray(videos) || videos.length === 0) {
     return <div className="text-text-muted text-sm p-4 bg-surface-alt/20 rounded-2xl border border-border/30">No hay videos disponibles en este momento.</div>;
   }
 

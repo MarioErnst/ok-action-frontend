@@ -36,22 +36,7 @@ export default function PauseRecordingScreen({
   const progress = durationMs > 0 ? Math.min(100, (elapsedMs / durationMs) * 100) : 0;
 
   return (
-    <main className="min-h-[100dvh] bg-bg p-4 text-text md:p-6">
-      <div className="mx-auto flex w-full max-w-lg flex-col gap-5">
-        <header className="rounded-xl border border-border bg-surface p-5" data-journey-id="pauses-intro">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="m-0 text-sm text-text-muted">Medicion de pausas</p>
-              <h1 className="m-0 mt-2 text-2xl font-bold text-text">Responde con claridad</h1>
-            </div>
-            {phase === 'idle' && <ModuleGuideLauncher guideId="pauses" />}
-          </div>
-          <p className="m-0 mt-2 text-sm leading-relaxed text-text-muted">
-            Mantente en silencio durante la calibracion y responde cuando comience la grabacion.
-            Las pausas no son un error: aqui medimos ritmo, continuidad e intencion.
-          </p>
-        </header>
-
+    <div className="flex flex-col gap-6 relative z-10 w-full max-w-3xl mx-auto">
         <section className="rounded-xl border border-accent/40 bg-surface p-5">
           <p className="text-xs uppercase tracking-wider text-text-muted">Pregunta</p>
           <p className="mt-3 text-lg font-semibold leading-relaxed text-text">{promptText}</p>
@@ -68,7 +53,7 @@ export default function PauseRecordingScreen({
         )}
 
         {phase === 'calibrating' && (
-          <section className="rounded-xl border border-warning bg-surface p-5 text-center">
+          <section className="rounded-xl border border-warning bg-surface p-5 text-left">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-border border-t-accent" />
             <p className="m-0 font-semibold text-text">Calibrando ruido ambiente</p>
             <p className="m-0 mt-1 text-sm text-text-muted">Mantente en silencio unos segundos.</p>
@@ -82,7 +67,7 @@ export default function PauseRecordingScreen({
             </section>
 
             <section className="rounded-xl border border-border bg-surface p-5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between">
                 <div>
                   <p className="m-0 text-sm text-text-muted">Tiempo</p>
                   <p className="m-0 mt-1 text-2xl font-bold text-text">
@@ -137,7 +122,6 @@ export default function PauseRecordingScreen({
             </div>
           </>
         )}
-      </div>
-    </main>
+    </div>
   );
 }

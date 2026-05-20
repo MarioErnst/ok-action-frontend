@@ -11,26 +11,20 @@ export function BodyExpressionPage() {
   const session = useBodyExpressionSession()
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col gap-6 p-4 pb-28 pt-8 md:p-6 lg:pb-6">
-      <section className="flex flex-col gap-4 text-center" data-journey-id="body-intro">
-        <div className="flex justify-end">
-          {(session.status === 'idle' || session.status === 'results' || session.status === 'error') && (
+    <div className="p-4 md:p-8 max-w-6xl mx-auto flex-1 w-full flex flex-col animate-fade-in relative z-10 gap-6">
+      <header className="relative mb-6 md:mb-10 text-left" data-journey-id="body-expression-intro">
+        <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 h-28 w-28 rounded-full bg-accent/20 blur-[60px] animate-pulse-glow" />
+        <div className="relative z-10 flex flex-row items-start justify-between gap-4 w-full">
+          <div>
+            <p className="text-accent text-xs md:text-sm font-medium uppercase tracking-wider mb-2">Evaluación</p>
+            <h1 className="text-text text-3xl md:text-4xl font-extrabold tracking-tight">Expresión Corporal</h1>
+            <p className="text-text-muted mt-2 text-sm md:text-base max-w-xl">Evalúa tu presencia mientras hablas.</p>
+          </div>
+          <div className="shrink-0 mt-1">
             <ModuleGuideLauncher guideId="body-expression" />
-          )}
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-accent">
-            Expresion corporal
-          </p>
-          <h1 className="text-3xl font-extrabold text-text">
-            Evalua tu presencia mientras hablas
-          </h1>
-          <p className="mx-auto max-w-2xl text-sm leading-relaxed text-text-muted">
-            Practica una respuesta oral con camara activa. El analisis se hace en tu
-            navegador y solo se guardan metricas agregadas.
-          </p>
-        </div>
-      </section>
+      </header>
 
       {session.status === 'idle' && (
         <BodyPromptCard
@@ -66,7 +60,7 @@ export function BodyExpressionPage() {
       )}
 
       {session.status === 'saving' && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-20 flex items-center justify-start bg-background/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-5">
             <div className="h-10 w-10 animate-spin rounded-full border-2 border-accent border-t-transparent" />
             <p className="text-sm font-semibold text-text-muted">Guardando y generando feedback</p>
@@ -104,6 +98,6 @@ export function BodyExpressionPage() {
           </button>
         </div>
       )}
-    </main>
+    </div>
   )
 }

@@ -14,11 +14,11 @@ export const ModuleScrollChips = ({ value, onChange }: ModuleScrollChipsProps) =
 
   return (
     <div
-      className="-mx-4 md:-mx-0 overflow-x-auto"
+      className="-mx-4 md:-mx-0 overflow-x-auto custom-scrollbar"
       role="tablist"
       aria-label="Filtrar por módulo"
     >
-      <div className="flex gap-2 px-4 md:px-0 pb-1 snap-x snap-mandatory">
+      <div className="flex gap-2 px-4 md:px-0 pb-2">
         {items.map((item) => {
           const isActive = item === value;
           return (
@@ -28,7 +28,7 @@ export const ModuleScrollChips = ({ value, onChange }: ModuleScrollChipsProps) =
               role="tab"
               aria-selected={isActive}
               onClick={() => onChange(item)}
-              className={`snap-start whitespace-nowrap min-h-[44px] px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-all duration-200 ${
+              className={`whitespace-nowrap min-h-[44px] px-4 py-2 rounded-full text-sm font-bold tracking-wide transition-all duration-200 ${
                 isActive
                   ? 'bg-accent text-text-on-accent shadow-[0_6px_20px_-8px_rgba(245,158,11,0.7)]'
                   : 'bg-surface/60 text-text-muted border border-border/60 hover:border-accent/40 hover:text-text'

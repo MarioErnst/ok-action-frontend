@@ -30,13 +30,8 @@ interface LevelSelectionScreenProps {
 
 export default function LevelSelectionScreen({ onLevelSelect }: LevelSelectionScreenProps) {
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-8 p-6 pb-28 relative z-10">
-      <div className="flex flex-col items-center gap-3 relative text-center">
-        <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
-        <p className="text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">Evaluación de pronunciación</p>
-        <p className="text-sm font-medium text-text-muted bg-surface-alt/50 px-4 py-2 rounded-full border border-white/5">Elige el nivel de dificultad para comenzar.</p>
-      </div>
-      <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-8 relative z-10 w-full max-w-4xl mx-auto">
+      <div className="grid gap-4 md:grid-cols-3">
         <LevelCard
           index={0}
           level="basico"

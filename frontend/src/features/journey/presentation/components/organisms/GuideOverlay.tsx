@@ -140,7 +140,7 @@ export const GuideOverlay = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="guide-title"
-        className="pointer-events-auto fixed left-4 right-4 bottom-24 rounded-2xl border border-border/70 bg-surface/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl md:left-auto md:right-auto md:bottom-auto md:max-w-[360px]"
+        className="pointer-events-auto fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[calc(100%-2rem)] max-w-[360px] rounded-2xl border border-border/70 bg-surface/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl md:translate-x-0 md:translate-y-0 md:left-auto md:top-auto md:w-auto"
         style={panelStyle}
       >
         <GuidePanelHeader

@@ -11,25 +11,8 @@ interface PresetSelectorProps {
 // without requiring a CSS animation library.
 export default function PresetSelector({ presets, onSelect }: PresetSelectorProps) {
   return (
-    <main className="flex-1 flex flex-col justify-center p-4 md:p-6 pb-28 lg:pb-6 animate-fade-in relative z-10">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
-        <header className="rounded-3xl border border-border/60 bg-surface/80 backdrop-blur-md p-8 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] relative overflow-hidden text-center md:text-left" data-journey-id="loudness-preset">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-accent/20 blur-[60px] rounded-full pointer-events-none animate-pulse-glow" />
-          <div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="m-0 text-xs font-bold uppercase tracking-widest text-accent drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                Loudness coach
-              </p>
-              <h1 className="m-0 mt-2 text-3xl font-extrabold text-text">Selecciona un preset</h1>
-              <p className="m-0 mt-3 text-sm md:text-base leading-relaxed text-text-muted">
-                Elige el contexto de uso para calibrar los umbrales de volumen antes de comenzar la sesion.
-              </p>
-            </div>
-            <ModuleGuideLauncher guideId="loudness" />
-          </div>
-        </header>
-
-        <div className="grid gap-4 md:grid-cols-3">
+    <div className="flex flex-col gap-6 relative z-10 w-full max-w-4xl mx-auto">
+      <div className="grid gap-4 md:grid-cols-3">
           {presets.map((preset, i) => (
             <button
               key={preset.presetId}
@@ -46,7 +29,7 @@ export default function PresetSelector({ presets, onSelect }: PresetSelectorProp
                 <p className="m-0 mt-2 text-sm leading-relaxed text-text-muted flex-1">
                   {preset.description}
                 </p>
-                <div className="mt-5 inline-flex items-center gap-2 bg-surface-alt/50 px-3 py-2 rounded-xl border border-white/5 w-fit">
+                <div className="mt-5 inline-flex items-start gap-2 bg-surface-alt/50 px-3 py-2 rounded-xl border border-white/5 w-fit">
                   <span className="w-2 h-2 rounded-full bg-accent animate-pulse-glow shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
                   <p className="m-0 text-xs font-bold uppercase tracking-wider text-text-muted">
                     {preset.lowOffsetDb > 0 ? '+' : ''}{preset.lowOffsetDb} / +{preset.optimalOffsetDb} dB
@@ -56,8 +39,7 @@ export default function PresetSelector({ presets, onSelect }: PresetSelectorProp
             </button>
           ))}
         </div>
-      </div>
-    </main>
+    </div>
   );
 }
 

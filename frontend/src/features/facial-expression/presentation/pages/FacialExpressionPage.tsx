@@ -23,7 +23,20 @@ export function FacialExpressionPage() {
   const tracking = useEmotionTracking()
 
   return (
-    <div className="h-[100dvh] w-full bg-background overflow-hidden flex flex-col">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto flex-1 w-full flex flex-col animate-fade-in relative z-10">
+      <header className="relative mb-6 md:mb-10 text-left" data-journey-id="facial-expression-intro">
+  <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 h-28 w-28 rounded-full bg-accent/20 blur-[60px] animate-pulse-glow" />
+  <div className="relative z-10 flex flex-row items-start justify-between gap-4 w-full">
+    <div>
+      <p className="text-accent text-xs md:text-sm font-medium uppercase tracking-wider mb-2">Evaluación</p>
+      <h1 className="text-text text-3xl md:text-4xl font-extrabold tracking-tight">Expresión Facial</h1>
+      <p className="text-text-muted mt-2 text-sm md:text-base max-w-xl">Analiza tus gestos y emociones.</p>
+    </div>
+    <div className="shrink-0 mt-1">
+      <ModuleGuideLauncher guideId="facial-expression" />
+    </div>
+  </div>
+</header>
       {tracking.status === 'idle' && (
         <IntroScreen
           isLoaded={tracking.isLoaded}
@@ -60,9 +73,7 @@ export function FacialExpressionPage() {
 
       {tracking.status === 'results' && tracking.result && (
         <div data-journey-id="facial-results">
-          <div className="mx-auto flex w-full max-w-md justify-end px-4 pt-4">
-            <ModuleGuideLauncher guideId="facial-expression" />
-          </div>
+          
           <SessionResultsView
             result={tracking.result}
             onRestart={() => {
@@ -99,10 +110,8 @@ function IntroScreen({
   onStart: () => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full max-w-md mx-auto px-6 gap-6 text-center" data-journey-id="facial-intro">
-      <div className="flex w-full justify-end">
-        <ModuleGuideLauncher guideId="facial-expression" />
-      </div>
+    <div className="flex flex-col items-center justify-start h-full w-full max-w-md mx-auto px-6 gap-6 text-center" data-journey-id="facial-intro">
+      
       {/* Stylized face placeholder built with concentric rings — no emoji. */}
       <div className="relative w-40 h-40">
         <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent/20 to-accent/5 blur-xl" />
@@ -148,7 +157,7 @@ function IntroScreen({
 
 function SavingOverlay() {
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+    <div className="absolute inset-0 z-10 flex items-center justify-start bg-background/80 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-3">
         <div className="w-10 h-10 rounded-full border-2 border-accent border-t-transparent animate-spin" />
         <p className="text-sm text-text-muted">Guardando sesión…</p>
@@ -159,7 +168,7 @@ function SavingOverlay() {
 
 function ErrorScreen({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full max-w-md mx-auto px-6 gap-4 text-center">
+    <div className="flex flex-col items-center justify-start h-full w-full max-w-md mx-auto px-6 gap-4 text-center">
       <p className="text-base text-red-400">{message}</p>
       <button
         type="button"

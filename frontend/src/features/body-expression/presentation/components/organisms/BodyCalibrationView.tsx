@@ -32,10 +32,8 @@ export function BodyCalibrationView({
         attachStream={attachStream}
       />
 
-      <div className="flex flex-col justify-center gap-4 rounded-2xl border border-border bg-surface/80 p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-accent">
-          Calibracion
-        </p>
+      <div className="flex flex-col justify-start gap-4 rounded-2xl border border-border bg-surface/80 p-5">
+        
         <h2 className="text-2xl font-extrabold text-text">
           Mantente en una postura natural
         </h2>
